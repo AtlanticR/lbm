@@ -60,20 +60,11 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
 
   RLibrary( p$libs )
 
-  if (!exists("clusters", p)) {
-    message("'p$clusters' was not defined, using localhost with all local compute nodes...")
-    p$clusters = rep("localhost", detectCores() )  # default if not given
-  }
-
   if (p$storage.backend=="bigmemory.ram") {
     if ( length( unique(p$clusters)) > 1 ) stop( "More than one unique cluster server was specified .. the RAM-based method only works within one server." )
   }
 
-  if( !exists( "conker_variogram_method", p)) p$conker_variogram_method="fast"   # note GP methods are slow when there is too much data
-
-  if (!exists( "conker_local_family", p)) p$conker_local_family = gaussian()
-  if (!exists( "conker_global_family", p)) p$conker_global_family = gaussian()
-
+  p = conker_parameters(p=p) # fill in parameters with defaults where possible
   p = conker_db( p=p, DS="filenames" )
   p$ptr = list() # location for data pointers
 
@@ -142,9 +133,12 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
 
     # init output data objects
     # statistics storage matrix ( aggregation window, coords ) .. no inputs required
+    sbox = list( 
+      plats = seq( p$corners$plat[1], p$corners$plat[2], by=p$conker_distance_statsgrid ),
+      plons = seq( p$corners$plon[1], p$corners$plon[2], by=p$conker_distance_statsgrid ) )
 
       # statistics coordinates
-      Sloc = as.matrix( expand.grid( p$conker_sbox$plons, p$conker_sbox$plats ))
+      Sloc = as.matrix( expand.grid( sbox$plons, sbox$plats ))
         if (p$storage.backend == "bigmemory.ram" ) {
           p$bm$Sloc = big.matrix(nrow=nrow(Sloc), ncol=ncol(Sloc), type="double"  )
           p$bm$Sloc[] = Sloc
@@ -157,7 +151,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
         if (p$storage.backend == "ff" ) {
           p$ptr$Sloc = ff( Sloc, dim=dim(Sloc), file=p$cache$Sloc, overwrite=TRUE )
         }
-
+    rm( sbox )
 
       S = matrix( NaN, nrow=nrow(Sloc), ncol=length( p$statsvars ) ) # NA forces into logical
         if (p$storage.backend == "bigmemory.ram" ) {
@@ -209,7 +203,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
 
       # limits based on quantiles to permit in predictions
       Yraw = conker_attach( p$storage.backend, p$ptr$Yraw )
-      p$qs0 = quantile( Yraw[], probs=p$quantile_bounds, na.rm=TRUE  )
+      p$qs0 = quantile( Yraw[], probs=p$conker_quantile_bounds, na.rm=TRUE  )
 
      # default just copy Yraw ... but if covars are modelled then overwrite with residuals (below)
       Ydata = Yraw[]
@@ -240,7 +234,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
       rm(Ydata)
 
       Y = conker_attach( p$storage.backend, p$ptr$Y )
-      p$qs = quantile( Y[], probs=p$quantile_bounds, na.rm=TRUE  )
+      p$qs = quantile( Y[], probs=p$conker_quantile_bounds, na.rm=TRUE  )
 
 
       if (p$conker_local_modelengine == "habitat") {

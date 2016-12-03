@@ -88,13 +88,9 @@
 
     # -----------------
     
-    if (DS %in% c( "statistics.status", "statistics.box", "statistics.reset.problem.locations" ) ) {
+    
+    if (DS %in% c( "statistics.status", "statistics.reset.problem.locations" ) ) {
           
-      if (DS == "statistics.box")  {
-        conker_sbox = list( plats = seq( p$corners$plat[1], p$corners$plat[2], by=p$conker_distance_statsgrid ),
-                      plons = seq( p$corners$plon[1], p$corners$plon[2], by=p$conker_distance_statsgrid ) )
-        return(conker_sbox)
-      }
 
       if ( DS=="statistics.status" ) {
         # find locations for statistic computation and trim area based on availability of data

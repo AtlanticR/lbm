@@ -355,8 +355,8 @@ conker_interpolate = function( ip=NULL, p ) {
       res$predictions$logitsd   = p$conker_local_family_logit$linkinv( res$predictions$logitsd )
     }
  
-    if (exists( "quantile_bounds", p)) {
-      tq = quantile( Y[YiU], probs=p$quantile_bounds, na.rm=TRUE  )
+    if (exists( "conker_quantile_bounds", p)) {
+      tq = quantile( Y[YiU], probs=p$conker_quantile_bounds, na.rm=TRUE  )
       toolow  = which( res$predictions$mean < tq[1] )
       toohigh = which( res$predictions$mean > tq[2] )
       if (length( toolow) > 0)  res$predictions$mean[ toolow] = tq[1]

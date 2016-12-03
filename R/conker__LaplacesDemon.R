@@ -21,8 +21,8 @@ conker__LaplacesDemon = function( p, x, pa ) {
     newdata$mean = as.vector(out$fit)
     newdata$sd = as.vector(out$se.fit) # this is correct: se.fit== stdev of the mean fit: eg:  https://stat.ethz.ch/pipermail/r-help/2005-July/075856.html
 
-    if (exists( "quantile_bounds", p)) {
-      tq = quantile( x[,p$variables$Y], probs=p$quantile_bounds, na.rm=TRUE  )
+    if (exists( "conker_quantile_bounds", p)) {
+      tq = quantile( x[,p$variables$Y], probs=p$conker_quantile_bounds, na.rm=TRUE  )
       bad = which( newdata$mean < tq[1] | newdata$mean > tq[2]  )
       if (length( bad) > 0) {
         newdata$mean[ bad] = NA
