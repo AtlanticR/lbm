@@ -1,0 +1,589 @@
+
+conker_interpolate = function( ip=NULL, p ) {
+  #\\ core function to intepolate (model and predict) in parllel
+
+  if (exists( "libs", p)) RLibrary( p$libs )
+  if (is.null(ip)) if( exists( "nruns", p ) ) ip = 1:p$nruns
+
+  #---------------------
+  # data for modelling
+  # dependent vars # already link-transformed in conker_db("dependent")
+  
+  S = conker_attach( p$storage.backend, p$ptr$S )
+  Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
+  
+  Sloc = conker_attach( p$storage.backend, p$ptr$Sloc )
+  Ploc = conker_attach( p$storage.backend, p$ptr$Ploc )
+  Yloc = conker_attach( p$storage.backend, p$ptr$Yloc )
+
+  Y = conker_attach( p$storage.backend, p$ptr$Y )
+
+  P = conker_attach( p$storage.backend, p$ptr$P )
+  Pn = conker_attach( p$storage.backend, p$ptr$Pn )
+  Psd = conker_attach( p$storage.backend, p$ptr$Psd )
+
+  if (exists("local_cov", p$variables)) {
+    Ycov = conker_attach( p$storage.backend, p$ptr$Ycov )
+  }
+  if ( exists("TIME", p$variables) ) {
+    Ytime = conker_attach( p$storage.backend, p$ptr$Ytime )
+  }
+
+  if ( p$storage.backend != "bigmemory.ram" ) {
+    # force copy into RAM to reduce thrashing
+    Sloc = Sloc[]
+    Yloc = Yloc[]
+    Y = Y[]
+  }
+
+  if (p$conker_local_modelengine=="habitat") {
+    Ylogit = conker_attach( p$storage.backend, p$ptr$Ylogit )
+    Plogit = conker_attach( p$storage.backend, p$ptr$Plogit )
+    Plogitsd = conker_attach( p$storage.backend, p$ptr$Plogitsd )
+  }
+
+  Yi = conker_attach( p$storage.backend, p$ptr$Yi )
+  Yi = as.vector(Yi[])  #force copy to RAM as a vector
+
+  # misc intermediate calcs to be done outside of parallel loops
+  upsampling = sort( p$sampling[ which( p$sampling > 1 ) ] )
+  upsampling = upsampling[ which(upsampling*p$conker_distance_scale <= p$conker_distance_max )]
+  downsampling = sort( p$sampling[ which( p$sampling < 1) ] , decreasing=TRUE )
+  downsampling = downsampling[ which(downsampling*p$conker_distance_scale >= p$conker_distance_min )]
+
+
+  # used by "fields":
+  theta.grid = 10^seq( -6, 6, by=0.5) * p$conker_distance_scale # maxdist is aprox magnitude of the phi parameter
+  lambda.grid = 10^seq( -9, 3, by=0.5) 
+
+  #-----------------
+  # row, col indices
+  # statistical output locations
+  rcS = data.frame( cbind( 
+    Srow = (Sloc[,1]-p$plons[1])/p$pres + 1,  
+    Scol = (Sloc[,2]-p$plats[1])/p$pres + 1))
+
+  #---------------------
+  # prediction locations and covariates
+  rcP = data.frame( cbind( 
+    Prow = (Ploc[,1]-p$plons[1])/p$pres + 1,  
+    Pcol = (Ploc[,2]-p$plats[1])/p$pres + 1) )
+  rcPid = paste( rcP$Prow, rcP$Pcol, sep="~")
+  rm(rcP)
+
+  gc()
+
+
+# main loop over each output location in S (stats output locations)
+  for ( iip in ip ) {
+    Si = p$runs[ iip, "locs" ]
+    if ( is.infinite( Sflag[Si] ) ) next() 
+    if ( !is.nan( Sflag[Si] ) ) next() 
+    Sflag[Si] = Inf   # over-written below if successful else if a run fails it does not get revisited 
+    print( iip )
+
+    # find data nearest S[Si,] and with sufficient data
+    dlon = abs( Sloc[Si,1] - Yloc[Yi,1] ) 
+    dlat = abs( Sloc[Si,2] - Yloc[Yi,2] ) 
+    U =  which( dlon  <= p$conker_distance_scale  & dlat <= p$conker_distance_scale )
+    conker_distance_cur = p$conker_distance_scale
+    ndata = length(U)
+  
+    o = ores = NULL
+    smoothness0 = 0.5
+
+    if (ndata > p$n.min ) {
+      if (ndata > p$n.max ) {
+        Uj = U[ .Internal( sample( ndata, p$n.max, replace=FALSE, prob=NULL)) ]  
+      } else {
+        Uj = U
+      }
+      o = try( conker_variogram( xy=Yloc[Uj,], z=p$conker_local_family$linkfun(Y[Uj]), methods=p$conker_variogram_method ) )
+      if (!inherits(o, "try-error")) {
+        if ( !is.null(o)) {
+          if(exists(p$conker_variogram_method, p)) {
+            conker_distance_cur = min( max(1, o[[p$conker_variogram_method]][["range"]] ), p$conker_distance_scale ) 
+            U = which( dlon  <= conker_distance_cur  & dlat <= conker_distance_cur )
+            ndata =length(U)
+            smoothness0 = o[[p$conker_variogram_method]][["nu"]]
+            ores = o[[p$conker_variogram_method]] # store current best estimate of variogram characteristics
+            if (0) {
+              if (p$conker_variogram_method == "fast" ) { 
+                plot(o[[p$conker_variogram_method]][["vgm"]], 
+                  model=RMmatern( nu=o$fast$nu, var=o$fast$varSpatial, scale=o$fast$phi * (sqrt(o$fast$nu*2) )) + RMnugget(var=o$fast$varObs) )
+              }
+            }
+          }
+        }   
+      }
+    }
+
+    # if insufficient data found within the "range" fall back to a brute force search until criteria are met
+    if (ndata < p$n.min | ndata > p$n.max | conker_distance_cur < p$conker_distance_min | conker_distance_cur > p$conker_distance_max ) { 
+      if ( ndata < p$n.min )  {
+        for ( usamp in upsampling )  {
+          conker_distance_cur = p$conker_distance_scale * usamp
+          U = which( dlon < conker_distance_cur & dlat < conker_distance_cur ) # faster to take a block 
+          ndata = length(U)
+          if ( ndata >= p$n.min ) {
+            if (ndata >= p$n.max) {
+              U = U[ .Internal( sample( length(U), p$n.max, replace=FALSE, prob=NULL)) ] 
+              ndata = p$n.max
+              break()
+            }
+          }
+        }
+      } else {
+        if ( ndata <= p$n.max * 1.5 ) { # if close to p$n.max, subsample quickly 
+          if ( ndata > p$n.max) { 
+            U = U[ .Internal( sample( length(U), p$n.max, replace=FALSE, prob=NULL)) ] 
+            ndata = p$n.max
+          } 
+        } else {
+          for ( dsamp in downsampling )  { # lots of data .. downsample
+            conker_distance_cur = p$conker_distance_scale * dsamp
+            U = which( dlon < conker_distance_cur & dlat < conker_distance_cur )# faster to take a block 
+            ndata = length(U)
+            if ( ndata <= p$n.max ) break()
+            if ( conker_distance_cur <= p$conker_distance_min ) {
+              # reached lower limit in distance, taking a subsample instead
+              U = which( dlon < p$conker_distance_min & dlat < p$conker_distance_min ) # faster to take a block 
+              U = U[ .Internal( sample( length(U), p$n.max, replace=FALSE, prob=NULL)) ]
+              ndata = length(U)
+              break()
+            }
+          }
+        }
+      } 
+    }
+
+    rm (dlon, dlat); gc()
+
+    # final check
+    ndata = length(U)
+    if ((ndata < p$n.min) | (ndata > p$n.max) ) next()
+    YiU = Yi[U]  
+    # So, YiU and dist_prediction determine the data entering into local model construction
+    # dist_model = conker_distance_cur
+
+    dist_prediction = min( p$conker_distance_prediction, conker_distance_cur ) # do not predict greater than p$conker_distance_prediction
+
+    # construct prediction/output grid area ('pa')
+    windowsize.half = floor(dist_prediction/p$pres) # convert distance to discretized increments of row/col indices
+
+    pa_w = -windowsize.half : windowsize.half
+    pa_w_n = length(pa_w)
+    iwplon = rcS[Si,1] + pa_w
+    iwplat = rcS[Si,2] + pa_w
+    pa = NULL
+    pa = data.frame( iplon = rep.int(iwplon, pa_w_n) , 
+                     iplat = rep.int(iwplat, rep.int(pa_w_n, pa_w_n)) )
+    rm(iwplon, iwplat, pa_w)
+
+    bad = which( (pa$iplon < 1 & pa$iplon > p$nplons) | (pa$iplat < 1 & pa$iplat > p$nplats) )
+    if (length(bad) > 0 ) pa = pa[-bad,]
+    if (nrow(pa)< 5) next()
+    
+    rc_local = paste(pa$iplon, pa$iplat, sep = "~")
+    pa$i = match(rc_local, rcPid)
+    
+    bad = which( !is.finite(pa$i))
+    if (length(bad) > 0 ) pa = pa[-bad,]
+
+    pa_n = nrow(pa)
+    if ( pa_n < 5) next()
+
+      if (0) {
+        # check that position indices are working properly
+        Sloc = conker_attach( p$storage.backend, p$ptr$Sloc )
+        Yloc = conker_attach( p$storage.backend, p$ptr$Yloc )
+        plot( Yloc[U,1]~ Yloc[U,2], col="red", pch=".") # all data
+        points( Yloc[YiU,1] ~ Yloc[YiU,2], col="green" )  # with covars and no other data issues
+        points( Sloc[Si,1] ~ Sloc[Si,2], col="blue" ) # statistical locations
+        points( p$plons[rcS[Si,1]] ~ p$plats[rcS[Si,2]] , col="purple", pch=25, cex=2 ) # check on rcS indexing
+        points( p$plons[pa$iplon] ~ p$plats[ pa$iplat] , col="cyan", pch=".", cex=0.01 ) # check on Proc iplat indexing
+        points( Ploc[pa$i,1] ~ Ploc[ pa$i, 2] , col="black", pch=20, cex=0.7 ) # check on pa$i indexing -- prediction locations
+      }
+    rm(rc_local)
+   
+    pa$plon = Ploc[ pa$i, 1]
+    pa$plat = Ploc[ pa$i, 2]
+
+ 
+    # prediction covariates i.e., independent variables/ covariates
+    pvars = c("plon", "plat", "i")
+    if (exists("local_cov", p$variables)) {
+      # .. not necessary except when covars are modelled locally
+      for (ci in 1:length(p$variables$local_cov)) {
+        pu = NULL
+        pu = conker_attach( p$storage.backend, p$ptr$Pcov[[i]] )
+        ncpu = ncol(pu)
+        if ( ncpu== 1 ) {
+          pvars = c( pvars, p$variables$local_cov[ci] )
+          pa[,p$variables$local_cov[ci]] = pu[pa$i]  # ie. a static variable
+        }
+      }
+    }
+    pa = pa[, pvars]
+
+    if ( exists("TIME", p$variables) ) {
+      pa = cbind( pa[ rep.int(1:pa_n, p$nt), ], 
+                      rep.int(p$ts, rep(pa_n, p$nt )) )
+      names(pa) = c( pvars, p$variables$TIME )
+      if ( p$variables$TIME != "yr" ) pa$yr = trunc( pa[,p$variables$TIME] )
+      # where time exists and there are seasonal components, 
+      # additional variables are created/needed here: cos.w, sin.w, etc.. 
+      # for harmonic analysis: to add an offset to a trig function (b) must add cos to a sin function
+      # y ~ a + c*sin(x+b)
+      # y ~ a + c*sin(b)*cos(x) + c*cos(b)*sin(x)  
+      #   .. as C*sin(x+b) = C*( cos(b) * sin(x) + sin(b) * cos(x) )
+      # y ~ b0 + b1*x1 + b2*x2
+      # where: 
+      #   a = b0
+      #   c^2 = b1^2 + b2^2 = c^2*(sin^2(b) + cos^2(b))
+      #   c = sqrt(b1^2 + b2^2)
+      #   b1/b2 = tan(b)  
+      #   b = arctan(b1/b2)
+      if ("dyear" %in% p$variables$local_all)  pa$dyear = pa[, p$variables$TIME] - pa$yr  # fractional year
+      if ("cos.w" %in% p$variables$local_all)  pa$cos.w  = cos( pa[,p$variables$TIME] )
+      if ("sin.w" %in% p$variables$local_all)  pa$sin.w  = sin( pa[,p$variables$TIME] )
+      if ("cos.w2" %in% p$variables$local_all) pa$cos.w2 = cos( 2*pa[,p$variables$TIME] )
+      if ("sin.w2" %in% p$variables$local_all) pa$sin.w2 = sin( 2*pa[,p$variables$TIME] )
+      if ("cos.w3" %in% p$variables$local_all) pa$cos.w3 = cos( 3*pa[,p$variables$TIME] )
+      if ("sin.w3" %in% p$variables$local_all) pa$sin.w3 = sin( 3*pa[,p$variables$TIME] )
+      # more than 3 harmonics would not be advisable .. but you would add them here..
+      
+      if (exists("local_cov", p$variables)) {
+        # add time-varying covars .. not necessary except when covars are modelled locally
+        pvars2 = names(pa)
+        pa$iy = pa$yr - p$yrs[1] + 1 #yr index
+        pa$it = p$nw*(pa$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
+        for (ci in 1:length(p$variables$local_cov)) {
+          pu = NULL
+          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[i]] )
+          ncpu = ncol(pu)
+          if ( ncpu == p$ny )  {
+            pvars2 = c( pvars2, p$variables$local_cov[ci] )
+            pa[,p$variables$local_cov[ci]] = pu[pa$i, pa$iy ]  
+            message("Need to check that data order is correct")
+           } else if ( ncpu == p$nt) {
+            pvars2 = c( pvars2, p$variables$local_cov[ci] )
+            pa[,p$variables$local_cov[ci]] = pu[pa$i, pa$it ]  
+            message("Need to check that data order is correct")
+          }
+        }
+      }
+    }
+    
+    # prep dependent data 
+    # reconstruct data for modelling (x) and data for prediction purposes (pa)
+    x = data.frame( Y[YiU] )
+    names(x) = p$variables$Y
+    x[, p$variables$Y] = p$conker_local_family$linkfun ( x[, p$variables$Y] ) 
+    if (p$conker_local_modelengine=="habitat") {
+      x[, p$variables$Ylogit ] = p$conker_local_family_logit$linkfun ( x[, p$variables$Ylogit] ) ### -- need to conform with data structure ... check once ready
+    }
+    x$plon = Yloc[YiU,1]
+    x$plat = Yloc[YiU,2]
+    x$weights = 1 / (( Sloc[Si,1] - x$plat)**2 + (Sloc[Si,2] - x$plon)**2 )# weight data in space: inverse distance squared
+    x$weights[ which( x$weights < 1e-3 ) ] = 1e-3
+    x$weights[ which( x$weights > 1 ) ] = 1
+    
+    if (exists("local_cov", p$variables)) {
+      for (i in 1:length(p$variables$local_cov )) x[, p$variables$local_cov[i] ] = Ycov[YiU,i]
+    }
+     
+    if (exists("TIME", p$variables)) {
+      x[, p$variables$TIME ] = Ytime[YiU,] 
+      if ( p$variables$TIME != "yr" ) x$yr = trunc( x[, p$variables$TIME]) 
+      if ("dyear" %in% p$variables$local_all)  x$dyear = x[, p$variables$TIME] - x$yr
+      if ("cos.w" %in% p$variables$local_all)  x$cos.w  = cos( 2*pi*x[,p$variables$TIME] )
+      if ("sin.w" %in% p$variables$local_all)  x$sin.w  = sin( 2*pi*x[,p$variables$TIME] )
+      if ("cos.w2" %in% p$variables$local_all) x$cos.w2 = cos( 2*x[,p$variables$TIME] )
+      if ("sin.w2" %in% p$variables$local_all) x$sin.w2 = sin( 2*x[,p$variables$TIME] )
+      if ("cos.w3" %in% p$variables$local_all) x$cos.w3 = cos( 3*x[,p$variables$TIME] )
+      if ("sin.w3" %in% p$variables$local_all) x$sin.w3 = sin( 3*x[,p$variables$TIME] )
+    }
+
+    o = NULL
+    o = try( conker_variogram( xy=x[,p$variables$LOC], z=p$conker_local_family$linkfun(x[, p$variables$Y ]), methods=p$conker_variogram_method) ) 
+      if (!inherits(o, "try-error")) {
+        if ( !is.null(o) ) {
+          if ( exists( p$conker_variogram_method, o )) {
+            ores = o[[p$conker_variogram_method]]  # replace with this "tweaked variogram estimate"    
+          }  
+        }
+      } 
+      
+    smoothness = smoothness0
+    if (!is.null(ores)) if ( exists("nu", ores) ) smoothness = ores$nu
+
+    # model and prediction
+    # the following permits user-defined models (might want to use compiler::cmpfun )
+    gc()
+    res =NULL
+    res = switch( p$conker_local_modelengine, 
+      bayesx = conker__bayesx( p, x, pa ),
+      habitat = conker__habitat( p, x, pa ), # TODO 
+      inla = conker__inla( p, x, pa ),
+      kernel.density = conker__kerneldensity( p, x, pa, smoothness ),
+      gam = conker_gam( p, x, pa ), 
+      gaussianprocess2Dt = conker__gaussianprocess2Dt( p, x, pa ), 
+      gaussianprocess = conker__gaussianprocess( p, x, pa ),  # TODO
+      glm = conker_glm( p, x, pa ), 
+      LaplacesDemon = conker__LaplacesDemon( p, x, pa ),
+      spate = conker__spate( p, x, pa, conker_distance_cur, Sloc[Si,] ), # TODO
+      twostep = conker__twostep( p, x, pa, conker_distance_cur, Sloc[Si,] ),
+      conker_local_modelengine_userdefined = p$conker_local_modelengine_userdefined( p, x, pa)
+    )
+    
+    if (0) {
+      lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==2012.05,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
+       
+      lattice::levelplot( mean ~ plon + plat, data=res$predictions, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
+   
+      for( i in sort(unique(res$predictions[,p$variables$TIME])))  print(lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==i,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
+    }
+
+    rm(x); gc()
+    if ( is.null(res)) next()
+   
+    res$predictions$mean = p$conker_local_family$linkinv( res$predictions$mean )
+    res$predictions$sd   = p$conker_local_family$linkinv( res$predictions$sd )
+    if (p$conker_local_modelengine=="habitat") {
+      res$predictions$logitmean = p$conker_local_family_logit$linkinv( res$predictions$logitmean )
+      res$predictions$logitsd   = p$conker_local_family_logit$linkinv( res$predictions$logitsd )
+    }
+ 
+    if (exists( "quantile_bounds", p)) {
+      tq = quantile( Y[YiU], probs=p$quantile_bounds, na.rm=TRUE  )
+      toolow  = which( res$predictions$mean < tq[1] )
+      toohigh = which( res$predictions$mean > tq[2] )
+      if (length( toolow) > 0)  res$predictions$mean[ toolow] = tq[1]
+      if (length( toohigh) > 0) res$predictions$mean[ toohigh] = tq[2]
+    }
+    
+    ii = which( is.finite(res$predictions$mean+res$predictions$sd))
+    if (length(ii) < 5) next()  # looks to be a faulty solution
+
+
+    # stats collator
+    if (!exists("conker_stats",  res) ) res$conker_stats = list()
+    
+    if (!exists("sdSpatial", res$conker_stats)) {
+      # some methods can generate spatial stats simultaneously .. 
+      # it is faster to keep them all together instead of repeating here
+      # field and RandomFields gaussian processes seem most promising ... 
+      # default to fields for speed:
+      res$conker_stats["sdSpatial"] = NA 
+      res$conker_stats["sdObs"] = NA 
+      res$conker_stats["range"] = NA
+      res$conker_stats["phi"] = NA
+      res$conker_stats["nu"] = NA
+      if ( !is.null(ores)) {
+        res$conker_stats["sdSpatial"] = sqrt( ores[["varSpatial"]] ) 
+        res$conker_stats["sdObs"] = sqrt(ores[["varObs"]]) 
+        res$conker_stats["range"] = ores[["range"]]
+        res$conker_stats["phi"] = ores[["phi"]]
+        res$conker_stats["nu"] = ores[["nu"]]
+      } 
+    }
+    
+    if ( exists("TIME", p$variables) ){
+      # annual ts, seasonally centered and spatially 
+      # pa_i = which( Sloc[Si,1]==Ploc[,1] & Sloc[Si,2]==Ploc[,2] )
+      pac_i = which( res$predictions$plon==Sloc[Si,1] & res$predictions$plat==Sloc[Si,2] )
+      # plot( mean~tiyr, res$predictions[pac_i,])
+      # plot( mean~tiyr, res$predictions, pch="." )
+      if (length(pac_i) > 5) {
+        pac = res$predictions[ pac_i, ]
+        pac$dyr = pac[, p$variables$TIME] - trunc(pac[, p$variables$TIME] )
+        piid = which( zapsmall( pac$dyr - p$dyear_centre) == 0 )
+        pac = pac[ piid, c(p$variables$TIME, "mean")]
+        pac = pac[ order(pac[,p$variables$TIME]),]
+        if (length(piid) > 5 ) {
+          ts.stat = NULL
+          ts.stat = try( conker_timeseries( pac$mean, method="fft" ) )
+          if (!is.null(ts.stat) && !inherits(ts.stat, "try-error") ) {
+            res$conker_stats["ar_timerange"] = ts.stat$quantilePeriod 
+            if (length(which (is.finite(pac$mean))) > 5 ) {
+              ar1 = NULL
+              ar1 = try( ar( pac$mean, order.max=1 ) )
+              if (!inherits(ar1, "try-error")) {
+                res$conker_stats["ar_1"] = ar1$ar 
+              } else {
+                ar1 = try( cor( pac$mean[1:(length(piid) - 1)], pac$mean[2:(length(piid))], na.rm=TRUE ) )
+                if (!inherits(ar1, "try-error")) res$conker_stats["ar_1"] = ar1 
+              }
+            } 
+          } 
+
+          ### Do the logistic model here ! -- if not already done ..
+          if (!exists("ts_K", res$conker_stats)) {
+            # model as a logistic with ts_r, ts_K, etc .. as stats outputs
+            
+          } 
+
+        } 
+        rm ( pac, piid )
+      } 
+      rm(pac_i)
+    }
+       
+
+    # update SD estimates of predictions with those from other locations via the
+    # incremental  method ("online algorithm") of mean estimation after Knuth ;
+    # see https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+    # update means: inverse-variance weighting   
+    # see https://en.wikipedia.org/wiki/Inverse-variance_weighting
+   
+    npred = nrow(res$predictions)
+
+    if ( ! exists("TIME", p$variables) ) {
+
+      u = which( is.finite( P[res$predictions$i] ) )  # these have data already .. update
+      if ( length( u ) > 1 ) {
+        ui = res$predictions$i[u]  # locations of P to modify
+        Pn[ui] = Pn[ui] + 1 # update counts
+        stdev_update =  Psd[ui] + ( res$predictions$sd[u] -  Psd[ui] ) / Pn[ui]
+        means_update = ( P[ui] / Psd[ui]^2 + res$predictions$mean[u] / res$predictions$sd[u]^2 ) / ( Psd[ui]^(-2) + res$predictions$sd[u]^(-2) )
+        mm = which(is.finite( means_update + stdev_update ))
+        if( length(mm)> 0) {
+          iumm = ui[mm]
+          Psd[iumm] = stdev_update[mm]
+          P  [iumm] = means_update[mm]
+        } 
+        stdev_update = NULL
+        means_update = NULL
+
+        if (p$conker_local_modelengine=="habitat") {
+          logit_stdev_update =  Plogitsd[ui] + ( res$predictions$logitsd[u] -  Plogitsd[ui] ) / Pn[ui]
+          logit_means_update = ( Plogit[ui] / Plogitsd[ui]^2 + res$predictions$logitmean[u] / res$predictions$logitsd[u]^2 ) / ( Plogitsd[ui]^(-2) + res$predictions$logitsd[u]^(-2) )
+          mm = which(is.finite( logit_means_update + logit_stdev_update ))
+          if( length(mm)> 0) {
+            iumm = ui[mm]
+            Plogitsd[iumm] = logit_stdev_update[mm]
+            Plogit  [iumm] = logit_means_update[mm]
+          }
+          logit_stdev_update = NULL
+          logit_means_update = NULL
+        }
+        rm(ui, mm, iumm)
+      }
+
+      # first time # no data yet
+      v = setdiff(1:npred, u)         
+      if ( length(v) > 0 ) {
+        vi = res$predictions$i[v]
+        Pn [vi] = 1
+        P  [vi] = res$predictions$mean[v]
+        Psd[vi] = res$predictions$sd[v]
+        if (p$conker_local_modelengine=="habitat") {
+          Plogit  [vi] = res$predictions$logitmean[v]
+          Plogitsd[vi] = res$predictions$logitsd[v]
+        }
+      }
+    }
+
+    if ( exists("TIME", p$variables) ) {
+      u = which( is.finite( P[res$predictions$i,1] ) )  # these have data already .. update
+      u_n = length( u ) 
+      if ( u_n > 1 ) {  # ignore if only one point .. mostly because it can cause issues with matrix form .. 
+        # locations of P to modify
+        ui = sort(unique(res$predictions$i[u]))
+        nc = ncol(P)
+        if (p$storage.backend == "ff" ) {
+          add.ff(Pn, 1, ui, 1:nc ) # same as Pn[ui,] = Pn[ui]+1 but 2X faster
+        } else {
+          Pn[ui,] = Pn[ui,] + 1
+        }
+        stdev_update =  Psd[ui,] + ( res$predictions$sd[u] -  Psd[ui,] ) / Pn[ui,]
+        means_update = ( P[ui,] / Psd[ui,]^2 + res$predictions$mean[u] / res$predictions$sd[u]^2 ) / 
+          ( Psd[ui,]^(-2) + res$predictions$sd[u]^(-2) )
+        
+        updates = means_update + stdev_update 
+        if (!is.matrix(updates)) next()
+
+        mm = which( is.finite( rowSums(updates)))  # created when preds go outside quantile bounds .. this removes all data from a given location rather than the space-time .. severe but likely due to a poor prediction and so remove all (it is also faster this way as few manipulations)
+        if( length(mm)> 0) {
+          iumm = ui[mm] 
+          Psd[iumm,] = stdev_update[mm,]
+          P  [iumm,] = means_update[mm,]
+          iumm = NULL
+        } 
+        stdev_update = NULL
+        means_update = NULL
+        if (p$conker_local_modelengine=="habitat") {
+          logit_stdev_update =  Plogitsd[ui,] + ( res$predictions$logitsd[u] -  Plogitsd[ui,] ) / Pn[ui]
+          logit_means_update = ( Plogit[ui,] / Plogitsd[ui,]^2 + res$predictions$logitmean[u] / res$predictions$logitsd[u]^2 ) / ( Plogitsd[ui,]^(-2) + res$predictions$logitsd[u]^(-2) )
+          updates = logit_means_update + logit_stdev_update
+          if (!is.matrix(updates)) next()
+          mm = which( is.finite( rowSums(updates)))  # created when preds go outside quantile bounds .. this removes 
+          if( length(mm)> 0) {
+            iumm = ui[mm]
+            Plogitsd[iumm,] = logit_stdev_update[mm,]
+            Plogit  [iumm,] = logit_means_update[mm,]
+            iumm = NULL
+          } 
+          logit_stdev_update = NULL
+          logit_means_update = NULL
+        }
+        rm(ui, mm)
+
+      }
+
+      # do this as a second pass in case NA's were introduced by the update .. unlikely , but just in case
+      v = which( !is.finite( P[res$predictions$i,1] ) )  # these have data already .. update
+      nv = length(v)          # no data yet
+      if ( nv > 0 ) {
+        vi = sort(unique(res$predictions$i[v]))
+        Pn [vi,] = 1
+        P  [vi,] = res$predictions$mean[v]
+        Psd[vi,] = res$predictions$sd[v]
+        if (p$conker_local_modelengine=="habitat") {
+          Plogit  [vi,] = res$predictions$logitmean[v]
+          Plogitsd[vi,] = res$predictions$logitsd[v]
+        }
+        rm(vi)
+      } 
+    }
+
+
+    # save stats
+    for ( k in 1: length(p$statsvars) ) {
+      if (exists( p$statsvars[k], res$conker_stats )) {
+        S[Si,k] = res$conker_stats[[ p$statsvars[k] ]]
+      }
+    }
+    
+      if (0) {
+     
+        lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==2012.05,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
+        
+        for( i in sort(unique(res$predictions[,p$variables$TIME])))  print(lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==i,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
+      
+        for (i in 1:p$nt) {
+          print( lattice::levelplot( P[pa$i,i] ~ Ploc[pa$i,1] + Ploc[ pa$i, 2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
+        }
+
+        v = res$predictions
+        if ( exists("TIME", p$variables) ){
+          v = v[which( v[,p$variables$TIME]==1990.55),]
+        }
+        require(lattice)
+        levelplot( mean ~ plon+plat, v, aspect="iso", labels=TRUE, pretty=TRUE, xlab=NULL,ylab=NULL,scales=list(draw=TRUE) )
+      }
+   
+    res = NULL
+    pa = NULL
+
+    # ----------------------
+    # do last. it is an indicator of completion of all tares$predictionssks .. restarts would be broken otherwise
+    Sflag[Si] = 1  # done .. any finite value would do
+
+  }  # end for loop
+  
+  invisible()
+
+}
+
