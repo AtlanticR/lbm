@@ -14,7 +14,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
 
   if(0) {
     p = bio.temperature::temperature.parameters( current.year=2016 )
-    p$conker_local_modelengine="gam"
+    p$conker_local_modelengine="twostep"
     p = bio.temperature::temperature.parameters( DS="conker", p=p )
     overwrite=NULL
     DATA='hydro.db( p=p, DS="conker.input" )'

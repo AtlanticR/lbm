@@ -29,8 +29,8 @@ conker__twostep = function( p, x, pa, smoothness=0.5 ) {
 
   preds$fit[reject] = NA
 
-  pa$mean = preds$fit
-  pa$sd = preds$se.fit
+  pa$mean = as.vector( preds$fit )
+  pa$sd = as.vector( preds$se.fit )
 
   # locations of the new (output) coord system .. smaller than the data range of x
   pa_r = range(pa[,p$variables$LOCS[1]])

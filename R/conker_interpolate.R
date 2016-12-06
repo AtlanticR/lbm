@@ -73,6 +73,7 @@ conker_interpolate = function( ip=NULL, p ) {
 
   gc()
 
+  smoothness0 = 0.5
 
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
@@ -88,9 +89,9 @@ conker_interpolate = function( ip=NULL, p ) {
     U =  which( dlon  <= p$conker_distance_scale  & dlat <= p$conker_distance_scale )
     conker_distance_cur = p$conker_distance_scale
     ndata = length(U)
-  
+    smoothness = smoothness0
+
     o = ores = NULL
-    smoothness0 = 0.5
 
     if (ndata > p$n.min ) {
       if (ndata > p$n.max ) {
@@ -99,13 +100,13 @@ conker_interpolate = function( ip=NULL, p ) {
         Uj = U
       }
       o = try( conker_variogram( xy=Yloc[Uj,], z=p$conker_local_family$linkfun(Y[Uj]), methods=p$conker_variogram_method ) )
-      if (!inherits(o, "try-error")) {
-        if ( !is.null(o)) {
+      if ( !is.null(o)) {
+        if (!inherits(o, "try-error")) {
           if(exists(p$conker_variogram_method, p)) {
             conker_distance_cur = min( max(1, o[[p$conker_variogram_method]][["range"]] ), p$conker_distance_scale ) 
             U = which( dlon  <= conker_distance_cur  & dlat <= conker_distance_cur )
             ndata =length(U)
-            smoothness0 = o[[p$conker_variogram_method]][["nu"]]
+            smoothness = o[[p$conker_variogram_method]][["nu"]]
             ores = o[[p$conker_variogram_method]] # store current best estimate of variogram characteristics
             if (0) {
               if (p$conker_variogram_method == "fast" ) { 
@@ -215,12 +216,13 @@ conker_interpolate = function( ip=NULL, p ) {
     if (exists("local_cov", p$variables)) {
       # .. not necessary except when covars are modelled locally
       for (ci in 1:length(p$variables$local_cov)) {
+        vn = p$variables$local_cov[ci]
         pu = NULL
-        pu = conker_attach( p$storage.backend, p$ptr$Pcov[[i]] )
+        pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
         ncpu = ncol(pu)
         if ( ncpu== 1 ) {
-          pvars = c( pvars, p$variables$local_cov[ci] )
-          pa[,p$variables$local_cov[ci]] = pu[pa$i]  # ie. a static variable
+          pvars = c( pvars, vn )
+          pa[,vn] = pu[pa$i]  # ie. a static variable
         }
       }
     }
@@ -259,16 +261,17 @@ conker_interpolate = function( ip=NULL, p ) {
         pa$iy = pa$yr - p$yrs[1] + 1 #yr index
         pa$it = p$nw*(pa$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
         for (ci in 1:length(p$variables$local_cov)) {
+          vn = p$variables$local_cov[ci]
           pu = NULL
-          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[i]] )
+          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
           ncpu = ncol(pu)
           if ( ncpu == p$ny )  {
-            pvars2 = c( pvars2, p$variables$local_cov[ci] )
-            pa[,p$variables$local_cov[ci]] = pu[pa$i, pa$iy ]  
+            pvars2 = c( pvars2, vn )
+            pa[,vn] = pu[pa$i, pa$iy ]  
             message("Need to check that data order is correct")
            } else if ( ncpu == p$nt) {
-            pvars2 = c( pvars2, p$variables$local_cov[ci] )
-            pa[,p$variables$local_cov[ci]] = pu[pa$i, pa$it ]  
+            pvars2 = c( pvars2, vn )
+            pa[,vn] = pu[pa$i, pa$it ]  
             message("Need to check that data order is correct")
           }
         }
@@ -315,7 +318,6 @@ conker_interpolate = function( ip=NULL, p ) {
         }
       } 
       
-    smoothness = smoothness0
     if (!is.null(ores)) if ( exists("nu", ores) ) smoothness = ores$nu
 
     # model and prediction
@@ -334,7 +336,7 @@ conker_interpolate = function( ip=NULL, p ) {
       LaplacesDemon = conker__LaplacesDemon( p, x, pa ),
       spate = conker__spate( p, x, pa, conker_distance_cur, Sloc[Si,] ), # TODO
       splancs = conker__spate( p, x, pa, conker_distance_cur, Sloc[Si,] ), # TODO
-      twostep = conker__twostep( p, x, pa, conker_distance_cur, Sloc[Si,] ),
+      twostep = conker__twostep( p, x, pa ),
       conker_local_modelengine_userdefined = p$conker_local_modelengine_userdefined( p, x, pa)
     )
     
@@ -396,6 +398,9 @@ conker_interpolate = function( ip=NULL, p ) {
       pac_i = which( res$predictions$plon==Sloc[Si,1] & res$predictions$plat==Sloc[Si,2] )
       # plot( mean~tiyr, res$predictions[pac_i,])
       # plot( mean~tiyr, res$predictions, pch="." )
+      res$conker_stats["ar_timerange"] = NA 
+      res$conker_stats["ar_1"] = NA
+            
       if (length(pac_i) > 5) {
         pac = res$predictions[ pac_i, ]
         pac$dyr = pac[, p$variables$TIME] - trunc(pac[, p$variables$TIME] )
@@ -407,13 +412,17 @@ conker_interpolate = function( ip=NULL, p ) {
           ts.stat = try( conker_timeseries( pac$mean, method="fft" ) )
           if (!is.null(ts.stat) && !inherits(ts.stat, "try-error") ) {
             res$conker_stats["ar_timerange"] = ts.stat$quantilePeriod 
-            if (length(which (is.finite(pac$mean))) > 5 ) {
+            afin = which (is.finite(pac$mean) )
+            if (length(afin) > 5 && var( pac$mean, na.rm=TRUE) > p$eps ) {
               ar1 = NULL
               ar1 = try( ar( pac$mean, order.max=1 ) )
               if (!inherits(ar1, "try-error")) {
-                res$conker_stats["ar_1"] = ar1$ar 
-              } else {
-                ar1 = try( cor( pac$mean[1:(length(piid) - 1)], pac$mean[2:(length(piid))], na.rm=TRUE ) )
+                if ( length(ar1$ar) == 1 ) {
+                  res$conker_stats["ar_1"] = ar1$ar
+                }  
+              } 
+              if ( !is.finite(res$conker_stats[["ar_1"]]) ) {
+                ar1 = try( cor( pac$mean[1:(length(piid) - 1)], pac$mean[2:(length(piid))], use="pairwise.complete.obs" ) )
                 if (!inherits(ar1, "try-error")) res$conker_stats["ar_1"] = ar1 
               }
             } 
@@ -430,7 +439,7 @@ conker_interpolate = function( ip=NULL, p ) {
       } 
       rm(pac_i)
     }
-       
+
 
     # update SD estimates of predictions with those from other locations via the
     # incremental  method ("online algorithm") of mean estimation after Knuth ;
@@ -579,7 +588,8 @@ conker_interpolate = function( ip=NULL, p ) {
     pa = NULL
 
     # ----------------------
-    # do last. it is an indicator of completion of all tares$predictionssks .. restarts would be broken otherwise
+    # do last. it is an indicator of completion of all tasks 
+    # restarts would be broken otherwise
     Sflag[Si] = 1  # done .. any finite value would do
 
   }  # end for loop

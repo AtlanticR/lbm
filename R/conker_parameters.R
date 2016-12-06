@@ -16,6 +16,7 @@ conker_parameters = function( p=NULL  ) {
   
   if (!exists( "conker_noise", p)) p$conker_noise = 0.001  # distance units for eps noise to permit mesh gen for boundaries
   if (!exists( "conker_quantile_bounds", p)) p$conker_quantile_bounds = c(0.001, 0.999) # remove these extremes in interpolations
+  if (!exists( "eps", p)) p$eps = 1e-6 # floating point precision 
 
   return(p)
 }

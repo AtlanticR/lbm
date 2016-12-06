@@ -53,8 +53,8 @@ conker__habitat = function( p, x, pa ) {
 
   Asim = Asim * Hsim  # Asim now becomes weighted by Pr of habitat
 
-  pa$mean = apply( Asim, 1, mean, na.rm=T )
-  pa$sd =  apply( Asim, 1, sd, na.rm=T )
+  pa$mean = as.vector( apply( Asim, 1, mean, na.rm=T ) )
+  pa$sd =  as.vector( apply( Asim, 1, sd, na.rm=T ) )
 
   # iHabitat = which( pa$logitmean > p$habitat.threshold.quantile & (pa$logitmean - 2 * pa$logitsd) > 0 )
 

@@ -41,7 +41,7 @@ conker__gaussianprocess2Dt = function( p, x, pa ) {
       theta=fsp$pars["theta"], lambda=fsp$pars["lambda"] ) )
     if (inherits(fspmodel, "try-error") )  next()
 
-    x$mean[xi] = predict(fspmodel, x=x[xi, p$variables$LOCS] )
+    x$mean[xi] = as.vector( predict(fspmodel, x=x[xi, p$variables$LOCS] ) )
     ss = lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit)
     if ( "try-error" %in% class( ss ) ) next()
     rsquared = summary(ss)$r.squared

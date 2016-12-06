@@ -28,7 +28,7 @@ conker__bayesx = function( p, x, pa ) {
 
   if (!inherits(out, "try-error")) return( NULL )
 
-  pa$mean = out
+  pa$mean = as.vector( out )
   pa$sd = 1 # no option right now to estim posterior prediction errors .. may be possible with type="terms" but would be slow to simulate  and do not know how to do it yet .. please fix this ..
   varSpatial = hmod$smooth.hyp[,"Variance"]
   varObs = hmod$fixed.effects[1,"Std. Error"]  
