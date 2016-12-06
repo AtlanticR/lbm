@@ -21,28 +21,16 @@ conker__twostep = function( p, x, pa, smoothness=0.5 ) {
   ss = summary(hmod)
   if (ss$r.sq < p$conker_rsquared_threshold ) return(NULL)
     
-  preds = try( predict( hmod, newdata=x, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
+  preds = try( predict( hmod, newdata=pa, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
 
-#  -- predict then remove high var estimates then fft
+  reject = which( preds$se.fit > quantile( preds$se.fit, probs= p$conker_quantile_bounds[2], na.rm=TRUE ) 
+                | preds$fit > p$qs[2] 
+                | preds$fit < p$qs[1] )
 
+  preds$fit[reject] = NA
 
-  x_r = range(x[,p$variables$LOCS[1]])
-  x_c = range(x[,p$variables$LOCS[2]])
-
-  x_nr = diff(x_r)/p$pres + 1
-  x_nc = diff(x_c)/p$pres + 1
-
-  x_plons = seq( x_r[1], x_r[2], length.out=x_nr )
-  x_plats = seq( x_c[1], x_c[2], length.out=x_nc )
-
-  x_locs = expand.grid( x_plons, x_plats ) # final output grid
-  attr( x_locs , "out.attrs") = NULL
-  names( x_locs ) = p$variables$LOCS
-
-  x$mean = NA
-
-  pa$mean = NA
-  pa$sd = NA
+  pa$mean = preds$fit
+  pa$sd = preds$se.fit
 
   # locations of the new (output) coord system .. smaller than the data range of x
   pa_r = range(pa[,p$variables$LOCS[1]])
@@ -50,36 +38,31 @@ conker__twostep = function( p, x, pa, smoothness=0.5 ) {
   
   pa_nr = diff(pa_r)/p$pres + 1
   pa_nc = diff(pa_c)/p$pres + 1
-
-  pa_plons = seq( pa_r[1], pa_r[2], length.out=pa_nr )
-  pa_plats = seq( pa_c[1], pa_c[2], length.out=pa_nc )
-
-  pa_locs = expand.grid( pa_plons, pa_plats ) # final output grid
-  attr( pa_locs , "out.attrs") = NULL
-  names( pa_locs ) = p$variables$LOCS
-  rm( pa_r, pa_c, pa_nr, pa_nc, pa_plons, pa_plats)
   
   # step 2 :: spatial modelling
   for ( ti in 1:p$nt ) {
      
-    if ( exists("TIME", p$variables)) {
-      xi = which( x[, p$variables$TIME]==p$ts[ti]) 
-    } else {
-      xi =1:nrow(x) 
-    } 
-    
-    # map of row, col indices of input data in the new (output) coordinate system
-    x_id = cbind( (x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
-                  (x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
+    if ( exists("TIME", p$variables) ) {
+      pa_i =  which( pa[, p$variables$TIME]==p$ts[ti] ) 
+    } else { 
+      pa_i = 1:nrow(pa) 
+    }
+
+    Z_i = cbind( ( pa[pa_i,p$variables$LOCS[1]]-pa_r[1])/p$pres + 1, 
+                  (pa[pa_i,p$variables$LOCS[2]]-pa_c[1])/p$pres + 1 )
+
+    if ( any( Z_i<1) ) next()  
+    if ( any( Z_i[,1] > pa_nr) ) next()
+    if ( any( Z_i[,2] > pa_nc) ) next()
 
     # matrix representation of the output surface
-    M = matrix( NA, nrow=x_nr, ncol=x_nc) 
-    M[x_id] = x[xi,p$variables$Y] # fill with data in correct locations
+    M = matrix( NA, nrow=pa_nr, ncol=pa_nc) 
+    M[Z_i] = pa[pa_i, "mean"] # fill with data in correct locations
     Z = try( fields::image.smooth( M, dx=p$pres, dy=p$pres, theta=p$conker_theta)$z )
   
     if (0) {
       # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
-      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, theta=p$conker_theta,
+      Z = try( smooth.2d( Y=pa[pa_i,"mean"], x=pa[pa_i,p$variables$LOCS], ncol=x_nc, nrow=x_nr, theta=p$conker_theta,
         cov.function=stationary.cov, Covariance="Exponential", p=smoothness, smoothness=smoothness ) )
       iZ = which( !is.finite( Z$z))
       if (length(iZ) > 0) Z$z[iZ] = NA
@@ -94,20 +77,7 @@ conker__twostep = function( p, x, pa, smoothness=0.5 ) {
     }
   
     if ( "try-error" %in% class(Z) ) next()
-    # match prediction to input data 
-    x$mean[xi] = Z[x_id]
-    ss = lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit)
-    if ( "try-error" %in% class( ss ) ) next()
-    rsquared = summary(ss)$r.squared
-    if (rsquared < p$conker_rsquared_threshold ) next()
-    pa_i = ifelse( exists("TIME", p$variables), {which( pa[, p$variables$TIME]==p$ts[ti])}, {1:nrow(pa)} ) 
-    Z_i = cbind( ( pa[pa_i,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
-                  (pa[pa_i,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
-
     # make sure predictions exist .. kernel density can stop prediction beyond a given range if the xwidth/ywidth options are not used and/or the kernel distance (theta) is small 
-    if ( any( Z_i<1) ) next()  
-    if ( any( Z_i[,1] > x_nr) ) next()
-    if ( any( Z_i[,2] > x_nc) ) next()
     pa$mean[pa_i] = Z[Z_i]
     pa$sd[pa_i] = 1
   }

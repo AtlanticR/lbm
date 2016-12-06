@@ -69,13 +69,13 @@
     # --------------------------
 
     if (DS=="save.parameters")  {
-      save(p, file=file.path( p$stloc, "p.rdata") )
+      save(p, file=file.path( p$savedir, "p.rdata") )
       message( "Saved parameters:")
-      message( file.path( p$stloc, "p.rdata") )
+      message( file.path( p$savedir, "p.rdata") )
     }
 
     if (DS=="load.parameters")  {
-      load( file.path( p$stloc, "p.rdata") )
+      load( file.path( p$savedir, "p.rdata") )
       return(p)
     }
 
@@ -129,7 +129,7 @@
    
     if (DS %in% c( "boundary.redo", "boundary" ) )  {
 
-      fn =  file.path(p$stloc, "boundary.rdata" )
+      fn =  file.path(p$savedir, "boundary.rdata" )
       if (DS=="boundary") {
         boundary = NULL
         if( file.exists(fn)) load( fn)
@@ -180,7 +180,7 @@
   
     if (DS %in% c("global_model", "global_model.redo") ) {
       
-      fn.global_model = file.path( p$project.root, "conker", paste( "spatial", "global_model", p$conker_global_modelengine, "rdata", sep=".") )
+      fn.global_model = file.path( p$savedir, paste( "global_model", p$conker_global_modelengine, "rdata", sep=".") )
 
       if (DS =="global_model") {
         global_model = NULL

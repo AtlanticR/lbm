@@ -38,14 +38,13 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
 
   p$time.start =  Sys.time()
 
-  p$stloc = file.path( p$project.root, "tmp" )
-  # message( paste( "Temporary files are being created at:", p$stloc ) )
-  if ( !file.exists(p$stloc)) dir.create( p$stloc, recursive=TRUE, showWarnings=FALSE )
-
   p$savedir = file.path(p$project.root, "conker", p$spatial.domain )
-
-  message( paste( "In case something should go wrong outputs will be placed at:", p$savedir ) )
+  message( paste( "In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
   if ( !file.exists(p$savedir)) dir.create( p$savedir, recursive=TRUE, showWarnings=FALSE )
+
+  p$stloc = file.path( p$project.root, "conker", p$spatial.domain, "tmp" )
+  message( paste( "Temporary files are being created at:", p$stloc ) )
+  if ( !file.exists(p$stloc)) dir.create( p$stloc, recursive=TRUE, showWarnings=FALSE )
 
   p$libs = unique( c( p$libs, "sp", "rgdal", "parallel", "RandomFields", "geoR" ) )
 
@@ -483,7 +482,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
           p$clusters= p$clusters0
         }
         p$timec1 =  Sys.time()
-        message( paste( "Time taken to predict covariate surface (mins):", difftime( p$timec1, p$timec0 , units="mins") ) )
+        message( paste( "Time taken to predict covariate surface (mins):", round(difftime( p$timec1, p$timec0 , units="mins"), 3) ) )
     }
 
     P = NULL; gc() # yes, repeat in case covs are not modelled
@@ -503,7 +502,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
       }}
       bnds = NULL
       p$timeb1 =  Sys.time()
-      message( paste( "Time taken to estimate spatial bounds (mins):", difftime( p$timeb1, p$timeb0, units="mins" ) ) )
+      message( paste( "Time taken to estimate spatial bounds (mins):", round( difftime( p$timeb1, p$timeb0, units="mins" ),3) ) )
     }
 
     Y = conker_attach( p$storage.backend, p$ptr$Y )
@@ -592,7 +591,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
   # conker_interpolate (p=p )
   parallel.run( conker_interpolate, p=p )
   p$timei1 =  Sys.time()
-  message( paste( "Time taken for main interpolations (mins):", difftime( p$timei1, p$timei0, units="mins" ) ) )
+  message( paste( "Time taken for main interpolations (mins):", round( difftime( p$timei1, p$timei0, units="mins" ),3) ) )
   gc()
 
   # save solutions to disk before continuuing
@@ -610,7 +609,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
       parallel.run( conker_interpolate, p=p )
     }
     p$timei3 =  Sys.time()
-    message( paste( "Time taken to stage 2 interpolations (mins):", difftime( p$timei3, p$timei2, units="mins" ) ) )
+    message( paste( "Time taken to stage 2 interpolations (mins):", round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
   }
 
   # save solutions to disk (again .. overwrite)
@@ -627,7 +626,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
   }
 
   p$time.end =  Sys.time()
-  message( paste( "Time taken for full analysis (mins):", difftime( p$time.end, p$time.start, units="mins" ) ) )
+  message( paste( "Time taken for full analysis (mins):", round( difftime( p$time.end, p$time.start, units="mins" ),3) ) )
 
   return( p )
 }
