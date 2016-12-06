@@ -333,6 +333,7 @@ conker_interpolate = function( ip=NULL, p ) {
       glm = conker_glm( p, x, pa ), 
       LaplacesDemon = conker__LaplacesDemon( p, x, pa ),
       spate = conker__spate( p, x, pa, conker_distance_cur, Sloc[Si,] ), # TODO
+      splancs = conker__spate( p, x, pa, conker_distance_cur, Sloc[Si,] ), # TODO
       twostep = conker__twostep( p, x, pa, conker_distance_cur, Sloc[Si,] ),
       conker_local_modelengine_userdefined = p$conker_local_modelengine_userdefined( p, x, pa)
     )

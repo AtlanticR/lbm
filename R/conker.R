@@ -4,9 +4,13 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
   #\\ overwrite = FALSE restarts from a saved state
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
 
-  # TODO: splancs::kernel3d as a method ?
+  # TODO: splancs::kernel3d as a method ? .. for count data?
   # TODO: direct FFT-based kernel convolutions? 
-  # TODO: ...
+  # TODO: habitat methods
+  # TODO: twostep
+  # TODO: gaussian process
+  # TODO: LapacesDemon method
+
 
   if(0) {
     p = bio.temperature::temperature.parameters( current.year=2016 )
@@ -56,8 +60,10 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
   if (p$conker_local_modelengine %in% c("inla") )  p$libs = c( p$libs, "INLA" )
   if (p$conker_local_modelengine %in% c("kernel.density", "gaussianprocess2Dt") )  p$libs = c( p$libs, "fields" )
   if (p$conker_local_modelengine %in% c("spate") )  p$libs = c( p$libs, "spate" )
+  if (p$conker_local_modelengine %in% c("splancs") )  p$libs = c( p$libs, "splancs" )
+  if (p$conker_local_modelengine %in% c("twostep") )  p$libs = c( p$libs, "mgcv", "fields" )
 
-
+  p$libs = unique( p$libs )
   RLibrary( p$libs )
 
   if (p$storage.backend=="bigmemory.ram") {
@@ -129,8 +135,8 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
       conker_db( p=p, DS="global_model.redo", B=DATA$input )
     }
 
-    # NOTE:: must not sink this into a deeper funcion as bigmemory RAM seems to losse the pointers if they are not made simultaneously (at the same namespace depth) ..
-
+    # NOTE:: must not sink the following memory allocation into a deeper funcion as 
+    # NOTE:: bigmemory RAM seems to lose the pointers if they are not made simultaneously 
     # init output data objects
     # statistics storage matrix ( aggregation window, coords ) .. no inputs required
     sbox = list( 
@@ -477,7 +483,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
           p$clusters= p$clusters0
         }
         p$timec1 =  Sys.time()
-        message( paste( "Time taken to predict covariate surface:", difftime( p$timec1, p$timec0 ) ) )
+        message( paste( "Time taken to predict covariate surface (mins):", difftime( p$timec1, p$timec0 , units="mins") ) )
     }
 
     P = NULL; gc() # yes, repeat in case covs are not modelled
@@ -486,10 +492,10 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
       p$timeb0 =  Sys.time()
       message( "Defining boundary polygon for data .. this reduces the number of points to analyse")
       message( "but takes a few minutes to set up ...")
-      conker_db( p, DS="boundary.redo" ) # ~ 5 min on nfs
+      conker_db( p=p, DS="boundary.redo" ) # ~ 5 min on nfs
     # last set of filters to reduce problem size
       Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
-      bnds = try( conker_db( p, DS="boundary" ) )
+      bnds = try( conker_db( p=p, DS="boundary" ) )
       if (!is.null(bnds)) {
         if( !("try-error" %in% class(bnds) ) ) {
           to.ignore = which( bnds$inside.polygon == 0 ) # outside boundary
@@ -497,7 +503,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
       }}
       bnds = NULL
       p$timeb1 =  Sys.time()
-      message( paste( "Time taken to estimate spatial bounds:", difftime( p$timeb1, p$timeb0 ) ) )
+      message( paste( "Time taken to estimate spatial bounds (mins):", difftime( p$timeb1, p$timeb0, units="mins" ) ) )
     }
 
     Y = conker_attach( p$storage.backend, p$ptr$Y )
@@ -581,22 +587,22 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
   # -------------------------------------
   # localized space-time modelling/interpolation/prediction
   p$timei0 =  Sys.time()
-  o = conker_db( p, DS="statistics.status" )
+  o = conker_db( p=p, DS="statistics.status" )
   p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
   # conker_interpolate (p=p )
   parallel.run( conker_interpolate, p=p )
   p$timei1 =  Sys.time()
-  message( paste( "Time taken for main interpolations:", difftime( p$timei1, p$timei0 ) ) )
+  message( paste( "Time taken for main interpolations (mins):", difftime( p$timei1, p$timei0, units="mins" ) ) )
   gc()
 
   # save solutions to disk before continuuing
-  conker_db( p, DS="conker.prediction.redo" ) # save to disk for use outside conker*
-  conker_db( p, DS="stats.to.prediction.grid.redo") # save to disk for use outside conker*
+  conker_db( p=p, DS="conker.prediction.redo" ) # save to disk for use outside conker*
+  conker_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside conker*
 
   if ( do.secondstage ) {
     # 2. same interpolation method but relax the spatial extent
     p$timei2 =  Sys.time()
-    o = conker_db( p, DS="statistics.reset.problem.locations" )
+    o = conker_db( p=p, DS="statistics.reset.problem.locations" )
     if (length(o$todo) > 0) {
       p$conker_distance_prediction = p$conker_distance_prediction * 2
       p$conker_distance_max = p$conker_distance_max * 2
@@ -604,12 +610,12 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
       parallel.run( conker_interpolate, p=p )
     }
     p$timei3 =  Sys.time()
-    message( paste( "Time taken to stage 2 interpolations:", difftime( p$timei3, p$timei2 ) ) )
+    message( paste( "Time taken to stage 2 interpolations (mins):", difftime( p$timei3, p$timei2, units="mins" ) ) )
   }
 
   # save solutions to disk (again .. overwrite)
-  conker_db( p, DS="conker.prediction.redo" ) # save to disk for use outside conker*
-  conker_db( p, DS="stats.to.prediction.grid.redo") # save to disk for use outside conker*
+  conker_db( p=p, DS="conker.prediction.redo" ) # save to disk for use outside conker*
+  conker_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside conker*
 
   message ("Finished! \n")
   resp = readline( "To delete temporary files, type <Yes>:  ")
@@ -621,7 +627,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
   }
 
   p$time.end =  Sys.time()
-  message( paste( "Time taken for full analysis:", difftime( p$time.end, p$time.start ) ) )
+  message( paste( "Time taken for full analysis (mins):", difftime( p$time.end, p$time.start, units="mins" ) ) )
 
   return( p )
 }

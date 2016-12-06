@@ -2,6 +2,30 @@
 conker__twostep = function( p, x, pa, smoothness=0.5 ) {
   #\\ twostep modelling time first as a simple ts and then spatial or spatio-temporal interpolation
 
+  # step 1 -- timeseries modelling
+  # use all available data in 'x' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
+  # currently only a GAM
+
+  if ( exists("conker_local_model_distanceweighted", p) ) {
+    if (p$conker_local_model_distanceweighted) {
+      hmod = try( gam( p$conker_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
+    } else {
+      hmod = try( gam( p$conker_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
+    }
+  } else {
+      hmod = try( gam( p$conker_local_modelformula, data=x ) )
+  } 
+
+  if ( "try-error" %in% class(hmod) ) return( NULL )
+
+  ss = summary(hmod)
+  if (ss$r.sq < p$conker_rsquared_threshold ) return(NULL)
+    
+  preds = try( predict( hmod, newdata=x, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
+
+#  -- predict then remove high var estimates then fft
+
+
   x_r = range(x[,p$variables$LOCS[1]])
   x_c = range(x[,p$variables$LOCS[2]])
 
@@ -35,12 +59,6 @@ conker__twostep = function( p, x, pa, smoothness=0.5 ) {
   names( pa_locs ) = p$variables$LOCS
   rm( pa_r, pa_c, pa_nr, pa_nc, pa_plons, pa_plats)
   
-  # step 1 -- timeseries modelling
-  # use all available data in 'x' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
-  # currently only a GAM
-  tstrend = gam
-
-
   # step 2 :: spatial modelling
   for ( ti in 1:p$nt ) {
      

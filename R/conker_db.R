@@ -91,11 +91,10 @@
     
     if (DS %in% c( "statistics.status", "statistics.reset.problem.locations" ) ) {
           
-
       if ( DS=="statistics.status" ) {
         # find locations for statistic computation and trim area based on availability of data
         # stats:
-        bnds = try( conker_db( p, DS="boundary" ) )
+        bnds = try( conker_db( p=p, DS="boundary" ) )
         ioutside = NA
         if (!is.null(bnds)) {
           if( !("try-error" %in% class(bnds) ) ) {
@@ -119,7 +118,7 @@
       if ( DS=="statistics.reset.problem.locations" ) {
         # to reset all rejected locations 
         Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
-        o = conker_db( p, DS="statistics.status" )
+        o = conker_db( p=p, DS="statistics.status" )
         if (length(which(is.finite(o$skipped))) > 0) Sflag[o$skipped] = NaN  # to reset all the flags
         if (length(which(is.finite(o$outside))) > 0) Sflag[o$outside] = Inf  # flag area outside of data boundary to skip
       }
@@ -370,7 +369,7 @@
         stats[,i] = Z
       }
 
-      boundary = try( conker_db( p, DS="boundary" ) )
+      boundary = try( conker_db( p=p, DS="boundary" ) )
       if (!is.null(boundary)) {
         if( !("try-error" %in% class(boundary) ) ) {
         inside.polygon = point.in.polygon( locsout[,1], locsout[,2],
