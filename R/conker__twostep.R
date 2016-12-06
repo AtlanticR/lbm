@@ -62,8 +62,8 @@ conker__twostep = function( p, x, pa, smoothness=0.5 ) {
   
     if (0) {
       # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
-      Z = try( smooth.2d( Y=pa[pa_i,"mean"], x=pa[pa_i,p$variables$LOCS], ncol=x_nc, nrow=x_nr, theta=p$conker_theta,
-        cov.function=stationary.cov, Covariance="Exponential", p=smoothness, smoothness=smoothness ) )
+      Z = try( smooth.2d( Y=pa[pa_i,"mean"], x=pa[pa_i,p$variables$LOCS], ncol=pa_nc, nrow=pa_nr, theta=p$conker_theta,
+        cov.function=stationary.cov, Covariance="Exponential", p=smoothness ) )
       iZ = which( !is.finite( Z$z))
       if (length(iZ) > 0) Z$z[iZ] = NA
       rY = range( x[xi,p$variables$Y], na.rm=TRUE)
@@ -75,19 +75,13 @@ conker__twostep = function( p, x, pa, smoothness=0.5 ) {
       x11(); image.plot(Z)
       Z = Z$z
     }
-  
     if ( "try-error" %in% class(Z) ) next()
     # make sure predictions exist .. kernel density can stop prediction beyond a given range if the xwidth/ywidth options are not used and/or the kernel distance (theta) is small 
     pa$mean[pa_i] = Z[Z_i]
-    pa$sd[pa_i] = 1
   }
 
   # plot(mean ~ z , x)
-  ss = lm( x$mean ~ x[,p$variables$Y], na.action=na.omit )
-  if ( "try-error" %in% class( ss ) ) return( NULL )
-  rsquared = summary(ss)$r.squared
-  if (rsquared < p$conker_rsquared_threshold ) return(NULL)
-
+  rsquared = ss$r.sq 
   conker_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )

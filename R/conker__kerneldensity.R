@@ -22,22 +22,6 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5 ) {
   pa$mean = NA
   pa$sd = NA
 
-  # locations of the new (output) coord system .. smaller than the data range of x
-  pa_r = range(pa[,p$variables$LOCS[1]])
-  pa_c = range(pa[,p$variables$LOCS[2]])
-  
-  pa_nr = diff(pa_r)/p$pres + 1
-  pa_nc = diff(pa_c)/p$pres + 1
-
-  pa_plons = seq( pa_r[1], pa_r[2], length.out=pa_nr )
-  pa_plats = seq( pa_c[1], pa_c[2], length.out=pa_nc )
-
-  pa_locs = expand.grid( pa_plons, pa_plats ) # final output grid
-  attr( pa_locs , "out.attrs") = NULL
-  names( pa_locs ) = p$variables$LOCS
-  rm( pa_r, pa_c, pa_nr, pa_nc, pa_plons, pa_plats)
-
-
   for ( ti in 1:p$nt ) {
      
     if ( exists("TIME", p$variables)) {
@@ -78,7 +62,12 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5 ) {
     if ( "try-error" %in% class( ss ) ) next()
     rsquared = summary(ss)$r.squared
     if (rsquared < p$conker_rsquared_threshold ) next()
-    pa_i = ifelse( exists("TIME", p$variables), {which( pa[, p$variables$TIME]==p$ts[ti])}, {1:nrow(pa)} ) 
+    if (exists("TIME", p$variables) ) {
+      pa_i =  which( pa[, p$variables$TIME]==p$ts[ti])
+    } else {
+      pa_i = 1:nrow(pa)
+    }
+
     Z_i = cbind( ( pa[pa_i,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
                   (pa[pa_i,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
 

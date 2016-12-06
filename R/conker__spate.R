@@ -9,8 +9,6 @@ conker__spate = function( p, x, pa, ws, sloc, smoothness=0.5 ) {
   x_nr = diff(x_r)/p$pres + 1
   x_nc = diff(x_c)/p$pres + 1
 
-  
-  
   if ( exists("TIME", p$variables)) {
     xi = which( x[, p$variables$TIME]==p$ts[ti]) 
   } else {
@@ -136,7 +134,13 @@ conker__spate = function( p, x, pa, ws, sloc, smoothness=0.5 ) {
     if ( "try-error" %in% class( ss ) ) next()
     rsquared = summary(ss)$r.squared
     if (rsquared < p$conker_rsquared_threshold ) next()
-    pa_i = ifelse( exists("TIME", p$variables), {which( pa[, p$variables$TIME]==p$ts[ti])}, {1:nrow(pa)} ) 
+     
+    if( exists("TIME", p$variables)) {
+      pa_i = which( pa[, p$variables$TIME]==p$ts[ti])
+    } else {
+      pa_i = 1:nrow(pa)
+    } 
+
     Z_i = cbind( ( pa[pa_i,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
                   (pa[pa_i,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
 
