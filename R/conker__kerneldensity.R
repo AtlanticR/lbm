@@ -41,8 +41,7 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5 ) {
   
     if (0) {
       # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
-      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, theta=p$conker_theta,
-        cov.function=stationary.cov, Covariance="Exponential", p=smoothness, smoothness=smoothness ) )
+      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) )
       iZ = which( !is.finite( Z$z))
       if (length(iZ) > 0) Z$z[iZ] = NA
       rY = range( x[xi,p$variables$Y], na.rm=TRUE)

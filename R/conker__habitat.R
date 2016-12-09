@@ -2,6 +2,12 @@
 conker__habitat = function( p, x, pa ) {
    #\\ this is the core engine of conker .. localised space-time habiat modelling
  
+  if (0) {
+    if (!exists("nsims"), p) p$nsims = 5000
+    if (!exists("habitat.threshold.quantile"), p) p$habitat.threshold.quantile = 0.05 # quantile at which to consider zero-valued abundance
+  }
+
+
   if ( exists("conker_local_model_distanceweighted", p) ) {
     if (p$conker_local_model_distanceweighted) {
       Hmodel = try( gam( p$conker_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
