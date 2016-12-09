@@ -86,16 +86,23 @@ conker_interpolate = function( ip=NULL, p ) {
       o = try( conker_variogram( xy=Yloc[Uj,], z=p$conker_local_family$linkfun(Y[Uj]), methods=p$conker_variogram_method ) )
       if ( !is.null(o)) {
         if (!inherits(o, "try-error")) {
-          if(exists(p$conker_variogram_method, p)) {
-            conker_distance_cur = min( max(1, o[[p$conker_variogram_method]][["range"]] ), p$conker_distance_scale ) 
-            U = which( dlon  <= conker_distance_cur  & dlat <= conker_distance_cur )
-            ndata =length(U)
-            smoothness = o[[p$conker_variogram_method]][["nu"]]
-            ores = o[[p$conker_variogram_method]] # store current best estimate of variogram characteristics
+          if (exists(p$conker_variogram_method, p)) {
+            if ( is.finite( o[[p$conker_variogram_method]]$range ) &&
+                 (o[[p$conker_variogram_method]]$range > p$conker_distance_scale / 20) && 
+                 (o[[p$conker_variogram_method]]$range < p$conker_distance_scale * 20) ) ) {
+       
+                conker_distance_cur = min( max(1, o[[p$conker_variogram_method]][["range"]] ), p$conker_distance_scale ) 
+                U = which( dlon  <= conker_distance_cur  & dlat <= conker_distance_cur )
+                ndata =length(U)
+                smoothness = o[[p$conker_variogram_method]][["nu"]]
+                ores = o[[p$conker_variogram_method]] # store current best estimate of variogram characteristics
+            }    
+                  
             if (0) {
               if (p$conker_variogram_method == "fast" ) { 
                 plot(o[[p$conker_variogram_method]][["vgm"]], 
-                  model=RMmatern( nu=o$fast$nu, var=o$fast$varSpatial, scale=o$fast$phi * (sqrt(o$fast$nu*2) )) + RMnugget(var=o$fast$varObs) )
+                  model=RMmatern( nu=o$fast$nu, var=o$fast$varSpatial, scale=o$fast$phi * 
+                  (sqrt(o$fast$nu*2) )) + RMnugget(var=o$fast$varObs) )
               }
             }
           }
@@ -365,13 +372,18 @@ conker_interpolate = function( ip=NULL, p ) {
 
 
     o = NULL
-    o = try( conker_variogram( xy=dat[,p$variables$LOC], 
+    o = try( uconker_variogram( xy=dat[,p$variables$LOC], 
       z=p$conker_local_family$linkfun(dat[, p$variables$Y ]), 
       methods=p$conker_variogram_method) ) 
       if (!inherits(o, "try-error")) {
         if ( !is.null(o) ) {
           if ( exists( p$conker_variogram_method, o )) {
-            ores = o[[p$conker_variogram_method]]  # replace with this "tweaked variogram estimate"    
+            if ( is.finite( o[[p$conker_variogram_method]]$range ) &&
+                 (o[[p$conker_variogram_method]]$range > p$conker_distance_scale / 20) && 
+                 (o[[p$conker_variogram_method]]$range < p$conker_distance_scale * 20) ) ) {
+                  ores = o[[p$conker_variogram_method]]  # if a stable result is found for the smaller area, use it in preference     
+            }
+
           }  
         }
       } 
