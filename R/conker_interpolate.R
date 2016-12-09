@@ -372,7 +372,7 @@ conker_interpolate = function( ip=NULL, p ) {
 
 
     o = NULL
-    o = try( uconker_variogram( xy=dat[,p$variables$LOC], 
+    o = try( conker_variogram( xy=dat[,p$variables$LOC], 
       z=p$conker_local_family$linkfun(dat[, p$variables$Y ]), 
       methods=p$conker_variogram_method) ) 
       if (!inherits(o, "try-error")) {

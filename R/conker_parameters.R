@@ -15,8 +15,11 @@ conker_parameters = function( p=NULL  ) {
   if (!exists( "conker_global_family", p)) p$conker_global_family = gaussian()
   
   if (!exists( "conker_noise", p)) p$conker_noise = 0.001  # distance units for eps noise to permit mesh gen for boundaries
-  if (!exists( "conker_quantile_bounds", p)) p$conker_quantile_bounds = c(0.001, 0.999) # remove these extremes in interpolations
+  if (!exists( "conker_quantile_bounds", p)) p$conker_quantile_bounds = c(0.01, 0.99) # remove these extremes in interpolations
   if (!exists( "eps", p)) p$eps = 1e-6 # floating point precision 
+
+  p$conker_kernelmethods_use_all_data =TRUE ## speed and RAM usage improvement is minimal (if any) when off, leave on or remove option and fix as on
+
 
   return(p)
 }
