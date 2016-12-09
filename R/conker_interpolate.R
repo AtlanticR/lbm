@@ -380,7 +380,7 @@ conker_interpolate = function( ip=NULL, p ) {
           if ( exists( p$conker_variogram_method, o )) {
             if ( is.finite( o[[p$conker_variogram_method]]$range ) &&
                  (o[[p$conker_variogram_method]]$range > p$conker_distance_scale / 20) && 
-                 (o[[p$conker_variogram_method]]$range < p$conker_distance_scale * 20) ) ) {
+                 (o[[p$conker_variogram_method]]$range < p$conker_distance_scale * 20) ) {
                   ores = o[[p$conker_variogram_method]]  # if a stable result is found for the smaller area, use it in preference     
             }
 
