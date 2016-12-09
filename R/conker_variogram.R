@@ -1,5 +1,5 @@
 
-conker_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast"), maxdist=NA, nbreaks = 15, functionalform="matern" ) {
+conker_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast"), maxdist=NA, nbreaks = 15, functionalform="matern", eps=1e-6 ) {
 
   #\\ estimate empirical variograms (actually correlation functions) and then model them using a number of different approaches .. mostly using Matern as basis
   #\\ returns empirical variogram and parameter estimates, and the models themselves
@@ -123,12 +123,12 @@ conker_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("f
     vx = vario@centers
     #nonlinear est
     o = try( optim( par=c(tau.sq=max(vg)*0.1, sigma.sq=max(vg)*0.9, phi=max(vx)*0.5, nu=0.5), 
-      vg=vg, vx=vx, method="BFGS", 
+      vg=vg, vx=vx, method="BFGS", control=list(maxit=500),
       fn=function(par, vg, vx){ 
-        par["tau.sq"] = max( par["tau.sq"], 1e-9 )
-        par["sigma.sq"] = max( par["sigma.sq"], 1e-9)
-        par["nu"] = max( par["nu"], 1e-9 )
-        par["phi"] = max( par["phi"] , 1e-9 )
+        par["tau.sq"] = max( par["tau.sq"], eps )
+        par["sigma.sq"] = max( par["sigma.sq"], eps)
+        par["nu"] = max( par["nu"], eps )
+        par["phi"] = max( par["phi"] , eps )
         vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
         dy = sum( (vg - vgm)^2) # vario normal errors, no weights , etc.. just the line
       } ) 
@@ -136,8 +136,8 @@ conker_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("f
     
     if ( !inherits(o, "try-error")) { 
       if ( o$convergence==0 ) {
-        out$fast = list( fit=o, vgm=vario, range=NA, nu=max(1e-9, o$par["nu"]), phi=max(1e-9, o$par["phi"]),
-          varSpatial=max( 1e-9, o$par["sigma.sq"]), varObs=max(1e-9, o$par["tau.sq"] ) ) 
+        out$fast = list( fit=o, vgm=vario, range=NA, nu=max(eps, o$par["nu"]), phi=max(eps, o$par["phi"]),
+          varSpatial=max( eps, o$par["sigma.sq"]), varObs=max(eps, o$par["tau.sq"] ) ) 
         rg = try(geoR::practicalRange("matern", phi=out$fast$phi, kappa=out$fast$nu ))
         if (! inherits(rg, "try-error") ) {
           out$fast$range = rg

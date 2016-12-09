@@ -165,7 +165,7 @@ conker_interpolate = function( ip=NULL, p ) {
     pa = NULL
     pa = data.frame( iplon = rep.int(iwplon, pa_w_n) , 
                      iplat = rep.int(iwplat, rep.int(pa_w_n, pa_w_n)) )
-    rm(iwplon, iwplat, pa_w)
+    rm(iwplon, iwplat, pa_w, pa_w_n, windowsize.half)
 
     bad = which( (pa$iplon < 1 & pa$iplon > p$nplons) | (pa$iplat < 1 & pa$iplat > p$nplats) )
     if (length(bad) > 0 ) pa = pa[-bad,]
@@ -266,51 +266,51 @@ conker_interpolate = function( ip=NULL, p ) {
     }
     
     # prep dependent data 
-    # reconstruct data for modelling (x) and data for prediction purposes (pa)
-    x = data.frame( Y[YiU] )
-    names(x) = p$variables$Y
-    x[, p$variables$Y] = p$conker_local_family$linkfun ( x[, p$variables$Y] ) 
+    # reconstruct data for modelling (dat) and data for prediction purposes (pa)
+    dat = data.frame( Y[YiU] )
+    names(dat) = p$variables$Y
+    dat[, p$variables$Y] = p$conker_local_family$linkfun ( dat[, p$variables$Y] ) 
     if (p$conker_local_modelengine=="habitat") {
-      x[, p$variables$Ylogit ] = p$conker_local_family_logit$linkfun ( x[, p$variables$Ylogit] ) ### -- need to conform with data structure ... check once ready
+      dat[, p$variables$Ylogit ] = p$conker_local_family_logit$linkfun ( dat[, p$variables$Ylogit] ) ### -- need to conform with data structure ... check once ready
     }
-    x$plon = Yloc[YiU,1]
-    x$plat = Yloc[YiU,2]
-    x$weights = 1 / (( Sloc[Si,1] - x$plat)**2 + (Sloc[Si,2] - x$plon)**2 )# weight data in space: inverse distance squared
-    x$weights[ which( x$weights < 1e-3 ) ] = 1e-3
-    x$weights[ which( x$weights > 1 ) ] = 1
+    dat$plon = Yloc[YiU,1]
+    dat$plat = Yloc[YiU,2]
+    dat$weights = 1 / (( Sloc[Si,1] - dat$plat)**2 + (Sloc[Si,2] - dat$plon)**2 )# weight data in space: inverse distance squared
+    dat$weights[ which( dat$weights < 1e-3 ) ] = 1e-3
+    dat$weights[ which( dat$weights > 1 ) ] = 1
     
     if (exists("local_cov", p$variables)) {
-      for (i in 1:length(p$variables$local_cov )) x[, p$variables$local_cov[i] ] = Ycov[YiU,i]
+      for (i in 1:length(p$variables$local_cov )) dat[, p$variables$local_cov[i] ] = Ycov[YiU,i]
     }
      
     if (exists("TIME", p$variables)) {
-      x[, p$variables$TIME ] = Ytime[YiU,] 
-      if ( p$variables$TIME != "yr" ) x$yr = trunc( x[, p$variables$TIME]) 
-      if ("dyear" %in% p$variables$local_all)  x$dyear = x[, p$variables$TIME] - x$yr
-      if ("cos.w" %in% p$variables$local_all)  x$cos.w  = cos( 2*pi*x[,p$variables$TIME] )
-      if ("sin.w" %in% p$variables$local_all)  x$sin.w  = sin( 2*pi*x[,p$variables$TIME] )
-      if ("cos.w2" %in% p$variables$local_all) x$cos.w2 = cos( 2*x[,p$variables$TIME] )
-      if ("sin.w2" %in% p$variables$local_all) x$sin.w2 = sin( 2*x[,p$variables$TIME] )
-      if ("cos.w3" %in% p$variables$local_all) x$cos.w3 = cos( 3*x[,p$variables$TIME] )
-      if ("sin.w3" %in% p$variables$local_all) x$sin.w3 = sin( 3*x[,p$variables$TIME] )
+      dat[, p$variables$TIME ] = Ytime[YiU,] 
+      if ( p$variables$TIME != "yr" ) dat$yr = trunc( dat[, p$variables$TIME]) 
+      if ("dyear" %in% p$variables$local_all)  dat$dyear = dat[, p$variables$TIME] - dat$yr
+      if ("cos.w" %in% p$variables$local_all)  dat$cos.w  = cos( 2*pi*dat[,p$variables$TIME] )
+      if ("sin.w" %in% p$variables$local_all)  dat$sin.w  = sin( 2*pi*dat[,p$variables$TIME] )
+      if ("cos.w2" %in% p$variables$local_all) dat$cos.w2 = cos( 2*dat[,p$variables$TIME] )
+      if ("sin.w2" %in% p$variables$local_all) dat$sin.w2 = sin( 2*dat[,p$variables$TIME] )
+      if ("cos.w3" %in% p$variables$local_all) dat$cos.w3 = cos( 3*dat[,p$variables$TIME] )
+      if ("sin.w3" %in% p$variables$local_all) dat$sin.w3 = sin( 3*dat[,p$variables$TIME] )
     }
 
     if (exists("conker_kernelmethods_use_all_data",p) && p$conker_kernelmethods_use_all_data) {
-      # these fft-based functions can use a larger data grid to estimate .. right now too slow to use so skip this step
+      # use a larger data grid to interpolate.. right now too slow to use so skip this step
         if (p$conker_local_modelengine %in% c( "spate", "twostep", "conker_local_modelengine_userdefined" ) ) {
-          # some methods require a uniform prediction grid based upon all x locations (and time) 
-          # begin with "x"    
-          mx = x # only the static parts .. time has to be a uniform grid so reconstruct below
-          mx$plat = grid.internal( mx$plat, p$plats )
-          mx$plon = grid.internal( mx$plon, p$plons )
-          ids = paste(mx[,p$variables$LOCS[1] ], mx[,p$variables$LOCS[2] ] ) 
+          # some methods require a uniform prediction grid based upon all dat locations (and time) 
+          # begin with "dat"    
+          px = dat # only the static parts .. time has to be a uniform grid so reconstruct below
+          px$plat = grid.internal( px$plat, p$plats )
+          px$plon = grid.internal( px$plon, p$plons )
+          ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
           ifix = which( ids %in% unique( ids ) )
-          mx = mx[ ifix, ]
+          px = px[ ifix, ]
           rm (ids, ifix)
 
           # static vars .. don't need to look up
           tokeep = c(p$variables$LOCS )
-          if (exists("weights", x) ) tokeep = c(tokeep, "weights")
+          if (exists("weights", dat) ) tokeep = c(tokeep, "weights")
           if (exists("local_cov", p$variables)) {
             for (ci in 1:length(p$variables$local_cov)) {
               vn = p$variables$local_cov[ci]
@@ -319,31 +319,31 @@ conker_interpolate = function( ip=NULL, p ) {
               if ( nts==1 ) tokeep = c(tokeep, vn ) 
             }
           }
-          mx = mx[ , tokeep ]
-          mx_n = nrow(mx)
+          px = px[ , tokeep ]
+          px_n = nrow(px)
           nts = vn = pvars2 = NULL
 
           # add temporal grid
           if ( exists("TIME", p$variables) ) {
-            mx = cbind( mx[ rep.int(1:mx_n, p$nt), ], 
-                            rep.int(p$ts, rep(mx_n, p$nt )) )
-            names(mx)[ ncol(mx) ] = p$variables$TIME 
-            if ( p$variables$TIME != "yr" ) mx$yr = trunc( mx[,p$variables$TIME] )
-            if ("dyear" %in% p$variables$local_all)  mx$dyear = mx[, p$variables$TIME] - mx$yr  # fractional year
-            if ("cos.w" %in% p$variables$local_all)  mx$cos.w  = cos( mx[,p$variables$TIME] )
-            if ("sin.w" %in% p$variables$local_all)  mx$sin.w  = sin( mx[,p$variables$TIME] )
-            if ("cos.w2" %in% p$variables$local_all) mx$cos.w2 = cos( 2*mx[,p$variables$TIME] )
-            if ("sin.w2" %in% p$variables$local_all) mx$sin.w2 = sin( 2*mx[,p$variables$TIME] )
-            if ("cos.w3" %in% p$variables$local_all) mx$cos.w3 = cos( 3*mx[,p$variables$TIME] )
-            if ("sin.w3" %in% p$variables$local_all) mx$sin.w3 = sin( 3*mx[,p$variables$TIME] )
+            px = cbind( px[ rep.int(1:px_n, p$nt), ], 
+                            rep.int(p$ts, rep(px_n, p$nt )) )
+            names(px)[ ncol(px) ] = p$variables$TIME 
+            if ( p$variables$TIME != "yr" ) px$yr = trunc( px[,p$variables$TIME] )
+            if ("dyear" %in% p$variables$local_all)  px$dyear = px[, p$variables$TIME] - px$yr  # fractional year
+            if ("cos.w" %in% p$variables$local_all)  px$cos.w  = cos( px[,p$variables$TIME] )
+            if ("sin.w" %in% p$variables$local_all)  px$sin.w  = sin( px[,p$variables$TIME] )
+            if ("cos.w2" %in% p$variables$local_all) px$cos.w2 = cos( 2*px[,p$variables$TIME] )
+            if ("sin.w2" %in% p$variables$local_all) px$sin.w2 = sin( 2*px[,p$variables$TIME] )
+            if ("cos.w3" %in% p$variables$local_all) px$cos.w3 = cos( 3*px[,p$variables$TIME] )
+            if ("sin.w3" %in% p$variables$local_all) px$sin.w3 = sin( 3*px[,p$variables$TIME] )
             # more than 3 harmonics would not be advisable .. but you would add them here..
           }
 
           if (exists("local_cov", p$variables)) {
             # add time-varying covars .. not necessary except when covars are modelled locally
-            pvars2 = names(mx)
-            mx$iy = mx$yr - p$yrs[1] + 1 #yr index
-            mx$it = p$nw*(mx$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
+            pvars2 = names(px)
+            px$iy = px$yr - p$yrs[1] + 1 #yr index
+            px$it = p$nw*(px$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
             for (ci in 1:length(p$variables$local_cov)) {
               vn = p$variables$local_cov[ci]
               pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
@@ -352,10 +352,10 @@ conker_interpolate = function( ip=NULL, p ) {
                 # static vars are retained in the previous step
               } else if ( nts == p$ny )  {
                 pvars2 = c( pvars2, vn )
-                mx[,vn] = pu[mx$i, mx$iy ]  
+                px[,vn] = pu[px$i, px$iy ]  
                } else if ( nts == p$nt) {
                 pvars2 = c( pvars2, vn )
-                mx[,vn] = pu[mx$i, mx$it ]  
+                px[,vn] = pu[px$i, px$it ]  
               }
             } # end for loop
             nts = vn = pvars2 = NULL
@@ -365,7 +365,9 @@ conker_interpolate = function( ip=NULL, p ) {
 
 
     o = NULL
-    o = try( conker_variogram( xy=x[,p$variables$LOC], z=p$conker_local_family$linkfun(x[, p$variables$Y ]), methods=p$conker_variogram_method) ) 
+    o = try( conker_variogram( xy=dat[,p$variables$LOC], 
+      z=p$conker_local_family$linkfun(dat[, p$variables$Y ]), 
+      methods=p$conker_variogram_method) ) 
       if (!inherits(o, "try-error")) {
         if ( !is.null(o) ) {
           if ( exists( p$conker_variogram_method, o )) {
@@ -381,22 +383,22 @@ conker_interpolate = function( ip=NULL, p ) {
     gc()
     res =NULL
     res = switch( p$conker_local_modelengine, 
-      bayesx = conker__bayesx( p, x, pa ),
-      habitat = conker__habitat( p, x, pa ), # TODO 
-      inla = conker__inla( p, x, pa ),
-      kernel.density = conker__kerneldensity( p, x, pa, smoothness ),
-      gam = conker_gam( p, x, pa ), 
-      gaussianprocess2Dt = conker__gaussianprocess2Dt( p, x, pa ), 
-      gaussianprocess = conker__gaussianprocess( p, x, pa ),  # TODO
-      glm = conker_glm( p, x, pa ), 
-      LaplacesDemon = conker__LaplacesDemon( p, x, pa ),
-      spate = conker__spate( p, x, pa, sloc=Sloc[Si,] ), 
-      splancs = conker__spate( p, x, pa ), # TODO
-      twostep = conker__twostep( p, x, pa ), # slow ...
-      conker_local_modelengine_userdefined = p$conker_local_modelengine_userdefined( p, x, pa)
+      bayesx = conker__bayesx( p, dat, pa ),
+      habitat = conker__habitat( p, dat, pa ), # TODO 
+      inla = conker__inla( p, dat, pa ),
+      kernel.density = conker__kerneldensity( p, dat, pa, smoothness ),
+      gam = conker_gam( p, dat, pa ), 
+      gaussianprocess2Dt = conker__gaussianprocess2Dt( p, dat, pa ), 
+      gaussianprocess = conker__gaussianprocess( p, dat, pa ),  # TODO
+      glm = conker_glm( p, dat, pa ), 
+      LaplacesDemon = conker__LaplacesDemon( p, dat, pa ),
+      spate = conker__spate( p, dat, pa, sloc=Sloc[Si,] ), 
+      splancs = conker__spate( p, dat, pa ), # TODO
+      twostep = conker__twostep( p, dat, pa ), # slow ...
+      conker_local_modelengine_userdefined = p$conker_local_modelengine_userdefined( p, dat, pa)
     )
     
-    # mx = NULL
+    # px = NULL
 
     if (0) {
       lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==2012.05,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
@@ -406,7 +408,7 @@ conker_interpolate = function( ip=NULL, p ) {
       for( i in sort(unique(res$predictions[,p$variables$TIME])))  print(lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==i,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
     }
 
-    rm(x); gc()
+    rm(dat); gc()
     if ( is.null(res)) next()
    
     res$predictions$mean = p$conker_local_family$linkinv( res$predictions$mean )

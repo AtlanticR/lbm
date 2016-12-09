@@ -1,5 +1,5 @@
 
-conker__twostep = function( p, x, pa, mx=NULL ) {
+conker__twostep = function( p, x, pa, px=NULL ) {
   #\\ twostep modelling time first as a simple ts and then spatial or spatio-temporal interpolation
 
   # step 1 -- timeseries modelling
@@ -21,9 +21,9 @@ conker__twostep = function( p, x, pa, mx=NULL ) {
   ss = summary(hmod)
   if (ss$r.sq < p$conker_rsquared_threshold ) return(NULL)
 
-  if (is.null(mx)) mx=pa
+  if (is.null(px)) px=pa
 
-  preds = try( predict( hmod, newdata=mx, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
+  preds = try( predict( hmod, newdata=px, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
 
   reject = which( preds$se.fit > quantile( preds$se.fit, probs= p$conker_quantile_bounds[2], na.rm=TRUE ) 
                 | preds$fit > p$qs[2] 
@@ -31,40 +31,40 @@ conker__twostep = function( p, x, pa, mx=NULL ) {
 
   preds$fit[reject] = NA
 
-  mx$mean = as.vector( preds$fit )
-  mx$sd = as.vector( preds$se.fit )
+  px$mean = as.vector( preds$fit )
+  px$sd = as.vector( preds$se.fit )
 
-  mx_r = range(mx[,p$variables$LOCS[1]])
-  mx_c = range(mx[,p$variables$LOCS[2]])
+  px_r = range(px[,p$variables$LOCS[1]])
+  px_c = range(px[,p$variables$LOCS[2]])
   
-  mx_nr = diff(mx_r)/p$pres + 1
-  mx_nc = diff(mx_c)/p$pres + 1
+  px_nr = diff(px_r)/p$pres + 1
+  px_nc = diff(px_c)/p$pres + 1
 
 
   # step 2 :: spatial modelling
-  Z_all = cbind( ( pa[,p$variables$LOCS[1]]-mx_r[1])/p$pres + 1, 
-                (pa[,p$variables$LOCS[2]]-mx_c[1])/p$pres + 1 )
+  Z_all = cbind( ( pa[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+                (pa[,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 )
 
-  M_all = cbind( ( mx[,p$variables$LOCS[1]]-mx_r[1])/p$pres + 1, 
-                (mx[,p$variables$LOCS[2]]-mx_c[1])/p$pres + 1 )
+  M_all = cbind( ( px[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+                (px[,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 )
 
   # default in case there is no time (a single time slice)
   pa_i = 1:nrow(pa)
-  mx_i = 1:nrow(mx)
+  px_i = 1:nrow(px)
 
   for ( ti in 1:p$nt ) {
   
     if ( exists("TIME", p$variables) ) {
       pa_i =  which( pa[, p$variables$TIME]==p$ts[ti] ) 
-      mx_i =  which( mx[, p$variables$TIME]==p$ts[ti] ) 
+      px_i =  which( px[, p$variables$TIME]==p$ts[ti] ) 
     } 
 
-    if ( any( M_all[ mx_i,] < 1) ) next()  
-    if ( any( M_all[ mx_i,1] > mx_nr) ) next()
-    if ( any( M_all[ mx_i,2] > mx_nc) ) next()
+    if ( any( M_all[ px_i,] < 1) ) next()  
+    if ( any( M_all[ px_i,1] > px_nr) ) next()
+    if ( any( M_all[ px_i,2] > px_nc) ) next()
 
     # matrix representation of the output surface
-    Z = try( smooth.2d( Y=mx[mx_i,"mean"], x=mx[mx_i,p$variables$LOCS], ncol=mx_nc, nrow=mx_nr, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) )
+    Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) )
     if ( "try-error" %in% class(Z) ) next()
 
     iZ = which( !is.finite( Z$z))
@@ -75,18 +75,13 @@ conker__twostep = function( p, x, pa, mx=NULL ) {
     mZ = which( Z$z > rY[2] )
     if (length(mZ) > 0) Z$z[mZ] = NA
     # x11(); image.plot(Z)
-
-    # make sure predictions exist .. kernel density can stop prediction beyond a given range if the xwidth/ywidth options are not used and/or the kernel distance (theta) is small 
-
-    Zsd = try( smooth.2d( Y=mx[mx_i,"sd"], x=mx[mx_i,p$variables$LOCS], ncol=mx_nc, nrow=mx_nr, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) )
+    Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) )
     if ( "try-error" %in% class(Zsd) ) next()
-
     pa$mean[pa_i] = Z$z[Z_all[ pa_i, ]]
     pa$sd[pa_i] = Zsd$z[Z_all[ pa_i, ]]
-
   }
   
-  rm (mx); gc()
+  rm (px); gc()
 
   # plot(mean ~ z , x)
   rsquared = ss$r.sq 
