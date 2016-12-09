@@ -89,7 +89,7 @@ conker_interpolate = function( ip=NULL, p ) {
           if (exists(p$conker_variogram_method, p)) {
             if ( is.finite( o[[p$conker_variogram_method]]$range ) &&
                  (o[[p$conker_variogram_method]]$range > p$conker_distance_scale / 20) && 
-                 (o[[p$conker_variogram_method]]$range < p$conker_distance_scale * 20) ) ) {
+                 (o[[p$conker_variogram_method]]$range < p$conker_distance_scale * 20) ) {
        
                 conker_distance_cur = min( max(1, o[[p$conker_variogram_method]][["range"]] ), p$conker_distance_scale ) 
                 U = which( dlon  <= conker_distance_cur  & dlat <= conker_distance_cur )
