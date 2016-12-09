@@ -4,7 +4,7 @@ conker__habitat = function( p, x, pa ) {
  
   if (0) {
     if (!exists("nsims", p)) p$nsims = 5000
-    if (!exists("habitat.threshold.quantile"), p) p$habitat.threshold.quantile = 0.05 # quantile at which to consider zero-valued abundance
+    if (!exists("habitat.threshold.quantile", p)) p$habitat.threshold.quantile = 0.05 # quantile at which to consider zero-valued abundance
   }
 
 
