@@ -119,8 +119,10 @@ conker_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("f
     rownames( xy) = 1:nrow(xy)  # seems to require rownames ...
     Yyy <- RFspatialPointsDataFrame( coords=xy, data=z, RFparams=list(vdim=1, n=1) )
     vario = RFempiricalvariogram( data=Yyy )
-    vg = vario@emp.vario
-    vx = vario@centers
+    
+    # remove the (0,0) point -- force intercept
+    vg = vario@emp.vario[-1]
+    vx = vario@centers[-1]
     #nonlinear est
     o = try( optim( par=c(tau.sq=max(vg)*0.1, sigma.sq=max(vg)*0.9, phi=max(vx)*0.5, nu=0.5), 
       vg=vg, vx=vx, method="BFGS", control=list(maxit=500),
@@ -146,10 +148,17 @@ conker_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("f
         }
       }
     }
+ 
   
     if( 0) {
       scale = out$fast$phi * (sqrt(out$fast$nu*2) )  
       plot(vario, model=RMmatern( nu=out$fast$nu, var=out$fast$varSpatial, scale=scale) + RMnugget(var=out$fast$varObs) )
+
+      RFoptions(seed=0, modus='easygoing' ) 
+      rmod = ~ RMmatern( nu=NA, var=NA, scale=NA) + RMnugget(var=NA, scale=NA)
+
+      rfit = RFfit(rmod, data=Yyy)
+
     }
   
     return(out)
@@ -365,7 +374,7 @@ conker_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("f
    #   spConform=TRUE # FALSE is faster
     #)
 
-    model = ~ RMmatern( nu=NA, var=NA, scale=NA) + RMnugget(var=NA)
+    model = ~ RMmatern( nu=NA, var=NA, scale=NA) + RMnugget(var=NA, scale=NA)
     
     o = RFfit(model, data=rfdata, allowdistanceZero=TRUE )
     oo=summary(o)
