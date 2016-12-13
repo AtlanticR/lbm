@@ -1,5 +1,9 @@
 
+<<<<<<< HEAD
 conker__kerneldensity = function( p, x, pa, smoothness=0.5, theta=NULL ) {
+=======
+conker__kerneldensity = function( p, x, pa, smoothness=0.5, phi=NULL ) {
+>>>>>>> develop
   #\\ this is the core engine of conker .. localised space (no-time) modelling interpolation 
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice
@@ -21,6 +25,7 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5, theta=NULL ) {
   pa$mean = NA
   pa$sd = NA
 
+<<<<<<< HEAD
   nu = smoothness # bessel smoothness
   if ( is.null(theta)) theta = p$conker_theta # range parameter rho 
 
@@ -41,6 +46,10 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5, theta=NULL ) {
   rm(dgrid, AC, mAC, mC); gc()
 
   rY = range( x[,p$variables$Y], na.rm=TRUE)
+=======
+  if (is.null(phi)) phi=p$conker_theta
+  if (is.null(smoothness)) smoothness=0.5 # this is an exponential covariance
+>>>>>>> develop
 
   for ( ti in 1:p$nt ) {
      
@@ -75,6 +84,29 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5, theta=NULL ) {
     
     # image(Z)
 
+<<<<<<< HEAD
+=======
+    # matrix representation of the output surface
+    M = matrix( NA, nrow=x_nr, ncol=x_nc) 
+    M[x_id] = x[xi,p$variables$Y] # fill with data in correct locations
+    Z = try( fields::image.smooth( M, dx=p$pres, dy=p$pres, theta=p$conker_theta)$z )
+  
+    if (0) {
+      # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
+      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, range=phi, smoothness=smoothness, cov.function=stationary.cov, Covariance="Exponential" ) )
+      iZ = which( !is.finite( Z$z))
+      if (length(iZ) > 0) Z$z[iZ] = NA
+      rY = range( x[xi,p$variables$Y], na.rm=TRUE)
+      nZ = which( Z$z < rY[1] )
+      if (length(nZ) > 0) Z$z[nZ] = NA
+      mZ = which( Z$z > rY[2] )
+      if (length(mZ) > 0) Z$z[mZ] = NA
+      
+      x11(); image.plot(Z)
+      Z = Z$z
+    }
+  
+>>>>>>> develop
     if ( "try-error" %in% class(Z) ) next()
     # match prediction to input data 
     x$mean[xi] = Z[xxii]

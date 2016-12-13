@@ -19,7 +19,13 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
     p = bio.temperature::temperature.parameters( DS="conker", p=p )
     overwrite=NULL
     DATA='hydro.db( p=p, DS="conker.input" )'
+<<<<<<< HEAD
     
+=======
+    storage.backend="bigmemory.ram"
+    boundary=TRUE
+
+>>>>>>> develop
 
     p = bio.bathymetry::bathymetry.parameters( )
     p$conker_local_modelengine = "kernel.density"  # about 5 X faster than bayesx-mcmc method
