@@ -19,7 +19,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
     overwrite=NULL
     DATA='hydro.db( p=p, DS="conker.input" )'
     storage.backend="bigmemory.ram"
-    boundary=FALSE
+    boundary=TRUE
 
 
     p = bio.bathymetry::bathymetry.parameters( )

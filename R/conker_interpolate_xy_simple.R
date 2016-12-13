@@ -1,6 +1,6 @@
 
 
-conker_interpolate_xy_simple = function( interp.method, data, locsout, 
+conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=NULL,
   trimquants=TRUE, trimprobs=c(0.025, 0.975), 
   nr=NULL, nc=NULL, theta=NULL, xwidth=theta*10, ywidth=theta*10 ) {
   #\\ reshape after interpolating to fit the output resolution 
@@ -36,11 +36,94 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout,
   if (interp.method == "kernel.density") {
     # default :: create a "surface" and reshape to a grid using (gaussian) kernel-based smooth via FFT
     require(fields)
+
+    if(0) {
+      data = RMelevation
+      image( data )
+      locsout = expand.grid( data$x, data$y)
+      nr = length( data$x)
+      nc = length(data$y)
+      theta = 1
+      xwidth = 2
+      ywidth = 2 
+    }
+
     isurf = fields::interp.surface( data, loc=locsout  )
-    rm (data); gc()
+    # lattice::levelplot( isurf ~ locsout[,1] + locsout[,2], aspect="iso",  col=topo.colors(256) )
     zout = matrix( isurf, nrow=nr, ncol=nc )
+    # image(zout)
     out = fields::image.smooth( zout, theta=theta, xwidth=xwidth, ywidth=ywidth ) 
+    image(out)
     return (out$z)
+  }
+
+
+  if (interp.method == "fft") {
+    # default :: create a "surface" and reshape to a grid using (gaussian) kernel-based smooth via FFT
+    require(fields)
+
+    if(0) {
+      data = RMelevation
+      image( data )
+      datagrid = data[c("x", "y")] 
+      locsout = expand.grid( x=datagrid$x, y=datagrid$y)
+      x = locsout[,1]
+      y = locsout[,2]
+      z = c(data$z)
+      nr = length( datagrid$x)
+      nc = length( datagrid$y)
+      dx = min(diff(datagrid$x))
+      dy = min(diff(datagrid$y))
+      nu = 0.5
+      phi = min(dx, dy) / 10
+
+      o = conker::conker_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
+      # suggest: nu=0.3; phi =1.723903
+
+      keep = sample.int( nrow(locsout), 1000 ) 
+      x = x[keep]
+      y = y[keep]
+      z = z[keep]
+      
+      o = conker::conker_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
+      o = conker::conker_variogram( xy=cbind(x,y), z=z, methods="fast" ) 
+ 
+    }
+    qz = range(z, na.rm=TRUE)
+
+    nr2 = 2 * nr
+    nc2 = 2 * nc
+    
+    Z2P = as.matrix( cbind( (x-datagrid$x[1])/dx + 1 , (y-datagrid$y[1] )/dy+1) ) # row, col indices in matrix form Z
+    zp = conker::array_map( "2->1", Z2P, c(nr2, nc2) ) # map to larger grid
+
+    dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
+    center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
+    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+    mAC = matrix(c(AC), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+    mC = matrix(0, nrow = nr2, ncol = nc2)
+    mC[nr, nc] = 1
+    fW = fft(mAC)/(fft(mC) * nr2 * nc2)
+    rm(dgrid, AC, mAC, mC); gc()
+
+    # counts
+    mW = matrix(0, nrow = nr2, ncol = nc2)
+    mW[zp] = tapply( ifelse( is.finite(z), 1, 0 ), INDEX=zp, FUN=sum, na.rm=TRUE )
+    mY[!is.finite(mW)] = 0
+    fN = Re(fft(fft(mW) * fW, inverse = TRUE))[1:nr,1:nc]
+
+    # data
+    mY = matrix(0, nrow = nr2, ncol = nc2)
+    mY[zp] = tapply( z, INDEX=zp, FUN=mean, na.rm=TRUE ) # fill with data in correct locations
+    mY[!is.finite(mY)] = 0
+    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
+    Z = fY/fN
+    Z[ Z>qz[2] ]=NA
+    Z[ Z<qz[1] ]=NA
+    x11(); image(Z)
+
+
+    return (out)
   }
 
   # ------

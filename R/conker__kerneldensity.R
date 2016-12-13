@@ -1,5 +1,5 @@
 
-conker__kerneldensity = function( p, x, pa, smoothness=0.5 ) {
+conker__kerneldensity = function( p, x, pa, smoothness=0.5, phi=NULL ) {
   #\\ this is the core engine of conker .. localised space (no-time) modelling interpolation 
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice
@@ -22,6 +22,9 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5 ) {
   pa$mean = NA
   pa$sd = NA
 
+  if (is.null(phi)) phi=p$conker_theta
+  if (is.null(smoothness)) smoothness=0.5 # this is an exponential covariance
+
   for ( ti in 1:p$nt ) {
      
     if ( exists("TIME", p$variables)) {
@@ -41,7 +44,7 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5 ) {
   
     if (0) {
       # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
-      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) )
+      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, range=phi, smoothness=smoothness, cov.function=stationary.cov, Covariance="Exponential" ) )
       iZ = which( !is.finite( Z$z))
       if (length(iZ) > 0) Z$z[iZ] = NA
       rY = range( x[xi,p$variables$Y], na.rm=TRUE)

@@ -1,5 +1,5 @@
 
-conker__twostep = function( p, x, pa, px=NULL ) {
+conker__twostep = function( p, x, pa, px=NULL, smoothness=0.5, phi=NULL ) {
   #\\ twostep modelling time first as a simple ts and then spatial or spatio-temporal interpolation
 
   # step 1 -- timeseries modelling
@@ -52,6 +52,11 @@ conker__twostep = function( p, x, pa, px=NULL ) {
   pa_i = 1:nrow(pa)
   px_i = 1:nrow(px)
 
+
+  if (is.null(phi)) phi=p$conker_theta # range parameter
+  if (is.null(smoothness)) smoothness=0.5 # this is an exponential covariance
+
+
   for ( ti in 1:p$nt ) {
   
     if ( exists("TIME", p$variables) ) {
@@ -64,7 +69,7 @@ conker__twostep = function( p, x, pa, px=NULL ) {
     if ( any( M_all[ px_i,2] > px_nc) ) next()
 
     # matrix representation of the output surface
-    Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) )
+    Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, cov.function=stationary.cov, Covariance="Matern", smoothness=smoothness, range=phi ) )
     if ( "try-error" %in% class(Z) ) next()
 
     iZ = which( !is.finite( Z$z))
@@ -75,7 +80,7 @@ conker__twostep = function( p, x, pa, px=NULL ) {
     mZ = which( Z$z > rY[2] )
     if (length(mZ) > 0) Z$z[mZ] = NA
     # x11(); image.plot(Z)
-    Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) )
+    Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, cov.function=stationary.cov, Covariance="Matern", smoothness=smoothness, range=phi ) )
     if ( "try-error" %in% class(Zsd) ) next()
     pa$mean[pa_i] = Z$z[Z_all[ pa_i, ]]
     pa$sd[pa_i] = Zsd$z[Z_all[ pa_i, ]]
