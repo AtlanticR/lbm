@@ -2,7 +2,7 @@
 
 conker_interpolate_xy_simple = function( interp.method, data, locsout, 
   trimquants=TRUE, trimprobs=c(0.025, 0.975), 
-  nr=NULL, nc=NULL, theta=NULL, xwidth=theta*10, ywidth=theta*10 ) {
+  nr=NULL, nc=NULL, theta=1, xwidth=theta*10, ywidth=theta*10, nu=0.5 ) {
   #\\ reshape after interpolating to fit the output resolution 
   #\\ designed for interpolating statistics  ...
 
@@ -29,6 +29,57 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout,
       contour(out, add=T)
     }
     return(out$xyz.est)
+  }
+
+  # ------
+
+  if (interp.method == "fft") {
+    require(fields)
+
+    im = as.image(data, x=locsout, nx=nr, ny=nc, na.rm=TRUE)
+    grid <- list(x = im$x, y = im$y)
+    dx <- grid$x[2] - grid$x[1]
+    dy <- grid$y[2] - grid$y[1]
+    nr2 = 2 * nr
+    nc2 = 2 * nc
+
+    dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
+    center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
+        ncol = 2)
+    AC = stationary.cov( dgrid, center, Covariance="Matern", theta=theta, smoothness=nu )
+      
+    mAC = matrix(c(AC), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+    mC = matrix(0, nrow = nr2, ncol = nc2)
+    mC[nr, nc] = 1
+    fW = fft(mAC)/(fft(mC) * nr2 * nc2)
+    rm(dgrid, AC, mAC, mC); gc()
+
+    rY = range( data, na.rm=TRUE)
+    # not finished, see conker__kerneldensity
+    x_id = cbind( (x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
+                  (x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
+  
+    mY = matrix(0, nrow = nr2, ncol = nc2)
+    mY[x_id] = x[xi,p$variables$Y] # fill with data in correct locations
+    mY[!is.finite(mY)] = 0
+    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
+    
+    # counts
+    mW = matrix(0, nrow = nr2, ncol = nc2)
+    mW[x_id] = tapply( rep(1, length(xi)), INDEX=x_id, FUN=sum, na.rm=TRUE )
+    mW[!is.finite(mW)] = 0
+    fN = Re(fft(fft(mW) * fW, inverse = TRUE))[1:nr,1:nc]
+    Z = fY/fN
+
+    iZ = which( !is.finite( Z))
+    if (length(iZ) > 0) Z[iZ] = NA
+    lb = which( Z < rY[1] )
+    if (length(lb) > 0) Z[lb] = NA
+    ub = which( Z > rY[2] )
+    if (length(ub) > 0) Z[ub] = NA
+    
+    # image(Z)
+    return (Z)
   }
 
   # ------

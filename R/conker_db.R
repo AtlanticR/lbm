@@ -88,43 +88,79 @@
 
     # -----------------
     
+    if ( DS=="statistics.status" ) {
+      # find locations for statistic computation and trim area based on availability of data
+      # stats:
+      bnds = try( conker_db( p=p, DS="boundary" ) )
+      ioutside = NA
+      if (!is.null(bnds)) {
+        if( !("try-error" %in% class(bnds) ) ) {
+          ioutside = which( bnds$inside.polygon == 0 ) # outside boundary
+      }}
+      Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
+      itodo = setdiff( which( is.nan( Sflag[] )), ioutside)       # incomplete
+      idone = setdiff( which( is.finite (Sflag[] )  ), ioutside)      # completed
+      iskipped = which( is.infinite( Sflag[] )  ) # skipped due to problems or out of bounds
+      iproblems = setdiff( iskipped, ioutside)    # not completed due to a failed attempt
+      out = list(problematic=iproblems, skipped=iskipped, todo=itodo, completed=idone, outside=ioutside,
+                 n.total=length(Sflag) , n.skipped=length(iskipped),
+                 n.todo=length(itodo), n.problematic=length(iproblems), 
+                 n.outside=length(which(is.finite(ioutside))),
+                 n.complete=length(idone) )
+      out$prop_incomp=out$n.todo / ( out$n.todo + out$n.complete)
+      message( paste("Proportion to do:", round(out$prop_incomp,5), "\n" )) 
+      return( out )
+    }
     
-    if (DS %in% c( "statistics.status", "statistics.reset.problem.locations" ) ) {
-          
-      if ( DS=="statistics.status" ) {
-        # find locations for statistic computation and trim area based on availability of data
-        # stats:
-        bnds = try( conker_db( p=p, DS="boundary" ) )
-        ioutside = NA
-        if (!is.null(bnds)) {
-          if( !("try-error" %in% class(bnds) ) ) {
-            ioutside = which( bnds$inside.polygon == 0 ) # outside boundary
-        }}
-        Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
-        itodo = setdiff( which( is.nan( Sflag[] )), ioutside)       # incomplete
-        idone = setdiff( which( is.finite (Sflag[] )  ), ioutside)      # completed
-        iskipped = which( is.infinite( Sflag[] )  ) # skipped due to problems or out of bounds
-        iproblems = setdiff( iskipped, ioutside)    # not completed due to a failed attempt
-        out = list(problematic=iproblems, skipped=iskipped, todo=itodo, completed=idone, outside=ioutside,
-                   n.total=length(Sflag) , n.skipped=length(iskipped),
-                   n.todo=length(itodo), n.problematic=length(iproblems), 
-                   n.outside=length(which(is.finite(ioutside))),
-                   n.complete=length(idone) )
-        out$prop_incomp=out$n.todo / ( out$n.todo + out$n.complete)
-        message( paste("Proportion to do:", round(out$prop_incomp,5), "\n" )) 
-        return( out )
-      }
-      
-      if ( DS=="statistics.reset.problem.locations" ) {
+  # -------------------
+
+    if ( DS=="statistics.reset.problem.locations" ) {
         # to reset all rejected locations 
         Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
         o = conker_db( p=p, DS="statistics.status" )
         if (length(which(is.finite(o$skipped))) > 0) Sflag[o$skipped] = NaN  # to reset all the flags
         if (length(which(is.finite(o$outside))) > 0) Sflag[o$outside] = Inf  # flag area outside of data boundary to skip
       }
+
+    #-------------------
+
+    if ( DS %in% c( "statistics.Sflag" ) ) {
+    
+      if (p$boundary) {
+        p$timeb0 =  Sys.time()
+        message( "Defining boundary polygon for data .. this reduces the number of points to analyse")
+        message( "but takes a few minutes to set up ...")
+        conker_db( p=p, DS="boundary.redo" ) # ~ 5 min on nfs
+      # last set of filters to reduce problem size
+        Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
+        bnds = try( conker_db( p=p, DS="boundary" ) )
+        if (!is.null(bnds)) {
+          if( !("try-error" %in% class(bnds) ) ) {
+            to.ignore = which( bnds$inside.polygon == 0 ) # outside boundary
+            if (length(to.ignore)>0) Sflag[to.ignore,] = Inf
+        }}
+        bnds = NULL
+        p$timeb1 =  Sys.time()
+        message( paste( "Time taken to estimate spatial bounds (mins):", round( difftime( p$timeb1, p$timeb0, units="mins" ),3) ) )
+      }
+
+      if ( !is.null(p$depth.filter) ) {
+        # assuming that there is depth information in Pcov, match Sloc's and filter out locations that fall on land
+        if ( "z" %in% p$variables$COV ){
+          depths = conker_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
+          Ploc = conker_attach( p$storage.backend, p$ptr$Ploc )
+          Sloc = conker_attach( p$storage.backend, p$ptr$Sloc )
+          S_index = match( array_map( "2->1", cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ), 
+                           array_map( "2->1", cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ) )
+          land = which( depths[ S_index ] < p$depth.filter )
+          Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
+          if (length(land)>0) Sflag[land,] = Inf 
+          rm(land, S_index); gc()
+        }
+      }
+
     }
 
-   
     #---------------------
    
     if (DS %in% c( "boundary.redo", "boundary" ) )  {
@@ -154,15 +190,18 @@
       }
 
       ii = na.omit(hasdata)
-      ndata = length(ii)
       Yloc = conker_attach(  p$storage.backend, p$ptr$Yloc )
-      locs_noise =  runif( ndata*2, min=-p$pres*p$conker_noise, max=p$pres*p$conker_noise )
+      yplon = (grid.internal( Yloc[ii,1], p$plons ) - p$plons[1] )/p$pres + 1
+      yplat = (grid.internal( Yloc[ii,2], p$plats ) - p$plats[1] )/p$pres + 1
+      uu = unique( array_map( "2->1", cbind(yplon, yplat), c(p$nplons, p$nplats) ) )
+      vv = array_map( "1->2", uu, c(p$nplons, p$nplats) )
+      
+      Ploc = conker_attach(  p$storage.backend, p$ptr$Ploc )
       if (!exists("conker_nonconvexhull_alpha", p)) p$conker_nonconvexhull_alpha=20
-      boundary=list( polygon = non_convex_hull( Yloc[ii,]+locs_noise, alpha=p$conker_nonconvexhull_alpha, plot=FALSE ) )
+      boundary=list( polygon = non_convex_hull( Ploc[vv,], alpha=p$conker_nonconvexhull_alpha, plot=FALSE ) )
       
       # statistical output locations
       Sloc = conker_attach(  p$storage.backend, p$ptr$Sloc )
-    
       boundary$inside.polygon = point.in.polygon( Sloc[,1], Sloc[,2],
           boundary$polygon[,1], boundary$polygon[,2], mode.checked=TRUE )
       
@@ -172,7 +211,7 @@
       lines( boundary$polygon[] , col="green", pch=2 )
       message( "Check the map of data and boundaries. ")
       message( "If not suitable, set another value for p$conker_nonconvexhull_alpha value (radius; distance) ")
-      message( "and re-run conker() with the flag: overwrite=FALSE " )
+      message( "and re-run conker() " )
       return( fn )
     }
 
@@ -299,6 +338,7 @@
             V = PPsd[,r]
           }
           if (exists("conker_global_modelengine", p) ) {
+            ## maybe add via simulation ? ... 
             P = P + P0[,r] 
             V = sqrt( V^2 + P0sd[,r]^2) # simple additive independent errors assumed
           }
@@ -352,23 +392,11 @@
       for ( i in 1:length( p$statsvars ) ) {
         M = M[] * NA  # init
         M[l2M] = S[,i] # fill with data in correct locations
-        # Z = fields::interp.surface( list( x=p$plons, y=p$plats, z=M ), loc=locsout )
-        # ii = which( !is.finite( Z ) )
-        # if ( length( ii) > 0 ) {
-          # try again ..
-          # Z[ii] = fields::interp.surface( list( x=p$plons, y=p$plats, z=M ), loc=locsout[ii,] )
-        # }
-        # ii = which( !is.finite( Z ) )
-        #if ( length( ii) > 0 ) {
-        messgae("try spate here")
-
-        Z =  fields::image.smooth( M, dx=p$pres, dy=p$pres, theta=p$theta )$z  
-        Z[l2M] = S[,i]  # return raw data to predicted surface
-        #  Z[ii] = Zii[ii]
-        # }
-        stats[,i] = Z
+        Z = smooth.2d( Y=S[,i], x=Sloc[], ncol=p$nplats, nrow=p$nplons, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) 
+        stats[,i] = Z$z
       }
-
+     # lattice::levelplot( stats[,1] ~ locsout[,1]+locsout[,2])
+ 
       boundary = try( conker_db( p=p, DS="boundary" ) )
       if (!is.null(boundary)) {
         if( !("try-error" %in% class(boundary) ) ) {
@@ -379,17 +407,32 @@
       }}
 
       # subset to match to Ploc
-      Ploc_id = paste( Ploc[,1], Ploc[,2], sep="~" )
-      locsout_id = paste( locsout$plon, locsout$plat, sep="~" )
-      good = match( Ploc_id, locsout_id )
+      good = match( array_map( "2->1", cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ), 
+                    array_map( "2->1", cbind(locsout[,1]-p$plons[1], locsout[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ) )
+
+      # Ploc_id = paste( Ploc[,1], Ploc[,2], sep="~" )
+      # locsout_id = paste( locsout$plon, locsout$plat, sep="~" )
+      # good = match( Ploc_id, locsout_id )
 
       bad = which( !is.finite(good))
       if (length(bad) > 0 ) good = good[-bad]
       stats = stats[ good, ]
+      colnames(stats) = p$statsvars
+      rm (good); gc()
+     # lattice::levelplot( stats[,1] ~ Ploc[,1]+Ploc[,2])
+ 
+      if ( !is.null(p$depth.filter) ) {
+        # stats is now with the same indices as Pcov, Ploc, etc..
+        if ( "z" %in% p$variables$COV ){
+          depths = conker_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
+          land = which( depths[] < p$depth.filter )
+          if (length(land)>0) stats[land,] = NA 
+          rm(land); gc()
+        }
+      }
 
       save( stats, file=fn, compress=TRUE )
 
-      # lattice::levelplot( Pstats[,1] ~ Ploc[,1]+Ploc[,2])
     }
 
     #-------------

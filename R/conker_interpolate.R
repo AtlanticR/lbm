@@ -52,7 +52,7 @@ conker_interpolate = function( ip=NULL, p ) {
   downsampling = downsampling[ which(downsampling*p$conker_distance_scale >= p$conker_distance_min )]
 
 
-  # used by "fields":
+  # used by "fields" GRMF functions
   theta.grid = 10^seq( -6, 6, by=0.5) * p$conker_distance_scale # maxdist is aprox magnitude of the phi parameter
   lambda.grid = 10^seq( -9, 3, by=0.5) 
 
@@ -302,74 +302,78 @@ conker_interpolate = function( ip=NULL, p ) {
       if ("sin.w3" %in% p$variables$local_all) dat$sin.w3 = sin( 3*dat[,p$variables$TIME] )
     }
 
-    if (exists("conker_kernelmethods_use_all_data",p) && p$conker_kernelmethods_use_all_data) {
-      # use a larger data grid to interpolate.. right now too slow to use so skip this step
-        if (p$conker_local_modelengine %in% c( "spate", "twostep", "conker_local_modelengine_userdefined" ) ) {
-          # some methods require a uniform prediction grid based upon all dat locations (and time) 
-          # begin with "dat"    
-          px = dat # only the static parts .. time has to be a uniform grid so reconstruct below
-          px$plat = grid.internal( px$plat, p$plats )
-          px$plon = grid.internal( px$plon, p$plons )
-          ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
-          ifix = which( ids %in% unique( ids ) )
-          px = px[ ifix, ]
-          rm (ids, ifix)
+  # use a larger data grid to interpolate.. right now too slow to use so skip this step
+    if (p$conker_local_modelengine %in% c( "spate", "twostep", "conker_local_modelengine_userdefined" ) ) {
+      # some methods require a uniform prediction grid based upon all dat locations (and time) 
+      # begin with "dat"    
+      px = dat # only the static parts .. time has to be a uniform grid so reconstruct below
+      px$plat = grid.internal( px$plat, p$plats )
+      px$plon = grid.internal( px$plon, p$plons )
 
-          # static vars .. don't need to look up
-          tokeep = c(p$variables$LOCS )
-          if (exists("weights", dat) ) tokeep = c(tokeep, "weights")
-          if (exists("local_cov", p$variables)) {
-            for (ci in 1:length(p$variables$local_cov)) {
-              vn = p$variables$local_cov[ci]
-              pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-              nts = ncol(pu)
-              if ( nts==1 ) tokeep = c(tokeep, vn ) 
-            }
-          }
-          px = px[ , tokeep ]
-          px_n = nrow(px)
-          nts = vn = pvars2 = NULL
+      # ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
+      # test which is faster ... remove non-unique?
+      ids = array_map( "2->1", trunc(cbind(px$plon, px$plat)/p$pres+1), c(p$nplons, p$nplats) ) # 100X faster than paste 
 
-          # add temporal grid
-          if ( exists("TIME", p$variables) ) {
-            px = cbind( px[ rep.int(1:px_n, p$nt), ], 
-                            rep.int(p$ts, rep(px_n, p$nt )) )
-            names(px)[ ncol(px) ] = p$variables$TIME 
-            if ( p$variables$TIME != "yr" ) px$yr = trunc( px[,p$variables$TIME] )
-            if ("dyear" %in% p$variables$local_all)  px$dyear = px[, p$variables$TIME] - px$yr  # fractional year
-            if ("cos.w" %in% p$variables$local_all)  px$cos.w  = cos( px[,p$variables$TIME] )
-            if ("sin.w" %in% p$variables$local_all)  px$sin.w  = sin( px[,p$variables$TIME] )
-            if ("cos.w2" %in% p$variables$local_all) px$cos.w2 = cos( 2*px[,p$variables$TIME] )
-            if ("sin.w2" %in% p$variables$local_all) px$sin.w2 = sin( 2*px[,p$variables$TIME] )
-            if ("cos.w3" %in% p$variables$local_all) px$cos.w3 = cos( 3*px[,p$variables$TIME] )
-            if ("sin.w3" %in% p$variables$local_all) px$sin.w3 = sin( 3*px[,p$variables$TIME] )
-            # more than 3 harmonics would not be advisable .. but you would add them here..
-          }
+      todrop = which(duplicated( ids) )
+      if (length(todrop>0)) {
+        ids = ids[-todrop]
+        px = px[ ids, ]
+      }
+      rm (ids)
 
-          if (exists("local_cov", p$variables)) {
-            # add time-varying covars .. not necessary except when covars are modelled locally
-            pvars2 = names(px)
-            px$iy = px$yr - p$yrs[1] + 1 #yr index
-            px$it = p$nw*(px$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
-            for (ci in 1:length(p$variables$local_cov)) {
-              vn = p$variables$local_cov[ci]
-              pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-              nts = ncol(pu)
-              if ( nts== 1) {
-                # static vars are retained in the previous step
-              } else if ( nts == p$ny )  {
-                pvars2 = c( pvars2, vn )
-                px[,vn] = pu[px$i, px$iy ]  
-               } else if ( nts == p$nt) {
-                pvars2 = c( pvars2, vn )
-                px[,vn] = pu[px$i, px$it ]  
-              }
-            } # end for loop
-            nts = vn = pvars2 = NULL
-          } # end if
+      # static vars .. don't need to look up
+      tokeep = c(p$variables$LOCS )
+      if (exists("weights", dat) ) tokeep = c(tokeep, "weights")
+      if (exists("local_cov", p$variables)) {
+        for (ci in 1:length(p$variables$local_cov)) {
+          vn = p$variables$local_cov[ci]
+          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+          nts = ncol(pu)
+          if ( nts==1 ) tokeep = c(tokeep, vn ) 
         }
-    }
+      }
+      px = px[ , tokeep ]
+      px_n = nrow(px)
+      nts = vn = pvars2 = NULL
 
+      # add temporal grid
+      if ( exists("TIME", p$variables) ) {
+        px = cbind( px[ rep.int(1:px_n, p$nt), ], 
+                        rep.int(p$ts, rep(px_n, p$nt )) )
+        names(px)[ ncol(px) ] = p$variables$TIME 
+        if ( p$variables$TIME != "yr" ) px$yr = trunc( px[,p$variables$TIME] )
+        if ("dyear" %in% p$variables$local_all)  px$dyear = px[, p$variables$TIME] - px$yr  # fractional year
+        if ("cos.w" %in% p$variables$local_all)  px$cos.w  = cos( px[,p$variables$TIME] )
+        if ("sin.w" %in% p$variables$local_all)  px$sin.w  = sin( px[,p$variables$TIME] )
+        if ("cos.w2" %in% p$variables$local_all) px$cos.w2 = cos( 2*px[,p$variables$TIME] )
+        if ("sin.w2" %in% p$variables$local_all) px$sin.w2 = sin( 2*px[,p$variables$TIME] )
+        if ("cos.w3" %in% p$variables$local_all) px$cos.w3 = cos( 3*px[,p$variables$TIME] )
+        if ("sin.w3" %in% p$variables$local_all) px$sin.w3 = sin( 3*px[,p$variables$TIME] )
+        # more than 3 harmonics would not be advisable .. but you would add them here..
+      }
+
+      if (exists("local_cov", p$variables)) {
+        # add time-varying covars .. not necessary except when covars are modelled locally
+        pvars2 = names(px)
+        px$iy = px$yr - p$yrs[1] + 1 #yr index
+        px$it = p$nw*(px$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
+        for (ci in 1:length(p$variables$local_cov)) {
+          vn = p$variables$local_cov[ci]
+          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+          nts = ncol(pu)
+          if ( nts== 1) {
+            # static vars are retained in the previous step
+          } else if ( nts == p$ny )  {
+            pvars2 = c( pvars2, vn )
+            px[,vn] = pu[px$i, px$iy ]  
+           } else if ( nts == p$nt) {
+            pvars2 = c( pvars2, vn )
+            px[,vn] = pu[px$i, px$it ]  
+          }
+        } # end for loop
+        nts = vn = pvars2 = NULL
+      } # end if
+    }
 
     o = NULL
     o = try( conker_variogram( xy=dat[,p$variables$LOC], 
@@ -387,8 +391,13 @@ conker_interpolate = function( ip=NULL, p ) {
           }  
         }
       } 
-      
-    if (!is.null(ores)) if ( exists("nu", ores) ) smoothness = ores$nu
+    
+    theta = NULL
+    if (!is.null(ores)) {
+      if ( exists("nu", ores) ) smoothness = ores$nu
+      if ( exists("phi", ores) ) theta = ores$phi 
+    }
+    if (is.null(theta)) theta = p$conker_theta
 
     # model and prediction
     # the following permits user-defined models (might want to use compiler::cmpfun )
@@ -398,15 +407,15 @@ conker_interpolate = function( ip=NULL, p ) {
       bayesx = conker__bayesx( p, dat, pa ),
       habitat = conker__habitat( p, dat, pa ), # TODO 
       inla = conker__inla( p, dat, pa ),
-      kernel.density = conker__kerneldensity( p, dat, pa, smoothness ),
+      kernel.density = conker__kerneldensity( p, dat, pa, smoothness, phi ),
       gam = conker_gam( p, dat, pa ), 
       gaussianprocess2Dt = conker__gaussianprocess2Dt( p, dat, pa ), 
       gaussianprocess = conker__gaussianprocess( p, dat, pa ),  # TODO
       glm = conker_glm( p, dat, pa ), 
       LaplacesDemon = conker__LaplacesDemon( p, dat, pa ),
-      spate = conker__spate( p, dat, pa, sloc=Sloc[Si,] ), 
+      spate = conker__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 
       splancs = conker__spate( p, dat, pa ), # TODO
-      twostep = conker__twostep( p, dat, pa ), # slow ...
+      twostep = conker__twostep( p, dat, pa, nu=smoothness , theta=theta, px=px ), # slow ...
       conker_local_modelengine_userdefined = p$conker_local_modelengine_userdefined( p, dat, pa)
     )
     
@@ -484,20 +493,22 @@ conker_interpolate = function( ip=NULL, p ) {
           ts.stat = try( conker_timeseries( pac$mean, method="fft" ) )
           if (!is.null(ts.stat) && !inherits(ts.stat, "try-error") ) {
             res$conker_stats["ar_timerange"] = ts.stat$quantilePeriod 
-            afin = which (is.finite(pac$mean) )
-            if (length(afin) > 5 && var( pac$mean, na.rm=TRUE) > p$eps ) {
-              ar1 = NULL
-              ar1 = try( ar( pac$mean, order.max=1 ) )
-              if (!inherits(ar1, "try-error")) {
-                if ( length(ar1$ar) == 1 ) {
-                  res$conker_stats["ar_1"] = ar1$ar
-                }  
-              } 
-              if ( !is.finite(res$conker_stats[["ar_1"]]) ) {
-                ar1 = try( cor( pac$mean[1:(length(piid) - 1)], pac$mean[2:(length(piid))], use="pairwise.complete.obs" ) )
-                if (!inherits(ar1, "try-error")) res$conker_stats["ar_1"] = ar1 
+            if (all( is.finite(pac$mean))) {
+              afin = which (is.finite(pac$mean) )
+              if (length(afin) > 5 && var( pac$mean, na.rm=TRUE) > p$eps ) {
+                ar1 = NULL
+                ar1 = try( ar( pac$mean, order.max=1 ) )
+                if (!inherits(ar1, "try-error")) {
+                  if ( length(ar1$ar) == 1 ) {
+                    res$conker_stats["ar_1"] = ar1$ar
+                  }  
+                } 
               }
-            } 
+            }
+            if ( !is.finite(res$conker_stats[["ar_1"]]) ) {
+              ar1 = try( cor( pac$mean[1:(length(piid) - 1)], pac$mean[2:(length(piid))], use="pairwise.complete.obs" ) )
+              if (!inherits(ar1, "try-error")) res$conker_stats["ar_1"] = ar1 
+            }
           } 
 
           ### Do the logistic model here ! -- if not already done ..

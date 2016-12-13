@@ -1,5 +1,5 @@
 
-conker__spate = function( p, x, pa, sloc, mx=NULL, ws=NULL ) {
+conker__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
   #\\ SPDE solution via FFT using the spate library
   # require(spate)
   # based upon two-step process
@@ -26,10 +26,10 @@ conker__spate = function( p, x, pa, sloc, mx=NULL, ws=NULL ) {
   ss = summary(hmod)
   if (ss$r.sq < p$conker_rsquared_threshold ) return(NULL)
 
-  if (is.null(mx)) mx = pa
+  if (is.null(px)) px = pa
   if (is.null(ws)) ws = trunc( p$conker_distance_prediction / p$pres)  
 
-  preds = try( predict( hmod, newdata=mx, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
+  preds = try( predict( hmod, newdata=px, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
 
   reject = which( preds$se.fit > quantile( preds$se.fit, probs= p$conker_quantile_bounds[2], na.rm=TRUE ) 
                 | preds$fit > p$qs[2] 
@@ -37,23 +37,39 @@ conker__spate = function( p, x, pa, sloc, mx=NULL, ws=NULL ) {
 
   preds$fit[reject] = NA
 
-  mx$mean = as.vector( preds$fit )
-  mx$sd = as.vector( preds$se.fit )
+  px$mean = as.vector( preds$fit )
+  px$sd = as.vector( preds$se.fit )
 
   nsq = 2*ws +1 
+  adims = c(nsq, nsq, p$nt) 
+
+  xM = array( NA, dim=adims )
+  px_id = cbind( 
+    trunc( ( px[,p$variables$TIME ] - p$ts[1] ) / p$tres) + 1,
+    ( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
+    ( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1 
+  )
+  xM[px_id] = px[,"mean"]  
+  xM = xM[,-1, -1]  # this needs to be an even matrix ???
+  xM2 = matrix( xM, nrow=p$nt )
+  g = spate.mcmc( y=xM2, n=nsq-1 ) 
+  # plot(g, postProcess=TRUE)
 
 
-  mx_id = cbind( ( ws + (mx[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
-                 ( ws + (mx[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1, 
-                trunc( ( mx[,p$variables$TIME ] - p$ts[1] ) / p$tres) + 1 )
+  px_id = array_map( "3->1", m=cbind( 
+    ( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
+    ( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1, 
+    trunc( ( px[,p$variables$TIME ] - p$ts[1] ) / p$tres) + 1 ),
+    n=adims )
   
-  xM = array( NA, dim=c(nsq, nsq, p$nt) )
-  xM[mx_id] = mx[,"mean"]
-  xM = xM[-nsq,-nsq,] # this needs to be an even matrix
+  xM = array( NA, dim=adims )
+  xM[px_id] = px[,"mean"]  # this needs to be an even matrix ???
 
-  mm = matrix( xM, nrow=p$nt )
+  mm = array_map( "1->2" , px_id, n )
+  xM2 = array( NA, dims=c(nsq^2, p$nt))
+  xM2[mm] = xM[px_id] 
 
-  g = spate.mcmc( y=mm, n=nsq-1 ) 
+  g = spate.mcmc( y=xM2, n=nsq ) 
 
   # plot(g, postProcess=TRUE)
 

@@ -1,15 +1,16 @@
 
-conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", boundary=TRUE, do.secondstage=TRUE ) {
+conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do.secondstage=FALSE ) {
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
+  #\\ do a more relaxed second stage: turned off for now .. this would make sense to try but 
+  #\\ it can be costly in terms of time in production runs .. use only for research purposes
 
   # TODO: splancs::kernel3d as a method ? .. for count data?
   # TODO: direct FFT-based kernel convolutions? 
   # TODO: habitat methods
-  # TODO: twostep
   # TODO: gaussian process
-  # TODO: LapacesDemon method
+  # TODO: LaplacesDemon method
 
 
   if(0) {
@@ -18,9 +19,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
     p = bio.temperature::temperature.parameters( DS="conker", p=p )
     overwrite=NULL
     DATA='hydro.db( p=p, DS="conker.input" )'
-    storage.backend="bigmemory.ram"
-    boundary=FALSE
-
+    
 
     p = bio.bathymetry::bathymetry.parameters( )
     p$conker_local_modelengine = "kernel.density"  # about 5 X faster than bayesx-mcmc method
@@ -31,8 +30,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
 
     overwrite=NULL
     DATA='bathymetry.db( p=p, DS="bathymetry.conker.data" )'
-    storage.backend="bigmemory.ram"
-    boundary=FALSE
+    p$storage.backend="bigmemory.ram"
 
   }
 
@@ -48,10 +46,9 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
 
   p$libs = unique( c( p$libs, "sp", "rgdal", "parallel", "RandomFields", "geoR" ) )
 
-  p$storage.backend = storage.backend
+  if (!exists("storage.backend", p)) p$storage.backend = storage.backend
   if (any( grepl ("ff", p$storage.backend)))         p$libs = c( p$libs, "ff", "ffbase" )
   if (any( grepl ("bigmemory", p$storage.backend)))  p$libs = c( p$libs, "bigmemory" )
-
 
   if (p$conker_local_modelengine=="bayesx")  p$libs = c( p$libs, "R2BayesX" )
   if (p$conker_local_modelengine %in% c("gam", "mgcv", "habitat") )  p$libs = c( p$libs, "mgcv" )
@@ -188,7 +185,6 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
         }
 
       rm(S, Sflag, Sloc)
-
 
       # dependent variable
       Yraw = as.matrix(DATA$input[, p$variables$Y ])
@@ -472,6 +468,7 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
         }
         p$all.covars.static = ifelse( any(nc_cov > 1),  FALSE, TRUE )
         if (p$all.covars.static) {
+          p = make.list( list( tindex=1:p$nt) , Y=p ) # takes about 28 GB per run .. adjust cluster number temporarily
           conker_db( p=p, DS="global.prediction.surface" )
         } else {
           if (!exists("no.clusters.covars") ) p$no.clusters.covars = 4
@@ -487,23 +484,8 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
 
     P = NULL; gc() # yes, repeat in case covs are not modelled
 
-    if (boundary) {
-      p$timeb0 =  Sys.time()
-      message( "Defining boundary polygon for data .. this reduces the number of points to analyse")
-      message( "but takes a few minutes to set up ...")
-      conker_db( p=p, DS="boundary.redo" ) # ~ 5 min on nfs
-    # last set of filters to reduce problem size
-      Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
-      bnds = try( conker_db( p=p, DS="boundary" ) )
-      if (!is.null(bnds)) {
-        if( !("try-error" %in% class(bnds) ) ) {
-          to.ignore = which( bnds$inside.polygon == 0 ) # outside boundary
-          if (length(to.ignore)>0) Sflag[to.ignore,] = Inf
-      }}
-      bnds = NULL
-      p$timeb1 =  Sys.time()
-      message( paste( "Time taken to estimate spatial bounds (mins):", round( difftime( p$timeb1, p$timeb0, units="mins" ),3) ) )
-    }
+  
+    conker_db( p=p, DS="statistics.Sflag" )
 
     Y = conker_attach( p$storage.backend, p$ptr$Y )
     Yloc = conker_attach( p$storage.backend, p$ptr$Yloc )
@@ -557,8 +539,8 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
       p$conker_distance_scale = min( diff(range( Yloc[,1]) ), diff(range( Yloc[,2]) ) ) / 10
       message( paste( "Crude distance scale:", p$conker_distance_scale ) )
     }
-    p$conker_distance_min = mean( c(p$conker_distance_prediction, p$conker_distance_scale /20 ) )
-    p$conker_distance_max = mean( c(p$conker_distance_prediction*10, p$conker_distance_scale * 2 ) )
+    if ( !exists("conker_distance_min", p)) p$conker_distance_min = mean( c(p$conker_distance_prediction, p$conker_distance_scale /20 ) )
+    if ( !exists("conker_distance_max", p)) p$conker_distance_max = mean( c(p$conker_distance_prediction*10, p$conker_distance_scale * 2 ) )
 
     if ( !exists("sampling", p))  {
       # fractions of distance scale  to try in local block search
@@ -594,17 +576,32 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
   message( paste( "Time taken for main interpolations (mins):", round( difftime( p$timei1, p$timei0, units="mins" ),3) ) )
   gc()
 
+
+      if (0) {
+        require(lattice)
+        Plocs = conker_attach( p$storage.backend, p$ptr$Plocs )
+        P = conker_attach( p$storage.backend, p$ptr$P )
+        lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==2012.05,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
+        for (i in 1:p$nt) {
+          print( lattice::levelplot( P[,i] ~ Ploc[,1] + Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
+        }
+      }
+
+
   # save solutions to disk before continuuing
   conker_db( p=p, DS="conker.prediction.redo" ) # save to disk for use outside conker*
   conker_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside conker*
 
+  # 2. same interpolation method but relax the spatial extent
+  # this would make sense but it can be costly in terms of time .. use only for research purposes
   if ( do.secondstage ) {
-    # 2. same interpolation method but relax the spatial extent
-    p$timei2 =  Sys.time()
-    o = conker_db( p=p, DS="statistics.reset.problem.locations" )
+     p$timei2 =  Sys.time()
+    conker_db( p=p, DS="statistics.reset.problem.locations" )
+    o = conker_db( p=p, DS="statistics.status" )
     if (length(o$todo) > 0) {
       p$conker_distance_prediction = p$conker_distance_prediction * 2
       p$conker_distance_max = p$conker_distance_max * 2
+      p$conker_distance_scale = p$conker_distance_scale*2 # km ... approx guess of 95% AC range 
       p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
       parallel.run( conker_interpolate, p=p )
     }
@@ -612,7 +609,12 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
     message( paste( "Time taken to stage 2 interpolations (mins):", round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
   }
 
+  message( "Doing a fast interpolation to fill in large data gaps.")
+  p = make.list( list( time_index=1:p$nt), Y=p ) # random order helps use all cpus
+  parallel.run( conker_interpolate_fast, p=p ) # fast fft smooth
+
   # save solutions to disk (again .. overwrite)
+  message( "Saving results to disk" )
   conker_db( p=p, DS="conker.prediction.redo" ) # save to disk for use outside conker*
   conker_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside conker*
 
@@ -630,6 +632,4 @@ conker = function( p, DATA, overwrite=NULL, storage.backend="bigmemory.ram", bou
 
   return( p )
 }
-
-
 

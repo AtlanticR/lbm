@@ -16,6 +16,13 @@
       return( m[,1] + (m[,2]-1)*n[1] + (m[,3]-1)*n[1]*n[2] + (m[,4]-1)*n[1]*n[2]*n[3] ) 
     }
 
+
+    if (method=="3->2") { 
+      ii = array_map( "3->1" , m, n ) 
+      jj = array_map( "1->2" , ii, n )
+      return( jj ) 
+    }
+    
     if ( method=="1->2" ) {
       j = m-1 # -1 converts to C-indexing
       x = j %%  n[1]

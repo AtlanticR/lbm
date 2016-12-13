@@ -7,15 +7,14 @@ conker__habitat = function( p, x, pa ) {
     if (!exists("habitat.threshold.quantile", p)) p$habitat.threshold.quantile = 0.05 # quantile at which to consider zero-valued abundance
   }
 
-
   if ( exists("conker_local_model_distanceweighted", p) ) {
     if (p$conker_local_model_distanceweighted) {
-      Hmodel = try( gam( p$conker_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
+      Hmodel = try( gam( p$conker_local_modelformula, data=x, family=binomial, weights=weights, optimizer=c("outer","optim")  ) )
     } else {
-      Hmodel = try( gam( p$conker_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
+      Hmodel = try( gam( p$conker_local_modelformula, data=x, family=binomial, optimizer=c("outer","optim")  ) )
     }
   } else {
-      Hmodel = try( gam( p$conker_local_modelformula, data=x ) )
+      Hmodel = try( gam( p$conker_local_modelformula, data=x, family=binomial ) )
   } 
   if ( "try-error" %in% class(Hmodel) ) return( NULL )
 
@@ -30,26 +29,31 @@ conker__habitat = function( p, x, pa ) {
       Amodel = try( gam( p$conker_local_modelformula, data=x ) )
   } 
   if ( "try-error" %in% class(Amodel) ) return( NULL )
-  
-  x$P = try( predict( Hmodel, newdata=pa, type="response", se.fit=T ) ) 
-  x$A = try( predict( Amodel, newdata=pa, type="response", se.fit=T ) ) 
+
+  x$P = try( predict( Hmodel, newdata=x, type="response", se.fit=FALSE ) ) 
+  x$A = try( predict( Amodel, newdata=x, type="response", se.fit=FALSE ) ) 
   x$Yhat = x$P * x$A
-  # iHabitat = which( pa$logitmean > p$habitat.threshold.quantile  & (pa$logitmean - 2 * pa$logitsd) > 0 )
+
   rsq = cor( x$Yhat, x[,p$variables$Y], use="pairwise.complete.obs" )^2
   if (rsq < p$conker_rsquared_threshold ) return(NULL)
 
-  Hsim = gam.simulation( M=Hmodel, X= pa, nsims=p$nsims ) #~8min
+  Hmodel.coef = mvtnorm::rmvnorm(p$nsims, coef(Hmodel), Hmodel$Vp, method="chol")
   rm( Hmodel); gc()
+  Hsim = family(M)$linkinv( predict(Hmodel, newdata=pa, type="lpmatrix") %*% t(Hmodel.coef) )
+  rm( Hmodel.coef); gc()
   oops = which( is.na(Hsim) )
   if (length(oops) > 0)  Hsim[oops ] = 0  # assume to be zero
-
+  
   pa$logitmean = apply( Hsim, 1, mean, na.rm=T )
   pa$logitsd = apply( Hsim, 1, sd, na.rm=T )
 
-  Asim = gam.simulation( M=Amodel, X= pa, nsims=p$nsims ) # ~5min
-  rm( Amodel); gc()
+  Amodel.coef = mvtnorm::rmvnorm(p$nsims, coef(Amodel), Amodel$Vp, method="chol")
+  rm(Amodel); gc()
+  Asim = family(M)$linkinv( predict(Amodel, newdata=pa, type="lpmatrix") %*% t(Amodel.coef) )
+  rm (Amodel.coef); gc()
   oops = which( is.na(Asim) )
   if (length(oops) > 0)  Asim[oops ] = 0  # assume to be zero
+  
   # Do not extrapolate: trim to XX% quantiles to be a little more conservative
   oopu =  which( Asim > p$qs[2] )
   if (length(oopu) > 0)  Asim[ oopu ] = p$qs[2]
