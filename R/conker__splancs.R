@@ -1,5 +1,5 @@
 
-conker__kerneldensity = function( p, x, pa, smoothness=0.5 ) {
+conker__splancs = function( p, x, pa, phi=NULL, nu=NULL ) {
   #\\ this is the core engine of conker .. localised space (no-time) modelling interpolation 
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice
@@ -53,12 +53,12 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5 ) {
     # matrix representation of the output surface
     M = matrix( NA, nrow=x_nr, ncol=x_nc) 
     M[x_id] = x[xi,p$variables$Y] # fill with data in correct locations
-    Z = try( fields::image.smooth( M, dx=p$pres, dy=p$pres, theta=p$conker_theta)$z )
+    Z = try( fields::image.smooth( M, dx=p$pres, dy=p$pres, theta=p$conker_phi)$z )
   
     if (0) {
       # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
-      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, theta=p$conker_theta,
-        cov.function=stationary.cov, Covariance="Exponential", p=smoothness, smoothness=smoothness ) )
+      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, range=p$conker_phi,
+        cov.function=stationary.cov, Covariance="Exponential", nu=p$nu ) )
       iZ = which( !is.finite( Z$z))
       if (length(iZ) > 0) Z$z[iZ] = NA
       rY = range( x[xi,p$variables$Y], na.rm=TRUE)

@@ -392,7 +392,7 @@
       for ( i in 1:length( p$statsvars ) ) {
         M = M[] * NA  # init
         M[l2M] = S[,i] # fill with data in correct locations
-        Z = smooth.2d( Y=S[,i], x=Sloc[], ncol=p$nplats, nrow=p$nplons, theta=p$conker_theta, cov.function=stationary.cov, Covariance="Exponential" ) 
+        Z = smooth.2d( Y=S[,i], x=Sloc[], ncol=p$nplats, nrow=p$nplons, cov.function=stationary.cov, Covariance="Matern", range=p$conker_phi, nu=p$conker_nu ) 
         stats[,i] = Z$z
       }
      # lattice::levelplot( stats[,1] ~ locsout[,1]+locsout[,2])

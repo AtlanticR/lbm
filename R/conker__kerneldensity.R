@@ -1,9 +1,13 @@
 
-conker__kerneldensity = function( p, x, pa, smoothness=0.5, phi=NULL ) {
+conker__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
 
   #\\ this is the core engine of conker .. localised space (no-time) modelling interpolation 
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice
+
+
+  if (is.null(phi)) phi=p$conker_phi
+  if (is.null(nu)) nu=p$conker_nu # nu=0.5 an exponential covariance
 
   x_r = range(x[,p$variables$LOCS[1]])
   x_c = range(x[,p$variables$LOCS[2]])
@@ -30,7 +34,7 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5, phi=NULL ) {
   dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
   center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
       ncol = 2)
-  AC = stationary.cov( dgrid, center, Covariance="Matern", theta=theta, smoothness=nu )
+  AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
     
   mAC = matrix(c(AC), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
   mC = matrix(0, nrow = nr2, ncol = nc2)
@@ -39,9 +43,6 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5, phi=NULL ) {
   rm(dgrid, AC, mAC, mC); gc()
 
   rY = range( x[,p$variables$Y], na.rm=TRUE)
-
-  if (is.null(phi)) phi=p$conker_theta
-  if (is.null(smoothness)) smoothness=0.5 # this is an exponential covariance
 
 
   for ( ti in 1:p$nt ) {
@@ -56,16 +57,17 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5, phi=NULL ) {
     x_id = cbind( (x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
                   (x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
     xxii = array_map( "2->1", x_id, c(nr2, nc2) )
-    mY = matrix(0, nrow = nr2, ncol = nc2)
-    mY[xxii] = x[xi,p$variables$Y] # fill with data in correct locations
-    mY[!is.finite(mY)] = 0
-    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
-    
     # counts
     mW = matrix(0, nrow = nr2, ncol = nc2)
     mW[xxii] = tapply( rep(1, length(xi)), INDEX=xxii, FUN=sum, na.rm=TRUE )
     mW[!is.finite(mW)] = 0
     fN = Re(fft(fft(mW) * fW, inverse = TRUE))[1:nr,1:nc]
+   
+    mY = matrix(0, nrow = nr2, ncol = nc2)
+    mY[xxii] = x[xi,p$variables$Y] # fill with data in correct locations
+    mY[!is.finite(mY)] = 0
+    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
+    
     Z = fY/fN
 
     iZ = which( !is.finite( Z))
@@ -78,13 +80,11 @@ conker__kerneldensity = function( p, x, pa, smoothness=0.5, phi=NULL ) {
     # image(Z)
 
     # matrix representation of the output surface
-    # M = matrix( NA, nrow=x_nr, ncol=x_nc) 
-    # M[x_id] = x[xi,p$variables$Y] # fill with data in correct locations
-    # Z = try( fields::image.smooth( M, dx=p$pres, dy=p$pres, theta=p$conker_theta)$z )
+     # Z = try( fields::image.smooth( mY, dx=p$pres, dy=p$pres, theta=p$conker_phi)$z ) # phi==theta
   
     if (0) {
       # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
-      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, range=phi, smoothness=smoothness, cov.function=stationary.cov, Covariance="Exponential" ) )
+      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=nc, nrow=nr, range=phi, nu=nu, cov.function=stationary.cov, Covariance="Exponential" ) )
       iZ = which( !is.finite( Z$z))
       if (length(iZ) > 0) Z$z[iZ] = NA
       rY = range( x[xi,p$variables$Y], na.rm=TRUE)

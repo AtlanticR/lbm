@@ -57,7 +57,7 @@ conker_interpolate = function( ip=NULL, p ) {
   lambda.grid = 10^seq( -9, 3, by=0.5) 
 
   am = c(p$nplons, p$nplats)
-  smoothness0 = 0.5
+  nu0 = 0.5
 
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
@@ -73,7 +73,7 @@ conker_interpolate = function( ip=NULL, p ) {
     U =  which( dlon  <= p$conker_distance_scale  & dlat <= p$conker_distance_scale )
     conker_distance_cur = p$conker_distance_scale
     ndata = length(U)
-    smoothness = smoothness0
+    nu = nu0
 
     o = ores = NULL
 
@@ -94,7 +94,7 @@ conker_interpolate = function( ip=NULL, p ) {
                 conker_distance_cur = min( max(1, o[[p$conker_variogram_method]][["range"]] ), p$conker_distance_scale ) 
                 U = which( dlon  <= conker_distance_cur  & dlat <= conker_distance_cur )
                 ndata =length(U)
-                smoothness = o[[p$conker_variogram_method]][["nu"]]
+                nu = o[[p$conker_variogram_method]][["nu"]]
                 ores = o[[p$conker_variogram_method]] # store current best estimate of variogram characteristics
             }    
                   
@@ -303,7 +303,7 @@ conker_interpolate = function( ip=NULL, p ) {
     }
 
   # use a larger data grid to interpolate.. right now too slow to use so skip this step
-    if (p$conker_local_modelengine %in% c( "spate", "twostep", "conker_local_modelengine_userdefined" ) ) {
+    if (p$conker_local_modelengine %in% c( "spate", "twostep", "conker_local_modelengine_userdefined", "kernel.density" ) ) {
       # some methods require a uniform prediction grid based upon all dat locations (and time) 
       # begin with "dat"    
       px = dat # only the static parts .. time has to be a uniform grid so reconstruct below
@@ -392,14 +392,14 @@ conker_interpolate = function( ip=NULL, p ) {
         }
       } 
     
-    theta = NULL
+    phi = NULL
     if (!is.null(ores)) {
-      if ( exists("nu", ores) ) smoothness = ores$nu
-      if ( exists("phi", ores) ) theta = ores$phi 
+      if ( exists("nu", ores) ) nu = ores$nu
+      if ( exists("phi", ores) ) phi = ores$phi 
     }
-    if (is.null(theta)) theta = p$conker_theta
+    if (is.null(phi)) phi = p$conker_phi
 
-    # model and prediction
+    # model and prediction 
     # the following permits user-defined models (might want to use compiler::cmpfun )
     gc()
     res =NULL
@@ -407,7 +407,7 @@ conker_interpolate = function( ip=NULL, p ) {
       bayesx = conker__bayesx( p, dat, pa ),
       habitat = conker__habitat( p, dat, pa ), # TODO 
       inla = conker__inla( p, dat, pa ),
-      kernel.density = conker__kerneldensity( p, dat, pa, smoothness, phi ),
+      kernel.density = conker__kerneldensity( p, dat, pa, nu, phi ),
       gam = conker_gam( p, dat, pa ), 
       gaussianprocess2Dt = conker__gaussianprocess2Dt( p, dat, pa ), 
       gaussianprocess = conker__gaussianprocess( p, dat, pa ),  # TODO
@@ -415,7 +415,7 @@ conker_interpolate = function( ip=NULL, p ) {
       LaplacesDemon = conker__LaplacesDemon( p, dat, pa ),
       spate = conker__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 
       splancs = conker__spate( p, dat, pa ), # TODO
-      twostep = conker__twostep( p, dat, pa, nu=smoothness , theta=theta, px=px ), # slow ...
+      twostep = conker__twostep( p, dat, pa, nu=nu , phi=phi, px=px ), # slow ...
       conker_local_modelengine_userdefined = p$conker_local_modelengine_userdefined( p, dat, pa)
     )
     

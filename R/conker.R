@@ -28,7 +28,6 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
     # p$conker_local_modelengine = "gam"
     # p$conker_local_modelengine = "bayesx"
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="conker" )
-
     overwrite=NULL
     DATA='bathymetry.db( p=p, DS="bathymetry.conker.data" )'
     p$storage.backend="bigmemory.ram"

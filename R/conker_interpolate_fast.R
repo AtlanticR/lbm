@@ -6,6 +6,9 @@ conker_interpolate_fast = function( ip=NULL, p ) {
   if (exists( "libs", p)) RLibrary( p$libs )
   if (is.null(ip)) if( exists( "nruns", p ) ) ip = 1:p$nruns
 
+  phi = p$conker_phi # want phi to be small to retain local structure
+  nu = p$conker_nu
+
   P = conker_attach( p$storage.backend, p$ptr$P )
   Psd = conker_attach( p$storage.backend, p$ptr$Psd )
   Ploc = conker_attach( p$storage.backend, p$ptr$Ploc )
@@ -19,11 +22,10 @@ conker_interpolate_fast = function( ip=NULL, p ) {
   nc2 = 2 * nc
   zp = array_map( "2->1", Z2P, c(nr2, nc2) )
 
-  theta = min( p$conker_theta, p$pres ) # want theta to be small to retain local structure
   dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
   center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
       ncol = 2)
-  AC = stationary.cov( dgrid, center, Covariance="Matern", theta=theta, smoothness=nu )
+  AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
   mAC = matrix(c(AC), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
   mC = matrix(0, nrow = nr2, ncol = nc2)
   mC[nr, nc] = 1
