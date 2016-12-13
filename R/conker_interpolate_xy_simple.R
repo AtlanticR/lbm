@@ -2,7 +2,7 @@
 
 conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=NULL,
   trimquants=TRUE, trimprobs=c(0.025, 0.975), 
-  nr=NULL, nc=NULL, theta=1, xwidth=theta*10, ywidth=theta*10, nu=0.5 ) {
+  nr=NULL, nc=NULL, phi=1, xwidth=phi*10, ywidth=phi*10, nu=0.5 ) {
   #\\ reshape after interpolating to fit the output resolution 
   #\\ designed for interpolating statistics  ...
 
@@ -46,7 +46,7 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
     dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
     center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
         ncol = 2)
-    AC = stationary.cov( dgrid, center, Covariance="Matern", theta=theta, smoothness=nu )
+    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
       
     mAC = matrix(c(AC), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
     mC = matrix(0, nrow = nr2, ncol = nc2)
@@ -94,7 +94,7 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
       locsout = expand.grid( data$x, data$y)
       nr = length( data$x)
       nc = length(data$y)
-      theta = 1
+      phi = 1
       xwidth = 2
       ywidth = 2 
     }
@@ -103,11 +103,12 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
     # lattice::levelplot( isurf ~ locsout[,1] + locsout[,2], aspect="iso",  col=topo.colors(256) )
     zout = matrix( isurf, nrow=nr, ncol=nc )
     # image(zout)
-    out = fields::image.smooth( zout, theta=theta, xwidth=xwidth, ywidth=ywidth ) 
+    out = fields::image.smooth( zout, theta=phi, xwidth=xwidth, ywidth=ywidth ) 
     image(out)
     return (out$z)
   }
 
+  # ------------------------
 
   if (interp.method == "fft") {
     # default :: create a "surface" and reshape to a grid using (gaussian) kernel-based smooth via FFT

@@ -153,7 +153,11 @@ conker_interpolate = function( ip=NULL, p ) {
 
     # final check
     ndata = length(U)
-    if ((ndata < p$n.min) | (ndata > p$n.max) ) next()
+    if ((ndata < p$n.min) | (ndata > p$n.max) ) {
+      ndata = U = o = ores = NULL
+      next()
+    }
+
     YiU = Yi[U]  
     # So, YiU and dist_prediction determine the data entering into local model construction
     # dist_model = conker_distance_cur
@@ -176,8 +180,11 @@ conker_interpolate = function( ip=NULL, p ) {
 
     bad = which( (pa$iplon < 1 & pa$iplon > p$nplons) | (pa$iplat < 1 & pa$iplat > p$nplats) )
     if (length(bad) > 0 ) pa = pa[-bad,]
-    if (nrow(pa)< 5) next()
-    
+    if (nrow(pa)< 5)  {
+      bad = pa = YiU = o = U = NULL
+      next()
+    }
+
     pa$i = match( 
       array_map( "2->1", cbind(pa$iplon, pa$iplat), am ), 
       array_map( "2->1", cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1, am ) 
@@ -186,7 +193,10 @@ conker_interpolate = function( ip=NULL, p ) {
     bad = which( !is.finite(pa$i))
     if (length(bad) > 0 ) pa = pa[-bad,]
     pa_n = nrow(pa)
-    if ( pa_n < 5) next()
+    if ( pa_n < 5) {
+      bad = pa = YiU = o = U = NULL
+      next()
+    }
 
       if (0) {
         # check that position indices are working properly
@@ -403,7 +413,7 @@ conker_interpolate = function( ip=NULL, p ) {
     # the following permits user-defined models (might want to use compiler::cmpfun )
     gc()
     res =NULL
-    res = switch( p$conker_local_modelengine, 
+    res = try( switch( p$conker_local_modelengine, 
       bayesx = conker__bayesx( p, dat, pa ),
       habitat = conker__habitat( p, dat, pa ), # TODO 
       inla = conker__inla( p, dat, pa ),
@@ -417,7 +427,9 @@ conker_interpolate = function( ip=NULL, p ) {
       splancs = conker__spate( p, dat, pa ), # TODO
       twostep = conker__twostep( p, dat, pa, nu=nu , phi=phi, px=px ), # slow ...
       conker_local_modelengine_userdefined = p$conker_local_modelengine_userdefined( p, dat, pa)
-    )
+    ) )
+
+
     
     # px = NULL
 
@@ -430,8 +442,20 @@ conker_interpolate = function( ip=NULL, p ) {
     }
 
     rm(dat); gc()
-    if ( is.null(res)) next()
-   
+    if ( inherits(res, "try-error") ) {
+      dat = pa = px = NULL
+      next()
+    }
+    
+    if ( is.null(res)) {
+      dat = pa = px = NULL
+      next()
+    }
+    if ( all( !is.finite(res$predictions$mean ))) {
+      dat = pa = px = res = NULL
+      next()
+    }
+
     res$predictions$mean = p$conker_local_family$linkinv( res$predictions$mean )
     res$predictions$sd   = p$conker_local_family$linkinv( res$predictions$sd )
     if (p$conker_local_modelengine=="habitat") {
@@ -448,8 +472,10 @@ conker_interpolate = function( ip=NULL, p ) {
     }
     
     ii = which( is.finite(res$predictions$mean+res$predictions$sd))
-    if (length(ii) < 5) next()  # looks to be a faulty solution
-
+    if (length(ii) < 5) {
+      dat = pa = px = res = NULL
+      next()  # looks to be a faulty solution
+    }
 
     # stats collator
     if (!exists("conker_stats",  res) ) res$conker_stats = list()
