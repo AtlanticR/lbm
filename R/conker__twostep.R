@@ -1,9 +1,6 @@
 
-<<<<<<< HEAD
-conker__twostep = function( p, x, pa, nu=0.5, theta=1, px=NULL ) {
-=======
 conker__twostep = function( p, x, pa, px=NULL, smoothness=0.5, phi=NULL ) {
->>>>>>> develop
+
   #\\ twostep modelling time first as a simple ts and then spatial or spatio-temporal interpolation
   #\\ nu is the bessel smooth param
 
@@ -56,7 +53,6 @@ conker__twostep = function( p, x, pa, px=NULL, smoothness=0.5, phi=NULL ) {
   pa_i = 1:nrow(pa)
   px_i = 1:nrow(px)
 
-<<<<<<< HEAD
   dx = dy = p$pres
 
   nr2 = 2 * nr
@@ -74,11 +70,9 @@ conker__twostep = function( p, x, pa, px=NULL, smoothness=0.5, phi=NULL ) {
   rm(dgrid, AC, mAC, mC); gc()
 
   rY = range( x[,p$variables$Y], na.rm=TRUE)
-=======
 
   if (is.null(phi)) phi=p$conker_theta # range parameter
   if (is.null(smoothness)) smoothness=0.5 # this is an exponential covariance
->>>>>>> develop
 
 
   for ( ti in 1:p$nt ) {
@@ -94,7 +88,6 @@ conker__twostep = function( p, x, pa, px=NULL, smoothness=0.5, phi=NULL ) {
 
     
     # matrix representation of the output surface
-<<<<<<< HEAD
     # Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, theta=theta, cov.function=stationary.cov, Covariance="Matern", smoothness=nu ) )
     
     x_id = cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
@@ -140,20 +133,19 @@ conker__twostep = function( p, x, pa, px=NULL, smoothness=0.5, phi=NULL ) {
     ub = which( Z > rY[2] )
     if (length(ub) > 0) Z[ub] = NA
 
-=======
-    Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, cov.function=stationary.cov, Covariance="Matern", smoothness=smoothness, range=phi ) )
-    if ( "try-error" %in% class(Z) ) next()
+    # Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, cov.function=stationary.cov, Covariance="Matern", smoothness=smoothness, range=phi ) )
+    # if ( "try-error" %in% class(Z) ) next()
 
-    iZ = which( !is.finite( Z$z))
-    if (length(iZ) > 0) Z$z[iZ] = NA
-    rY = range( x[ ,p$variables$Y ], na.rm=TRUE)
-    nZ = which( Z$z < rY[1] )
-    if (length(nZ) > 0) Z$z[nZ] = NA
-    mZ = which( Z$z > rY[2] )
-    if (length(mZ) > 0) Z$z[mZ] = NA
-    # x11(); image.plot(Z)
-    Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, cov.function=stationary.cov, Covariance="Matern", smoothness=smoothness, range=phi ) )
->>>>>>> develop
+    # iZ = which( !is.finite( Z$z))
+    # if (length(iZ) > 0) Z$z[iZ] = NA
+    # rY = range( x[ ,p$variables$Y ], na.rm=TRUE)
+    # nZ = which( Z$z < rY[1] )
+    # if (length(nZ) > 0) Z$z[nZ] = NA
+    # mZ = which( Z$z > rY[2] )
+    # if (length(mZ) > 0) Z$z[mZ] = NA
+    # # x11(); image.plot(Z)
+    # Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, cov.function=stationary.cov, Covariance="Matern", smoothness=smoothness, range=phi ) )
+
     if ( "try-error" %in% class(Zsd) ) next()
     pa$mean[pa_i] = Z$z[Z_all[ pa_i, ]]
     pa$sd[pa_i] = Zsd$z[Z_all[ pa_i, ]]
