@@ -126,7 +126,7 @@
 
     if ( DS %in% c( "statistics.Sflag" ) ) {
     
-      if (p$boundary) {
+      if (exists( "boundary", p) && p$boundary) {
         p$timeb0 =  Sys.time()
         message( "Defining boundary polygon for data .. this reduces the number of points to analyse")
         message( "but takes a few minutes to set up ...")
@@ -137,7 +137,7 @@
         if (!is.null(bnds)) {
           if( !("try-error" %in% class(bnds) ) ) {
             to.ignore = which( bnds$inside.polygon == 0 ) # outside boundary
-            if (length(to.ignore)>0) Sflag[to.ignore,] = Inf
+            if (length(to.ignore)>0) Sflag[to.ignore] = Inf
         }}
         bnds = NULL
         p$timeb1 =  Sys.time()
@@ -147,14 +147,21 @@
       if ( !is.null(p$depth.filter) ) {
         # assuming that there is depth information in Pcov, match Sloc's and filter out locations that fall on land
         if ( "z" %in% p$variables$COV ){
-          depths = lstfilter_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
+          Pland = which( lstfilter_attach( p$storage.backend, p$ptr$Pcov[["z"]] )[] < p$depth.filter )
+          
           Ploc = lstfilter_attach( p$storage.backend, p$ptr$Ploc )
           Sloc = lstfilter_attach( p$storage.backend, p$ptr$Sloc )
-          S_index = match( array_map( "2->1", cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ), 
-                           array_map( "2->1", cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ) )
-          land = which( depths[ S_index ] < p$depth.filter )
+          
+          Swater = match( array_map( "2->1", cbind(Ploc[-Pland,1]-p$plons[1], Ploc[-Pland,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ), 
+                           array_map( "2->1", cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ) )
+          Swater = unique( Swater )
+          Swater = Swater[ is.finite(Swater)]
+
+          Sland = setdiff( 1:nrow(Sloc), Swater )
           Sflag = lstfilter_attach( p$storage.backend, p$ptr$Sflag )
-          if (length(land)>0) Sflag[land,] = Inf 
+          if (length(Sland)>0) Sflag[Sland] = Inf
+          if (length(Sland)>0) Sflag[Swater] = NaN
+           
           rm(land, S_index); gc()
         }
       }
@@ -196,9 +203,10 @@
       uu = unique( array_map( "2->1", cbind(yplon, yplat), c(p$nplons, p$nplats) ) )
       vv = array_map( "1->2", uu, c(p$nplons, p$nplats) )
       
-      Ploc = lstfilter_attach(  p$storage.backend, p$ptr$Ploc )
+      ww = cbind( (vv[,1] - 1) * p$pres + p$plons[1], (vv[,2] - 1) * p$pres + p$plats[1] )
+
       if (!exists("lstfilter_nonconvexhull_alpha", p)) p$lstfilter_nonconvexhull_alpha=20
-      boundary=list( polygon = non_convex_hull( Ploc[vv,], alpha=p$lstfilter_nonconvexhull_alpha, plot=FALSE ) )
+      boundary=list( polygon = non_convex_hull( ww, alpha=p$lstfilter_nonconvexhull_alpha, plot=FALSE ) )
       
       # statistical output locations
       Sloc = lstfilter_attach(  p$storage.backend, p$ptr$Sloc )

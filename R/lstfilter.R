@@ -20,18 +20,14 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL,
     overwrite=NULL
     DATA='hydro.db( p=p, DS="lstfilter.input" )'
     storage.backend="bigmemory.ram"
-    boundary=TRUE
+
 
     p = bio.bathymetry::bathymetry.parameters( )
     p$lstfilter_local_modelengine = "kernel.density"  # about 5 X faster than bayesx-mcmc method
-    # p$lstfilter_local_modelengine = "gaussianprocess2Dt"
-    # p$lstfilter_local_modelengine = "gam"
-    # p$lstfilter_local_modelengine = "bayesx"
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="lstfilter" )
     overwrite=NULL
     DATA='bathymetry.db( p=p, DS="bathymetry.lstfilter.data" )'
     p$storage.backend="bigmemory.ram"
-
   }
 
   p$time.start =  Sys.time()
