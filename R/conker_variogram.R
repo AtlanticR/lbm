@@ -123,14 +123,15 @@ conker_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("f
     # remove the (0,0) point -- force intercept
     vg = vario@emp.vario[-1]
     vx = vario@centers[-1]
+    mvg = max(vg)
+    mvx = max(vx)
     #nonlinear est
-    o = try( optim( par=c(tau.sq=max(vg)*0.1, sigma.sq=max(vg)*0.9, phi=max(vx)*0.5, nu=0.5), 
-      vg=vg, vx=vx, method="BFGS", control=list(maxit=500),
+    par = c(tau.sq=mvg*0.05, sigma.sq=mvg*0.95, phi=mvx/5, nu=0.5) 
+    o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", 
+      lower =c(0,0,0, 0),
+      upper =c(mvg, mvg, mvx, 2),
+      control=list(maxit=100),
       fn=function(par, vg, vx){ 
-        par["tau.sq"] = max( par["tau.sq"], eps )
-        par["sigma.sq"] = max( par["sigma.sq"], eps)
-        par["nu"] = max( par["nu"], eps )
-        par["phi"] = max( par["phi"] , eps )
         vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
         dy = sum( (vg - vgm)^2) # vario normal errors, no weights , etc.. just the line
       } ) 
@@ -138,14 +139,20 @@ conker_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("f
     
     if ( !inherits(o, "try-error")) { 
       if ( o$convergence==0 ) {
-        out$fast = list( fit=o, vgm=vario, range=NA, nu=max(eps, o$par["nu"]), phi=max(eps, o$par["phi"]),
-          varSpatial=max( eps, o$par["sigma.sq"]), varObs=max(eps, o$par["tau.sq"] ) ) 
+        par = o$par 
+        out$fast = list( fit=o, vgm=vario, range=NA, nu=par["nu"], phi=par["phi"],
+          varSpatial=par["sigma.sq"], varObs=par["tau.sq"] ) 
         rg = try(geoR::practicalRange("matern", phi=out$fast$phi, kappa=out$fast$nu ))
         if (! inherits(rg, "try-error") ) {
           out$fast$range = rg
         } else {
           out$fast$range = 0
         }
+      } else {
+        out = try( conker_variogram( xy=xy, z=z, methods="gstat") )
+        out$fast =out$gstat
+        out$gstat =NULL
+        return(out)
       }
     }
  
