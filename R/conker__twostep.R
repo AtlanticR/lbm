@@ -1,5 +1,5 @@
 
-conker__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
+lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
 
   #\\ twostep modelling time first as a simple ts and then spatial or spatio-temporal interpolation
   #\\ nu is the bessel smooth param
@@ -8,29 +8,29 @@ conker__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   # use all available data in 'x' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
   # currently only a GAM is enable for the TS component
 
-  if (is.null(phi)) phi=p$conker_phi # range parameter
-  if (is.null(nu)) nu=p$conker_nu  # this is an exponential covariance
+  if (is.null(phi)) phi=p$lstfilter_phi # range parameter
+  if (is.null(nu)) nu=p$lstfilter_nu  # this is an exponential covariance
 
-  if ( exists("conker_local_model_distanceweighted", p) ) {
-    if (p$conker_local_model_distanceweighted) {
-      hmod = try( gam( p$conker_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
+  if ( exists("lstfilter_local_model_distanceweighted", p) ) {
+    if (p$lstfilter_local_model_distanceweighted) {
+      hmod = try( gam( p$lstfilter_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
     } else {
-      hmod = try( gam( p$conker_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
+      hmod = try( gam( p$lstfilter_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
     }
   } else {
-      hmod = try( gam( p$conker_local_modelformula, data=x ) )
+      hmod = try( gam( p$lstfilter_local_modelformula, data=x ) )
   } 
 
   if ( "try-error" %in% class(hmod) ) return( NULL )
 
   ss = summary(hmod)
-  if (ss$r.sq < p$conker_rsquared_threshold ) return(NULL)
+  if (ss$r.sq < p$lstfilter_rsquared_threshold ) return(NULL)
 
   if (is.null(px)) px=pa
 
   preds = try( predict( hmod, newdata=px, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
 
-  reject = which( preds$se.fit > quantile( preds$se.fit, probs= p$conker_quantile_bounds[2], na.rm=TRUE ) 
+  reject = which( preds$se.fit > quantile( preds$se.fit, probs= p$lstfilter_quantile_bounds[2], na.rm=TRUE ) 
                 | preds$fit > p$qs[2] 
                 | preds$fit < p$qs[1] )
 
@@ -155,10 +155,10 @@ conker__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
 
   # plot(mean ~ z , x)
   rsquared = ss$r.sq 
-  conker_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
+  lstfilter_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 
-  return( list( predictions=pa, conker_stats=conker_stats ) )  
+  return( list( predictions=pa, lstfilter_stats=lstfilter_stats ) )  
 }
 

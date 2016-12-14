@@ -1,6 +1,6 @@
 
-  conker_inla_call = function( FM, DATA, SPDE, FAMILY ) {
-    #\\ call inla using conker expected data objects: 
+  lstfilter_inla_call = function( FM, DATA, SPDE, FAMILY ) {
+    #\\ call inla using lstfilter expected data objects: 
     #\\   FM is the model formula
     #\\   DATA is the "stacked" data
     #\\   SPDE is the SPDE spatial covariance data object (Matern)

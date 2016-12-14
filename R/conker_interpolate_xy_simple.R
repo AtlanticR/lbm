@@ -1,6 +1,6 @@
 
 
-conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=NULL,
+lstfilter_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=NULL,
   trimquants=TRUE, trimprobs=c(0.025, 0.975), 
   nr=NULL, nc=NULL, phi=1, xwidth=phi*10, ywidth=phi*10, nu=0.5 ) {
   #\\ reshape after interpolating to fit the output resolution 
@@ -55,7 +55,7 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
     rm(dgrid, AC, mAC, mC); gc()
 
     rY = range( data, na.rm=TRUE)
-    # not finished, see conker__kerneldensity
+    # not finished, see lstfilter__kerneldensity
     x_id = cbind( (x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
                   (x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
   
@@ -129,7 +129,7 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
       nu = 0.5
       phi = min(dx, dy) / 10
 
-      o = conker::conker_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
+      o = lstfilter::lstfilter_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
       # suggest: nu=0.3; phi =1.723903
 
       keep = sample.int( nrow(locsout), 1000 ) 
@@ -137,8 +137,8 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
       y = y[keep]
       z = z[keep]
       
-      o = conker::conker_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
-      o = conker::conker_variogram( xy=cbind(x,y), z=z, methods="fast" ) 
+      o = lstfilter::lstfilter_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
+      o = lstfilter::lstfilter_variogram( xy=cbind(x,y), z=z, methods="fast" ) 
  
     }
     qz = range(z, na.rm=TRUE)
@@ -147,7 +147,7 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
     nc2 = 2 * nc
     
     Z2P = as.matrix( cbind( (x-datagrid$x[1])/dx + 1 , (y-datagrid$y[1] )/dy+1) ) # row, col indices in matrix form Z
-    zp = conker::array_map( "2->1", Z2P, c(nr2, nc2) ) # map to larger grid
+    zp = lstfilter::array_map( "2->1", Z2P, c(nr2, nc2) ) # map to larger grid
 
     dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
     center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
@@ -194,7 +194,7 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
     ndata = length(Y)
     noise = lengthscale * 1e-9
     locs = locs + runif( ndata*2, min=-noise, max=noise ) # add  noise  to prevent a race condition .. inla does not like uniform grids
-    MESH = conker_mesh_inla( locs, lengthscale=lengthscale )
+    MESH = lstfilter_mesh_inla( locs, lengthscale=lengthscale )
     if ( is.null( MESH) ) return( "Mesh Error" )
     SPDE = inla.spde2.matern( MESH,  alpha=2 ) # alpha is 2*nu (Bessel smoothness factor)
     varY = as.character( FM[2] )
@@ -220,9 +220,9 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
       i_data = inla.stack.index( DATA, "preds")$data
     }
     RES = NULL
-    RES = conker_inla_call( FM=FM, DATA=DATA, SPDE=SPDE, FAMILY="gaussian" )
+    RES = lstfilter_inla_call( FM=FM, DATA=DATA, SPDE=SPDE, FAMILY="gaussian" )
     # extract summary statistics from a spatial (SPDE) analysis and update the output file
-    # inla.summary = conker_summary_inla_spde2 = ( RES, SPDE )
+    # inla.summary = lstfilter_summary_inla_spde2 = ( RES, SPDE )
     # inla.spde2.matern creates files to disk that are not cleaned up:
     spdetmpfn = SPDE$f$spde2.prefix
     fns = list.files( dirname( spdetmpfn ), all.files=TRUE, full.names=TRUE, recursive=TRUE, include.dirs=TRUE )
@@ -296,7 +296,7 @@ conker_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=
 
     pCovars = as.matrix( rep(1, nrow(locsout)))  # in the simplest model, 1 col matrix for the intercept
 
-    stv = conker_variogram( xy, z, methods=method )
+    stv = lstfilter_variogram( xy, z, methods=method )
     rbounds = stv[[method]]$range * c( 0.01, 1.5 )
     phibounds = range( -log(0.05) / rbounds ) ## approximate
     nubounds = c(1e-3, stv[[method]]$kappa * 1.5 )# Finley et al 2007 suggest limiting this to (0,2)

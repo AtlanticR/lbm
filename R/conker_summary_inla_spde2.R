@@ -1,5 +1,5 @@
  
-  conker_summary_inla_spde2 = function( RES, SPDE, spatial.field.name="spatial.field" ) {
+  lstfilter_summary_inla_spde2 = function( RES, SPDE, spatial.field.name="spatial.field" ) {
     #\\ extract summary stats from SPDE results of the random field 
     #\\ parameters are  on user scale, low/high is 95% HPD
 

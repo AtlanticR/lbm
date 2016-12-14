@@ -1,4 +1,4 @@
-Package: conker
+Package: lstfilter
 Title: Constrained Kernel-based methods of modelling and predicting space-time hierarchical models.  
 Version: 0.1
 Authors@R: c( person("Jae", "Choi", email="choijaeseok@gmail.com", role=c("aut", "cre")) ) 
@@ -27,6 +27,6 @@ Suggests:
 VignetteBuilder: knitr
 License: MIT
 LazyData: true
-URL: https://github.com/ja0/conker/
+URL: https://github.com/ja0/lstfilter/
 
 

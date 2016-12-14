@@ -1,5 +1,5 @@
 
-conker_LaplacesDemon_setup = function(DS="example.data", Data=NULL) {
+lstfilter_LaplacesDemon_setup = function(DS="example.data", Data=NULL) {
 
   if (DS=="spatial.test") {  
 

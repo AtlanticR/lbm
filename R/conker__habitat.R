@@ -1,32 +1,32 @@
 
-conker__habitat = function( p, x, pa ) {
-   #\\ this is the core engine of conker .. localised space-time habiat modelling
+lstfilter__habitat = function( p, x, pa ) {
+   #\\ this is the core engine of lstfilter .. localised space-time habiat modelling
  
   if (0) {
     if (!exists("nsims", p)) p$nsims = 5000
     if (!exists("habitat.threshold.quantile", p)) p$habitat.threshold.quantile = 0.05 # quantile at which to consider zero-valued abundance
   }
 
-  if ( exists("conker_local_model_distanceweighted", p) ) {
-    if (p$conker_local_model_distanceweighted) {
-      Hmodel = try( gam( p$conker_local_modelformula, data=x, family=binomial, weights=weights, optimizer=c("outer","optim")  ) )
+  if ( exists("lstfilter_local_model_distanceweighted", p) ) {
+    if (p$lstfilter_local_model_distanceweighted) {
+      Hmodel = try( gam( p$lstfilter_local_modelformula, data=x, family=binomial, weights=weights, optimizer=c("outer","optim")  ) )
     } else {
-      Hmodel = try( gam( p$conker_local_modelformula, data=x, family=binomial, optimizer=c("outer","optim")  ) )
+      Hmodel = try( gam( p$lstfilter_local_modelformula, data=x, family=binomial, optimizer=c("outer","optim")  ) )
     }
   } else {
-      Hmodel = try( gam( p$conker_local_modelformula, data=x, family=binomial ) )
+      Hmodel = try( gam( p$lstfilter_local_modelformula, data=x, family=binomial ) )
   } 
   if ( "try-error" %in% class(Hmodel) ) return( NULL )
 
 
-  if ( exists("conker_local_model_distanceweighted", p) ) {
-    if (p$conker_local_model_distanceweighted) {
-      Amodel = try( gam( p$conker_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
+  if ( exists("lstfilter_local_model_distanceweighted", p) ) {
+    if (p$lstfilter_local_model_distanceweighted) {
+      Amodel = try( gam( p$lstfilter_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
     } else {
-      Amodel = try( gam( p$conker_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
+      Amodel = try( gam( p$lstfilter_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
     }
   } else {
-      Amodel = try( gam( p$conker_local_modelformula, data=x ) )
+      Amodel = try( gam( p$lstfilter_local_modelformula, data=x ) )
   } 
   if ( "try-error" %in% class(Amodel) ) return( NULL )
 
@@ -35,7 +35,7 @@ conker__habitat = function( p, x, pa ) {
   x$Yhat = x$P * x$A
 
   rsq = cor( x$Yhat, x[,p$variables$Y], use="pairwise.complete.obs" )^2
-  if (rsq < p$conker_rsquared_threshold ) return(NULL)
+  if (rsq < p$lstfilter_rsquared_threshold ) return(NULL)
 
   Hmodel.coef = mvtnorm::rmvnorm(p$nsims, coef(Hmodel), Hmodel$Vp, method="chol")
   rm( Hmodel); gc()
@@ -69,8 +69,8 @@ conker__habitat = function( p, x, pa ) {
   # iHabitat = which( pa$logitmean > p$habitat.threshold.quantile & (pa$logitmean - 2 * pa$logitsd) > 0 )
 
   ss = summary(hmod)
-  conker_stats = list( sdTotal=sd(Y[], na.rm=T), rsquared=rsq, ndata=nrow(x) ) # must be same order as p$statsvars
+  lstfilter_stats = list( sdTotal=sd(Y[], na.rm=T), rsquared=rsq, ndata=nrow(x) ) # must be same order as p$statsvars
 
-  return( list( predictions=pa, conker_stats=conker_stats ) )  
+  return( list( predictions=pa, lstfilter_stats=lstfilter_stats ) )  
 
 }

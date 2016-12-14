@@ -1,7 +1,7 @@
 
-  conker_plot = function( p, obj, RES=NULL, MESH=NULL, SPDE=NULL, vname=NULL, idat=NULL, nxout=100, nyout=100 ) {
-    #\\ Simple diagnostic plots for conker statistics and predictions
-    #\\   conker_plot( p=p, odb="mesh" ) :: mesh, range, nugget, partial.sill, kappa, intercept, etc
+  lstfilter_plot = function( p, obj, RES=NULL, MESH=NULL, SPDE=NULL, vname=NULL, idat=NULL, nxout=100, nyout=100 ) {
+    #\\ Simple diagnostic plots for lstfilter statistics and predictions
+    #\\   lstfilter_plot( p=p, odb="mesh" ) :: mesh, range, nugget, partial.sill, kappa, intercept, etc
     #\\   RES is the data result from an inla call
     #\\   MESH is the mesh data object
     #\\   vname is the name of the random spatial field in the model formula
@@ -10,9 +10,9 @@
 
     pp = grep("datalocation", obj )
       if ( length(pp) > 0 ) {
-        Y = conker_attach( p$storage.backend, p$ptr$Y )
-        Y0 = conker_attach( p$storage.backend, p$ptr$Y0 )
-        Yloc = conker_attach( p$storage.backend, p$ptr$Yloc )
+        Y = lstfilter_attach( p$storage.backend, p$ptr$Y )
+        Y0 = lstfilter_attach( p$storage.backend, p$ptr$Y0 )
+        Yloc = lstfilter_attach( p$storage.backend, p$ptr$Yloc )
         lattice::levelplot( Y0 ~ Yloc[,1] + Yloc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
       }
 
@@ -20,8 +20,8 @@
 
       pp = grep("statistics", obj )
       if ( length(pp) > 0 ) {
-        S = conker_attach( p$storage.backend, p$ptr$S )
-        Sloc = conker_attach( p$storage.backend, p$ptr$Sloc )
+        S = lstfilter_attach( p$storage.backend, p$ptr$S )
+        Sloc = lstfilter_attach( p$storage.backend, p$ptr$Sloc )
         # vname = "ar_timerange"
         v = which( p$statsvars == vname)
         lattice::levelplot( (S[,v]) ~ Sloc[,1] + Sloc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
@@ -29,9 +29,9 @@
 
       pp = grep("predictions", obj )
       if ( length(pp) > 0 ) {
-        P = conker_attach( p$storage.backend, p$ptr$P )
-        # P0 = conker_attach( p$storage.backend, p$ptr$P0 )
-        Ploc = conker_attach( p$storage.backend, p$ptr$Ploc )
+        P = lstfilter_attach( p$storage.backend, p$ptr$P )
+        # P0 = lstfilter_attach( p$storage.backend, p$ptr$P0 )
+        Ploc = lstfilter_attach( p$storage.backend, p$ptr$Ploc )
         lattice::levelplot( (P[,100]) ~ Ploc[,1] + Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
       }
 
@@ -117,8 +117,8 @@
       posterior.samples = inla.posterior.sample( n=1000, RES)
 
       rnm = rownames(posterior.samples[[1]]$latent )
-      posterior = sapply( posterior.samples, p$conker.posterior.extract, rnm=rnm )
-      posterior = p$conker_local_family()$linkinv( posterior )   # return to original scale
+      posterior = sapply( posterior.samples, p$lstfilter.posterior.extract, rnm=rnm )
+      posterior = p$lstfilter_local_family()$linkinv( posterior )   # return to original scale
 
       out_mean = inla.mesh.project( pG, field=apply( posterior, 1, mean, na.rm=TRUE )  )  # mean
       out_sd   = inla.mesh.project( pG, field=apply( posterior, 1, sd  , na.rm=TRUE )  )  # mean

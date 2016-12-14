@@ -38,7 +38,7 @@ sp::spplot(rfG)
 ss = rfG[ si, ]
 locs_xy = ss[, c("x","y") ]
 z = ss[,"sim1"]
-vg = conker_variogram( locs_xy, z, methods="gstat" )
+vg = lstfilter_variogram( locs_xy, z, methods="gstat" )
 
 
 # -------------------
@@ -51,7 +51,7 @@ lines.variomodel(rfGeoR)
 image(rfGeoR)
 z = rfG[si,3]
 
-vg = conker_variogram( locs_xy, z, methods="geoR" )
+vg = lstfilter_variogram( locs_xy, z, methods="geoR" )
 
 
 # -------------------

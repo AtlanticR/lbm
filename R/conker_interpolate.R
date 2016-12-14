@@ -1,5 +1,5 @@
 
-conker_interpolate = function( ip=NULL, p ) {
+lstfilter_interpolate = function( ip=NULL, p ) {
   #\\ core function to intepolate (model and predict) in parllel
 
   if (exists( "libs", p)) RLibrary( p$libs )
@@ -7,26 +7,26 @@ conker_interpolate = function( ip=NULL, p ) {
 
   #---------------------
   # data for modelling
-  # dependent vars # already link-transformed in conker_db("dependent")
+  # dependent vars # already link-transformed in lstfilter_db("dependent")
   
-  S = conker_attach( p$storage.backend, p$ptr$S )
-  Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
+  S = lstfilter_attach( p$storage.backend, p$ptr$S )
+  Sflag = lstfilter_attach( p$storage.backend, p$ptr$Sflag )
   
-  Sloc = conker_attach( p$storage.backend, p$ptr$Sloc )
-  Ploc = conker_attach( p$storage.backend, p$ptr$Ploc )
-  Yloc = conker_attach( p$storage.backend, p$ptr$Yloc )
+  Sloc = lstfilter_attach( p$storage.backend, p$ptr$Sloc )
+  Ploc = lstfilter_attach( p$storage.backend, p$ptr$Ploc )
+  Yloc = lstfilter_attach( p$storage.backend, p$ptr$Yloc )
 
-  Y = conker_attach( p$storage.backend, p$ptr$Y )
+  Y = lstfilter_attach( p$storage.backend, p$ptr$Y )
 
-  P = conker_attach( p$storage.backend, p$ptr$P )
-  Pn = conker_attach( p$storage.backend, p$ptr$Pn )
-  Psd = conker_attach( p$storage.backend, p$ptr$Psd )
+  P = lstfilter_attach( p$storage.backend, p$ptr$P )
+  Pn = lstfilter_attach( p$storage.backend, p$ptr$Pn )
+  Psd = lstfilter_attach( p$storage.backend, p$ptr$Psd )
 
   if (exists("local_cov", p$variables)) {
-    Ycov = conker_attach( p$storage.backend, p$ptr$Ycov )
+    Ycov = lstfilter_attach( p$storage.backend, p$ptr$Ycov )
   }
   if ( exists("TIME", p$variables) ) {
-    Ytime = conker_attach( p$storage.backend, p$ptr$Ytime )
+    Ytime = lstfilter_attach( p$storage.backend, p$ptr$Ytime )
   }
 
   if ( p$storage.backend != "bigmemory.ram" ) {
@@ -36,24 +36,24 @@ conker_interpolate = function( ip=NULL, p ) {
     # Y = Y[]
   }
 
-  if (p$conker_local_modelengine=="habitat") {
-    Ylogit = conker_attach( p$storage.backend, p$ptr$Ylogit )
-    Plogit = conker_attach( p$storage.backend, p$ptr$Plogit )
-    Plogitsd = conker_attach( p$storage.backend, p$ptr$Plogitsd )
+  if (p$lstfilter_local_modelengine=="habitat") {
+    Ylogit = lstfilter_attach( p$storage.backend, p$ptr$Ylogit )
+    Plogit = lstfilter_attach( p$storage.backend, p$ptr$Plogit )
+    Plogitsd = lstfilter_attach( p$storage.backend, p$ptr$Plogitsd )
   }
 
-  Yi = conker_attach( p$storage.backend, p$ptr$Yi )
+  Yi = lstfilter_attach( p$storage.backend, p$ptr$Yi )
   Yi = as.vector(Yi[])  #force copy to RAM as a vector
 
   # misc intermediate calcs to be done outside of parallel loops
   upsampling = sort( p$sampling[ which( p$sampling > 1 ) ] )
-  upsampling = upsampling[ which(upsampling*p$conker_distance_scale <= p$conker_distance_max )]
+  upsampling = upsampling[ which(upsampling*p$lstfilter_distance_scale <= p$lstfilter_distance_max )]
   downsampling = sort( p$sampling[ which( p$sampling < 1) ] , decreasing=TRUE )
-  downsampling = downsampling[ which(downsampling*p$conker_distance_scale >= p$conker_distance_min )]
+  downsampling = downsampling[ which(downsampling*p$lstfilter_distance_scale >= p$lstfilter_distance_min )]
 
 
   # used by "fields" GRMF functions
-  theta.grid = 10^seq( -6, 6, by=0.5) * p$conker_distance_scale # maxdist is aprox magnitude of the phi parameter
+  theta.grid = 10^seq( -6, 6, by=0.5) * p$lstfilter_distance_scale # maxdist is aprox magnitude of the phi parameter
   lambda.grid = 10^seq( -9, 3, by=0.5) 
 
   am = c(p$nplons, p$nplats)
@@ -70,8 +70,8 @@ conker_interpolate = function( ip=NULL, p ) {
     # find data nearest S[Si,] and with sufficient data
     dlon = abs( Sloc[Si,1] - Yloc[Yi,1] ) 
     dlat = abs( Sloc[Si,2] - Yloc[Yi,2] ) 
-    U =  which( dlon  <= p$conker_distance_scale  & dlat <= p$conker_distance_scale )
-    conker_distance_cur = p$conker_distance_scale
+    U =  which( dlon  <= p$lstfilter_distance_scale  & dlat <= p$lstfilter_distance_scale )
+    lstfilter_distance_cur = p$lstfilter_distance_scale
     ndata = length(U)
     nu = nu0
 
@@ -83,24 +83,24 @@ conker_interpolate = function( ip=NULL, p ) {
       } else {
         Uj = U
       }
-      o = try( conker_variogram( xy=Yloc[Uj,], z=p$conker_local_family$linkfun(Y[Uj]), methods=p$conker_variogram_method ) )
+      o = try( lstfilter_variogram( xy=Yloc[Uj,], z=p$lstfilter_local_family$linkfun(Y[Uj]), methods=p$lstfilter_variogram_method ) )
       if ( !is.null(o)) {
         if (!inherits(o, "try-error")) {
-          if (exists(p$conker_variogram_method, p)) {
-            if ( is.finite( o[[p$conker_variogram_method]]$range ) &&
-                 (o[[p$conker_variogram_method]]$range > p$conker_distance_scale / 20) && 
-                 (o[[p$conker_variogram_method]]$range < p$conker_distance_scale * 20) ) {
+          if (exists(p$lstfilter_variogram_method, p)) {
+            if ( is.finite( o[[p$lstfilter_variogram_method]]$range ) &&
+                 (o[[p$lstfilter_variogram_method]]$range > p$lstfilter_distance_scale / 20) && 
+                 (o[[p$lstfilter_variogram_method]]$range < p$lstfilter_distance_scale * 20) ) {
        
-                conker_distance_cur = min( max(1, o[[p$conker_variogram_method]][["range"]] ), p$conker_distance_scale ) 
-                U = which( dlon  <= conker_distance_cur  & dlat <= conker_distance_cur )
+                lstfilter_distance_cur = min( max(1, o[[p$lstfilter_variogram_method]][["range"]] ), p$lstfilter_distance_scale ) 
+                U = which( dlon  <= lstfilter_distance_cur  & dlat <= lstfilter_distance_cur )
                 ndata =length(U)
-                nu = o[[p$conker_variogram_method]][["nu"]]
-                ores = o[[p$conker_variogram_method]] # store current best estimate of variogram characteristics
+                nu = o[[p$lstfilter_variogram_method]][["nu"]]
+                ores = o[[p$lstfilter_variogram_method]] # store current best estimate of variogram characteristics
             }    
                   
             if (0) {
-              if (p$conker_variogram_method == "fast" ) { 
-                plot(o[[p$conker_variogram_method]][["vgm"]], 
+              if (p$lstfilter_variogram_method == "fast" ) { 
+                plot(o[[p$lstfilter_variogram_method]][["vgm"]], 
                   model=RMmatern( nu=o$fast$nu, var=o$fast$varSpatial, scale=o$fast$phi * 
                   (sqrt(o$fast$nu*2) )) + RMnugget(var=o$fast$varObs) )
               }
@@ -111,11 +111,11 @@ conker_interpolate = function( ip=NULL, p ) {
     }
 
     # if insufficient data found within the "range" fall back to a brute force search until criteria are met
-    if (ndata < p$n.min | ndata > p$n.max | conker_distance_cur < p$conker_distance_min | conker_distance_cur > p$conker_distance_max ) { 
+    if (ndata < p$n.min | ndata > p$n.max | lstfilter_distance_cur < p$lstfilter_distance_min | lstfilter_distance_cur > p$lstfilter_distance_max ) { 
       if ( ndata < p$n.min )  {
         for ( usamp in upsampling )  {
-          conker_distance_cur = p$conker_distance_scale * usamp
-          U = which( dlon < conker_distance_cur & dlat < conker_distance_cur ) # faster to take a block 
+          lstfilter_distance_cur = p$lstfilter_distance_scale * usamp
+          U = which( dlon < lstfilter_distance_cur & dlat < lstfilter_distance_cur ) # faster to take a block 
           ndata = length(U)
           if ( ndata >= p$n.min ) {
             if (ndata >= p$n.max) {
@@ -133,13 +133,13 @@ conker_interpolate = function( ip=NULL, p ) {
           } 
         } else {
           for ( dsamp in downsampling )  { # lots of data .. downsample
-            conker_distance_cur = p$conker_distance_scale * dsamp
-            U = which( dlon < conker_distance_cur & dlat < conker_distance_cur )# faster to take a block 
+            lstfilter_distance_cur = p$lstfilter_distance_scale * dsamp
+            U = which( dlon < lstfilter_distance_cur & dlat < lstfilter_distance_cur )# faster to take a block 
             ndata = length(U)
             if ( ndata <= p$n.max ) break()
-            if ( conker_distance_cur <= p$conker_distance_min ) {
+            if ( lstfilter_distance_cur <= p$lstfilter_distance_min ) {
               # reached lower limit in distance, taking a subsample instead
-              U = which( dlon < p$conker_distance_min & dlat < p$conker_distance_min ) # faster to take a block 
+              U = which( dlon < p$lstfilter_distance_min & dlat < p$lstfilter_distance_min ) # faster to take a block 
               U = U[ .Internal( sample( length(U), p$n.max, replace=FALSE, prob=NULL)) ]
               ndata = length(U)
               break()
@@ -160,9 +160,9 @@ conker_interpolate = function( ip=NULL, p ) {
 
     YiU = Yi[U]  
     # So, YiU and dist_prediction determine the data entering into local model construction
-    # dist_model = conker_distance_cur
+    # dist_model = lstfilter_distance_cur
 
-    dist_prediction = min( p$conker_distance_prediction, conker_distance_cur ) # do not predict greater than p$conker_distance_prediction
+    dist_prediction = min( p$lstfilter_distance_prediction, lstfilter_distance_cur ) # do not predict greater than p$lstfilter_distance_prediction
 
     # construct prediction/output grid area ('pa')
     windowsize.half = floor(dist_prediction/p$pres) # convert distance to discretized increments of row/col indices
@@ -200,8 +200,8 @@ conker_interpolate = function( ip=NULL, p ) {
 
       if (0) {
         # check that position indices are working properly
-        Sloc = conker_attach( p$storage.backend, p$ptr$Sloc )
-        Yloc = conker_attach( p$storage.backend, p$ptr$Yloc )
+        Sloc = lstfilter_attach( p$storage.backend, p$ptr$Sloc )
+        Yloc = lstfilter_attach( p$storage.backend, p$ptr$Yloc )
         plot( Yloc[U,1]~ Yloc[U,2], col="red", pch=".") # all data
         points( Yloc[YiU,1] ~ Yloc[YiU,2], col="green" )  # with covars and no other data issues
         points( Sloc[Si,1] ~ Sloc[Si,2], col="blue" ) # statistical locations
@@ -222,7 +222,7 @@ conker_interpolate = function( ip=NULL, p ) {
       for (ci in 1:length(p$variables$local_cov)) {
         vn = p$variables$local_cov[ci]
         pu = NULL
-        pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+        pu = lstfilter_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
         nts = ncol(pu)
         if ( nts== 1 ) {
           pvars = c( pvars, vn )
@@ -267,7 +267,7 @@ conker_interpolate = function( ip=NULL, p ) {
         for (ci in 1:length(p$variables$local_cov)) {
           vn = p$variables$local_cov[ci]
           pu = NULL
-          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+          pu = lstfilter_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
           nts = ncol(pu)
           if ( nts == p$ny )  {
             pvars2 = c( pvars2, vn )
@@ -286,9 +286,9 @@ conker_interpolate = function( ip=NULL, p ) {
     # reconstruct data for modelling (dat) and data for prediction purposes (pa)
     dat = data.frame( Y[YiU] )
     names(dat) = p$variables$Y
-    dat[, p$variables$Y] = p$conker_local_family$linkfun ( dat[, p$variables$Y] ) 
-    if (p$conker_local_modelengine=="habitat") {
-      dat[, p$variables$Ylogit ] = p$conker_local_family_logit$linkfun ( dat[, p$variables$Ylogit] ) ### -- need to conform with data structure ... check once ready
+    dat[, p$variables$Y] = p$lstfilter_local_family$linkfun ( dat[, p$variables$Y] ) 
+    if (p$lstfilter_local_modelengine=="habitat") {
+      dat[, p$variables$Ylogit ] = p$lstfilter_local_family_logit$linkfun ( dat[, p$variables$Ylogit] ) ### -- need to conform with data structure ... check once ready
     }
     dat$plon = Yloc[YiU,1]
     dat$plat = Yloc[YiU,2]
@@ -313,7 +313,7 @@ conker_interpolate = function( ip=NULL, p ) {
     }
 
   # use a larger data grid to interpolate.. right now too slow to use so skip this step
-    if (p$conker_local_modelengine %in% c( "spate", "twostep", "conker_local_modelengine_userdefined", "kernel.density" ) ) {
+    if (p$lstfilter_local_modelengine %in% c( "spate", "twostep", "lstfilter_local_modelengine_userdefined", "kernel.density" ) ) {
       # some methods require a uniform prediction grid based upon all dat locations (and time) 
       # begin with "dat"    
       px = dat # only the static parts .. time has to be a uniform grid so reconstruct below
@@ -337,7 +337,7 @@ conker_interpolate = function( ip=NULL, p ) {
       if (exists("local_cov", p$variables)) {
         for (ci in 1:length(p$variables$local_cov)) {
           vn = p$variables$local_cov[ci]
-          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+          pu = lstfilter_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
           nts = ncol(pu)
           if ( nts==1 ) tokeep = c(tokeep, vn ) 
         }
@@ -369,7 +369,7 @@ conker_interpolate = function( ip=NULL, p ) {
         px$it = p$nw*(px$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
         for (ci in 1:length(p$variables$local_cov)) {
           vn = p$variables$local_cov[ci]
-          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+          pu = lstfilter_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
           nts = ncol(pu)
           if ( nts== 1) {
             # static vars are retained in the previous step
@@ -386,16 +386,16 @@ conker_interpolate = function( ip=NULL, p ) {
     }
 
     o = NULL
-    o = try( conker_variogram( xy=dat[,p$variables$LOC], 
-      z=p$conker_local_family$linkfun(dat[, p$variables$Y ]), 
-      methods=p$conker_variogram_method) ) 
+    o = try( lstfilter_variogram( xy=dat[,p$variables$LOC], 
+      z=p$lstfilter_local_family$linkfun(dat[, p$variables$Y ]), 
+      methods=p$lstfilter_variogram_method) ) 
       if (!inherits(o, "try-error")) {
         if ( !is.null(o) ) {
-          if ( exists( p$conker_variogram_method, o )) {
-            if ( is.finite( o[[p$conker_variogram_method]]$range ) &&
-                 (o[[p$conker_variogram_method]]$range > p$conker_distance_scale / 20) && 
-                 (o[[p$conker_variogram_method]]$range < p$conker_distance_scale * 20) ) {
-                  ores = o[[p$conker_variogram_method]]  # if a stable result is found for the smaller area, use it in preference     
+          if ( exists( p$lstfilter_variogram_method, o )) {
+            if ( is.finite( o[[p$lstfilter_variogram_method]]$range ) &&
+                 (o[[p$lstfilter_variogram_method]]$range > p$lstfilter_distance_scale / 20) && 
+                 (o[[p$lstfilter_variogram_method]]$range < p$lstfilter_distance_scale * 20) ) {
+                  ores = o[[p$lstfilter_variogram_method]]  # if a stable result is found for the smaller area, use it in preference     
             }
 
           }  
@@ -407,26 +407,26 @@ conker_interpolate = function( ip=NULL, p ) {
       if ( exists("nu", ores) ) nu = ores$nu
       if ( exists("phi", ores) ) phi = ores$phi 
     }
-    if (is.null(phi)) phi = p$conker_phi
+    if (is.null(phi)) phi = p$lstfilter_phi
 
     # model and prediction 
     # the following permits user-defined models (might want to use compiler::cmpfun )
     gc()
     res =NULL
-    res = try( switch( p$conker_local_modelengine, 
-      bayesx = conker__bayesx( p, dat, pa ),
-      habitat = conker__habitat( p, dat, pa ), # TODO 
-      inla = conker__inla( p, dat, pa ),
-      kernel.density = conker__kerneldensity( p, dat, pa, nu, phi ),
-      gam = conker_gam( p, dat, pa ), 
-      gaussianprocess2Dt = conker__gaussianprocess2Dt( p, dat, pa ), 
-      gaussianprocess = conker__gaussianprocess( p, dat, pa ),  # TODO
-      glm = conker_glm( p, dat, pa ), 
-      LaplacesDemon = conker__LaplacesDemon( p, dat, pa ),
-      spate = conker__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 
-      splancs = conker__spate( p, dat, pa ), # TODO
-      twostep = conker__twostep( p, dat, pa, nu=nu , phi=phi, px=px ), # slow ...
-      conker_local_modelengine_userdefined = p$conker_local_modelengine_userdefined( p, dat, pa)
+    res = try( switch( p$lstfilter_local_modelengine, 
+      bayesx = lstfilter__bayesx( p, dat, pa ),
+      habitat = lstfilter__habitat( p, dat, pa ), # TODO 
+      inla = lstfilter__inla( p, dat, pa ),
+      kernel.density = lstfilter__kerneldensity( p, dat, pa, nu, phi ),
+      gam = lstfilter_gam( p, dat, pa ), 
+      gaussianprocess2Dt = lstfilter__gaussianprocess2Dt( p, dat, pa ), 
+      gaussianprocess = lstfilter__gaussianprocess( p, dat, pa ),  # TODO
+      glm = lstfilter_glm( p, dat, pa ), 
+      LaplacesDemon = lstfilter__LaplacesDemon( p, dat, pa ),
+      spate = lstfilter__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 
+      splancs = lstfilter__spate( p, dat, pa ), # TODO
+      twostep = lstfilter__twostep( p, dat, pa, nu=nu , phi=phi, px=px ), # slow ...
+      lstfilter_local_modelengine_userdefined = p$lstfilter_local_modelengine_userdefined( p, dat, pa)
     ) )
 
 
@@ -456,15 +456,15 @@ conker_interpolate = function( ip=NULL, p ) {
       next()
     }
 
-    res$predictions$mean = p$conker_local_family$linkinv( res$predictions$mean )
-    res$predictions$sd   = p$conker_local_family$linkinv( res$predictions$sd )
-    if (p$conker_local_modelengine=="habitat") {
-      res$predictions$logitmean = p$conker_local_family_logit$linkinv( res$predictions$logitmean )
-      res$predictions$logitsd   = p$conker_local_family_logit$linkinv( res$predictions$logitsd )
+    res$predictions$mean = p$lstfilter_local_family$linkinv( res$predictions$mean )
+    res$predictions$sd   = p$lstfilter_local_family$linkinv( res$predictions$sd )
+    if (p$lstfilter_local_modelengine=="habitat") {
+      res$predictions$logitmean = p$lstfilter_local_family_logit$linkinv( res$predictions$logitmean )
+      res$predictions$logitsd   = p$lstfilter_local_family_logit$linkinv( res$predictions$logitsd )
     }
  
-    if (exists( "conker_quantile_bounds", p)) {
-      tq = quantile( Y[YiU], probs=p$conker_quantile_bounds, na.rm=TRUE  )
+    if (exists( "lstfilter_quantile_bounds", p)) {
+      tq = quantile( Y[YiU], probs=p$lstfilter_quantile_bounds, na.rm=TRUE  )
       toolow  = which( res$predictions$mean < tq[1] )
       toohigh = which( res$predictions$mean > tq[2] )
       if (length( toolow) > 0)  res$predictions$mean[ toolow] = tq[1]
@@ -478,24 +478,24 @@ conker_interpolate = function( ip=NULL, p ) {
     }
 
     # stats collator
-    if (!exists("conker_stats",  res) ) res$conker_stats = list()
+    if (!exists("lstfilter_stats",  res) ) res$lstfilter_stats = list()
     
-    if (!exists("sdSpatial", res$conker_stats)) {
+    if (!exists("sdSpatial", res$lstfilter_stats)) {
       # some methods can generate spatial stats simultaneously .. 
       # it is faster to keep them all together instead of repeating here
       # field and RandomFields gaussian processes seem most promising ... 
       # default to fields for speed:
-      res$conker_stats["sdSpatial"] = NA 
-      res$conker_stats["sdObs"] = NA 
-      res$conker_stats["range"] = NA
-      res$conker_stats["phi"] = NA
-      res$conker_stats["nu"] = NA
+      res$lstfilter_stats["sdSpatial"] = NA 
+      res$lstfilter_stats["sdObs"] = NA 
+      res$lstfilter_stats["range"] = NA
+      res$lstfilter_stats["phi"] = NA
+      res$lstfilter_stats["nu"] = NA
       if ( !is.null(ores)) {
-        res$conker_stats["sdSpatial"] = sqrt( ores[["varSpatial"]] ) 
-        res$conker_stats["sdObs"] = sqrt(ores[["varObs"]]) 
-        res$conker_stats["range"] = ores[["range"]]
-        res$conker_stats["phi"] = ores[["phi"]]
-        res$conker_stats["nu"] = ores[["nu"]]
+        res$lstfilter_stats["sdSpatial"] = sqrt( ores[["varSpatial"]] ) 
+        res$lstfilter_stats["sdObs"] = sqrt(ores[["varObs"]]) 
+        res$lstfilter_stats["range"] = ores[["range"]]
+        res$lstfilter_stats["phi"] = ores[["phi"]]
+        res$lstfilter_stats["nu"] = ores[["nu"]]
       } 
     }
     
@@ -505,8 +505,8 @@ conker_interpolate = function( ip=NULL, p ) {
       pac_i = which( res$predictions$plon==Sloc[Si,1] & res$predictions$plat==Sloc[Si,2] )
       # plot( mean~tiyr, res$predictions[pac_i,])
       # plot( mean~tiyr, res$predictions, pch="." )
-      res$conker_stats["ar_timerange"] = NA 
-      res$conker_stats["ar_1"] = NA
+      res$lstfilter_stats["ar_timerange"] = NA 
+      res$lstfilter_stats["ar_1"] = NA
             
       if (length(pac_i) > 5) {
         pac = res$predictions[ pac_i, ]
@@ -516,9 +516,9 @@ conker_interpolate = function( ip=NULL, p ) {
         pac = pac[ order(pac[,p$variables$TIME]),]
         if (length(piid) > 5 ) {
           ts.stat = NULL
-          ts.stat = try( conker_timeseries( pac$mean, method="fft" ) )
+          ts.stat = try( lstfilter_timeseries( pac$mean, method="fft" ) )
           if (!is.null(ts.stat) && !inherits(ts.stat, "try-error") ) {
-            res$conker_stats["ar_timerange"] = ts.stat$quantilePeriod 
+            res$lstfilter_stats["ar_timerange"] = ts.stat$quantilePeriod 
             if (all( is.finite(pac$mean))) {
               afin = which (is.finite(pac$mean) )
               if (length(afin) > 5 && var( pac$mean, na.rm=TRUE) > p$eps ) {
@@ -526,19 +526,19 @@ conker_interpolate = function( ip=NULL, p ) {
                 ar1 = try( ar( pac$mean, order.max=1 ) )
                 if (!inherits(ar1, "try-error")) {
                   if ( length(ar1$ar) == 1 ) {
-                    res$conker_stats["ar_1"] = ar1$ar
+                    res$lstfilter_stats["ar_1"] = ar1$ar
                   }  
                 } 
               }
             }
-            if ( !is.finite(res$conker_stats[["ar_1"]]) ) {
+            if ( !is.finite(res$lstfilter_stats[["ar_1"]]) ) {
               ar1 = try( cor( pac$mean[1:(length(piid) - 1)], pac$mean[2:(length(piid))], use="pairwise.complete.obs" ) )
-              if (!inherits(ar1, "try-error")) res$conker_stats["ar_1"] = ar1 
+              if (!inherits(ar1, "try-error")) res$lstfilter_stats["ar_1"] = ar1 
             }
           } 
 
           ### Do the logistic model here ! -- if not already done ..
-          if (!exists("ts_K", res$conker_stats)) {
+          if (!exists("ts_K", res$lstfilter_stats)) {
             # model as a logistic with ts_r, ts_K, etc .. as stats outputs
             
           } 
@@ -575,7 +575,7 @@ conker_interpolate = function( ip=NULL, p ) {
         stdev_update = NULL
         means_update = NULL
 
-        if (p$conker_local_modelengine=="habitat") {
+        if (p$lstfilter_local_modelengine=="habitat") {
           logit_stdev_update =  Plogitsd[ui] + ( res$predictions$logitsd[u] -  Plogitsd[ui] ) / Pn[ui]
           logit_means_update = ( Plogit[ui] / Plogitsd[ui]^2 + res$predictions$logitmean[u] / res$predictions$logitsd[u]^2 ) / ( Plogitsd[ui]^(-2) + res$predictions$logitsd[u]^(-2) )
           mm = which(is.finite( logit_means_update + logit_stdev_update ))
@@ -597,7 +597,7 @@ conker_interpolate = function( ip=NULL, p ) {
         Pn [vi] = 1
         P  [vi] = res$predictions$mean[v]
         Psd[vi] = res$predictions$sd[v]
-        if (p$conker_local_modelengine=="habitat") {
+        if (p$lstfilter_local_modelengine=="habitat") {
           Plogit  [vi] = res$predictions$logitmean[v]
           Plogitsd[vi] = res$predictions$logitsd[v]
         }
@@ -632,7 +632,7 @@ conker_interpolate = function( ip=NULL, p ) {
         } 
         stdev_update = NULL
         means_update = NULL
-        if (p$conker_local_modelengine=="habitat") {
+        if (p$lstfilter_local_modelengine=="habitat") {
           logit_stdev_update =  Plogitsd[ui,] + ( res$predictions$logitsd[u] -  Plogitsd[ui,] ) / Pn[ui]
           logit_means_update = ( Plogit[ui,] / Plogitsd[ui,]^2 + res$predictions$logitmean[u] / res$predictions$logitsd[u]^2 ) / ( Plogitsd[ui,]^(-2) + res$predictions$logitsd[u]^(-2) )
           updates = logit_means_update + logit_stdev_update
@@ -659,7 +659,7 @@ conker_interpolate = function( ip=NULL, p ) {
         Pn [vi,] = 1
         P  [vi,] = res$predictions$mean[v]
         Psd[vi,] = res$predictions$sd[v]
-        if (p$conker_local_modelengine=="habitat") {
+        if (p$lstfilter_local_modelengine=="habitat") {
           Plogit  [vi,] = res$predictions$logitmean[v]
           Plogitsd[vi,] = res$predictions$logitsd[v]
         }
@@ -670,8 +670,8 @@ conker_interpolate = function( ip=NULL, p ) {
 
     # save stats
     for ( k in 1: length(p$statsvars) ) {
-      if (exists( p$statsvars[k], res$conker_stats )) {
-        S[Si,k] = res$conker_stats[[ p$statsvars[k] ]]
+      if (exists( p$statsvars[k], res$lstfilter_stats )) {
+        S[Si,k] = res$lstfilter_stats[[ p$statsvars[k] ]]
       }
     }
     

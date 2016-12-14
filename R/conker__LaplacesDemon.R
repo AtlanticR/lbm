@@ -1,15 +1,15 @@
 
-conker__LaplacesDemon = function( p, x, pa ) {
-   #\\ this is the core engine of conker .. localised space-time habiat modelling
+lstfilter__LaplacesDemon = function( p, x, pa ) {
+   #\\ this is the core engine of lstfilter .. localised space-time habiat modelling
  
-    if ( exists("conker_local_model_distanceweighted", p) ) {
-      if (p$conker_local_model_distanceweighted) {
-        Hmodel = try( gam( p$conker_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
+    if ( exists("lstfilter_local_model_distanceweighted", p) ) {
+      if (p$lstfilter_local_model_distanceweighted) {
+        Hmodel = try( gam( p$lstfilter_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
       } else {
-        Hmodel = try( gam( p$conker_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
+        Hmodel = try( gam( p$lstfilter_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
       }
     } else {
-        Hmodel = try( gam( p$conker_local_modelformula, data=x ) )
+        Hmodel = try( gam( p$lstfilter_local_modelformula, data=x ) )
     } 
     if ( "try-error" %in% class(Hmodel) ) return( NULL )
 
@@ -21,8 +21,8 @@ conker__LaplacesDemon = function( p, x, pa ) {
     newdata$mean = as.vector(out$fit)
     newdata$sd = as.vector(out$se.fit) # this is correct: se.fit== stdev of the mean fit: eg:  https://stat.ethz.ch/pipermail/r-help/2005-July/075856.html
 
-    if (exists( "conker_quantile_bounds", p)) {
-      tq = quantile( x[,p$variables$Y], probs=p$conker_quantile_bounds, na.rm=TRUE  )
+    if (exists( "lstfilter_quantile_bounds", p)) {
+      tq = quantile( x[,p$variables$Y], probs=p$lstfilter_quantile_bounds, na.rm=TRUE  )
       bad = which( newdata$mean < tq[1] | newdata$mean > tq[2]  )
       if (length( bad) > 0) {
         newdata$mean[ bad] = NA
@@ -31,9 +31,9 @@ conker__LaplacesDemon = function( p, x, pa ) {
     }
 
     ss = summary(Hmodel)
-    conker_stats = list( sdTotal=sd(Y[], na.rm=T), rsquared=ss$r.sq, ndata=ss$n ) # must be same order as p$statsvars
+    lstfilter_stats = list( sdTotal=sd(Y[], na.rm=T), rsquared=ss$r.sq, ndata=ss$n ) # must be same order as p$statsvars
 
-    return( list( predictions=newdata, conker_stats=conker_stats ) )
+    return( list( predictions=newdata, lstfilter_stats=lstfilter_stats ) )
 
 
     if(0) {

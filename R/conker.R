@@ -1,5 +1,5 @@
 
-conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do.secondstage=FALSE ) {
+lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do.secondstage=FALSE ) {
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
@@ -15,32 +15,32 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
 
   if(0) {
     p = bio.temperature::temperature.parameters( current.year=2016 )
-    p$conker_local_modelengine="twostep"
-    p = bio.temperature::temperature.parameters( DS="conker", p=p )
+    p$lstfilter_local_modelengine="twostep"
+    p = bio.temperature::temperature.parameters( DS="lstfilter", p=p )
     overwrite=NULL
-    DATA='hydro.db( p=p, DS="conker.input" )'
+    DATA='hydro.db( p=p, DS="lstfilter.input" )'
     storage.backend="bigmemory.ram"
     boundary=TRUE
 
     p = bio.bathymetry::bathymetry.parameters( )
-    p$conker_local_modelengine = "kernel.density"  # about 5 X faster than bayesx-mcmc method
-    # p$conker_local_modelengine = "gaussianprocess2Dt"
-    # p$conker_local_modelengine = "gam"
-    # p$conker_local_modelengine = "bayesx"
-    p = bio.bathymetry::bathymetry.parameters( p=p, DS="conker" )
+    p$lstfilter_local_modelengine = "kernel.density"  # about 5 X faster than bayesx-mcmc method
+    # p$lstfilter_local_modelengine = "gaussianprocess2Dt"
+    # p$lstfilter_local_modelengine = "gam"
+    # p$lstfilter_local_modelengine = "bayesx"
+    p = bio.bathymetry::bathymetry.parameters( p=p, DS="lstfilter" )
     overwrite=NULL
-    DATA='bathymetry.db( p=p, DS="bathymetry.conker.data" )'
+    DATA='bathymetry.db( p=p, DS="bathymetry.lstfilter.data" )'
     p$storage.backend="bigmemory.ram"
 
   }
 
   p$time.start =  Sys.time()
 
-  p$savedir = file.path(p$project.root, "conker", p$spatial.domain )
+  p$savedir = file.path(p$project.root, "lstfilter", p$spatial.domain )
   message( paste( "In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
   if ( !file.exists(p$savedir)) dir.create( p$savedir, recursive=TRUE, showWarnings=FALSE )
 
-  p$stloc = file.path( p$project.root, "conker", p$spatial.domain, "tmp" )
+  p$stloc = file.path( p$project.root, "lstfilter", p$spatial.domain, "tmp" )
   message( paste( "Temporary files are being created at:", p$stloc ) )
   if ( !file.exists(p$stloc)) dir.create( p$stloc, recursive=TRUE, showWarnings=FALSE )
 
@@ -50,14 +50,14 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
   if (any( grepl ("ff", p$storage.backend)))         p$libs = c( p$libs, "ff", "ffbase" )
   if (any( grepl ("bigmemory", p$storage.backend)))  p$libs = c( p$libs, "bigmemory" )
 
-  if (p$conker_local_modelengine=="bayesx")  p$libs = c( p$libs, "R2BayesX" )
-  if (p$conker_local_modelengine %in% c("gam", "mgcv", "habitat") )  p$libs = c( p$libs, "mgcv" )
-  if (p$conker_local_modelengine %in% c("LaplacesDemon") )  p$libs = c( p$libs, "LaplacesDemonCpp" )
-  if (p$conker_local_modelengine %in% c("inla") )  p$libs = c( p$libs, "INLA" )
-  if (p$conker_local_modelengine %in% c("kernel.density", "gaussianprocess2Dt") )  p$libs = c( p$libs, "fields" )
-  if (p$conker_local_modelengine %in% c("spate") )  p$libs = c( p$libs, "spate" )
-  if (p$conker_local_modelengine %in% c("splancs") )  p$libs = c( p$libs, "splancs" )
-  if (p$conker_local_modelengine %in% c("twostep") )  p$libs = c( p$libs, "mgcv", "fields" )
+  if (p$lstfilter_local_modelengine=="bayesx")  p$libs = c( p$libs, "R2BayesX" )
+  if (p$lstfilter_local_modelengine %in% c("gam", "mgcv", "habitat") )  p$libs = c( p$libs, "mgcv" )
+  if (p$lstfilter_local_modelengine %in% c("LaplacesDemon") )  p$libs = c( p$libs, "LaplacesDemonCpp" )
+  if (p$lstfilter_local_modelengine %in% c("inla") )  p$libs = c( p$libs, "INLA" )
+  if (p$lstfilter_local_modelengine %in% c("kernel.density", "gaussianprocess2Dt") )  p$libs = c( p$libs, "fields" )
+  if (p$lstfilter_local_modelengine %in% c("spate") )  p$libs = c( p$libs, "spate" )
+  if (p$lstfilter_local_modelengine %in% c("splancs") )  p$libs = c( p$libs, "splancs" )
+  if (p$lstfilter_local_modelengine %in% c("twostep") )  p$libs = c( p$libs, "mgcv", "fields" )
 
   p$libs = unique( p$libs )
   RLibrary( p$libs )
@@ -66,8 +66,8 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
     if ( length( unique(p$clusters)) > 1 ) stop( "More than one unique cluster server was specified .. the RAM-based method only works within one server." )
   }
 
-  p = conker_parameters(p=p) # fill in parameters with defaults where possible
-  p = conker_db( p=p, DS="filenames" )
+  p = lstfilter_parameters(p=p) # fill in parameters with defaults where possible
+  p = lstfilter_db( p=p, DS="filenames" )
   p$ptr = list() # location for data pointers
 
   # set up the data and problem using data objects
@@ -87,13 +87,13 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
   if ( is.null(overwrite) || overwrite ) {
 
     p$variables$all = NULL
-    if (exists("conker_local_modelformula", p))  {
-      p$variables$local_all = all.vars( p$conker_local_modelformula )
+    if (exists("lstfilter_local_modelformula", p))  {
+      p$variables$local_all = all.vars( p$lstfilter_local_modelformula )
       p$variables$local_cov = intersect( p$variables$local_all, p$variables$COV ) 
       p$variables$all = unique( c( p$variables$all, p$variables$local_all ) )
     }
-    if (exists("conker_global_modelformula", p)) {
-      p$variables$global_all = all.vars( p$conker_global_modelformula )
+    if (exists("lstfilter_global_modelformula", p)) {
+      p$variables$global_all = all.vars( p$lstfilter_global_modelformula )
       p$variables$global_cov = intersect( p$variables$global_all, p$variables$COV )      
       p$variables$all = unique( c( p$variables$all, p$variables$global_all ) )
     }
@@ -118,17 +118,17 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
 
     # require knowledge of size of stats output before create S, which varies with a given type of analysis
     othervars = c( )
-    if (p$conker_local_modelengine == "habitat") othervars = c( )
+    if (p$lstfilter_local_modelengine == "habitat") othervars = c( )
     if (exists("TIME", p$variables) )  othervars = c( "ar_timerange", "ar_1" )
     p$statsvars = unique( c( "sdTotal", "rsquared", "ndata", "sdSpatial", "sdObs", "range", "phi", "nu", othervars ) )
 
     message( "Initializing temporary storage of data and outputs (will take a bit longer on NFS clusters) ... ")
     message( "These are large files (4 to 6 X 5GB), esp. prediction grids (5 min .. faster if on fileserver), so be patient. ")
-    conker_db( p=p, DS="cleanup" )
+    lstfilter_db( p=p, DS="cleanup" )
 
-    if (exists("conker_global_modelengine", p)) {
+    if (exists("lstfilter_global_modelengine", p)) {
       # to add global covariate model ??  .. simplistic this way but faster ~ kriging with external drift
-      conker_db( p=p, DS="global_model.redo", B=DATA$input )
+      lstfilter_db( p=p, DS="global_model.redo", B=DATA$input )
     }
 
     # NOTE:: must not sink the following memory allocation into a deeper funcion as 
@@ -136,8 +136,8 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
     # init output data objects
     # statistics storage matrix ( aggregation window, coords ) .. no inputs required
     sbox = list( 
-      plats = seq( p$corners$plat[1], p$corners$plat[2], by=p$conker_distance_statsgrid ),
-      plons = seq( p$corners$plon[1], p$corners$plon[2], by=p$conker_distance_statsgrid ) )
+      plats = seq( p$corners$plat[1], p$corners$plat[2], by=p$lstfilter_distance_statsgrid ),
+      plons = seq( p$corners$plon[1], p$corners$plon[2], by=p$lstfilter_distance_statsgrid ) )
 
       # statistics coordinates
       Sloc = as.matrix( expand.grid( sbox$plons, sbox$plats ))
@@ -203,14 +203,14 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
       rm(Yraw)
 
       # limits based on quantiles to permit in predictions
-      Yraw = conker_attach( p$storage.backend, p$ptr$Yraw )
-      p$qs0 = quantile( Yraw[], probs=p$conker_quantile_bounds, na.rm=TRUE  )
+      Yraw = lstfilter_attach( p$storage.backend, p$ptr$Yraw )
+      p$qs0 = quantile( Yraw[], probs=p$lstfilter_quantile_bounds, na.rm=TRUE  )
 
      # default just copy Yraw ... but if covars are modelled then overwrite with residuals (below)
       Ydata = Yraw[]
-      if (exists("conker_global_modelengine", p)) {
+      if (exists("lstfilter_global_modelengine", p)) {
         # to add global covariate model ??  .. simplistic this way but faster
-        covmodel = conker_db( p=p, DS="global_model")
+        covmodel = lstfilter_db( p=p, DS="global_model")
         if (!is.null(covmodel)) {
           Ydata = predict(covmodel, type="response", se.fit=FALSE )
           Ydata = Yraw[] - Ydata
@@ -234,12 +234,12 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
         }
       rm(Ydata)
 
-      Y = conker_attach( p$storage.backend, p$ptr$Y )
-      p$qs = quantile( Y[], probs=p$conker_quantile_bounds, na.rm=TRUE  )
+      Y = lstfilter_attach( p$storage.backend, p$ptr$Y )
+      p$qs = quantile( Y[], probs=p$lstfilter_quantile_bounds, na.rm=TRUE  )
 
 
-      if (p$conker_local_modelengine == "habitat") {
-        logitY = conker_db( p=p, DS="presence.absense" )
+      if (p$lstfilter_local_modelengine == "habitat") {
+        logitY = lstfilter_db( p=p, DS="presence.absense" )
           if (p$storage.backend == "bigmemory.ram" ) {
             if (!exists("habitat.threshold.quantile", p)) p$habitat.threshold.quantile = 0.01
             p$bm$Ylogit = big.matrix( nrow=nrow(logitY), ncol=1, type="double" )
@@ -381,7 +381,7 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
         }
 
 
-        if (p$conker_local_modelengine == "habitat") {
+        if (p$lstfilter_local_modelengine == "habitat") {
           if (p$storage.backend == "bigmemory.ram" ) {
             p$bm$Plogit= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
             p$bm$Plogit[] = P
@@ -426,7 +426,7 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
           }
       Ploc = DATA = NULL; gc()
 
-      if (exists("conker_global_modelengine", p) ) {
+      if (exists("lstfilter_global_modelengine", p) ) {
       # create prediction suface with covariate-based additive offsets
 
           if (p$storage.backend == "bigmemory.ram" ) {
@@ -463,19 +463,19 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
         p$timec0 =  Sys.time()
         nc_cov =NULL
         for (i in p$variables$COV ) {
-          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[i]] )
+          pu = lstfilter_attach( p$storage.backend, p$ptr$Pcov[[i]] )
           nc_cov = c( nc_cov,  ncol(pu) )
         }
         p$all.covars.static = ifelse( any(nc_cov > 1),  FALSE, TRUE )
         if (p$all.covars.static) {
           p = make.list( list( tindex=1:p$nt) , Y=p ) # takes about 28 GB per run .. adjust cluster number temporarily
-          conker_db( p=p, DS="global.prediction.surface" )
+          lstfilter_db( p=p, DS="global.prediction.surface" )
         } else {
           if (!exists("no.clusters.covars") ) p$no.clusters.covars = 4
           p$clusters0 = p$clusters
           p$clusters = p$clusters[p$no.clusters.covars]
           p = make.list( list( tindex=1:p$nt) , Y=p ) # takes about 28 GB per run .. adjust cluster number temporarily
-          parallel.run( conker_db, p=p, DS="global.prediction.surface" )
+          parallel.run( lstfilter_db, p=p, DS="global.prediction.surface" )
           p$clusters= p$clusters0
         }
         p$timec1 =  Sys.time()
@@ -485,10 +485,10 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
     P = NULL; gc() # yes, repeat in case covs are not modelled
 
   
-    conker_db( p=p, DS="statistics.Sflag" )
+    lstfilter_db( p=p, DS="statistics.Sflag" )
 
-    Y = conker_attach( p$storage.backend, p$ptr$Y )
-    Yloc = conker_attach( p$storage.backend, p$ptr$Yloc )
+    Y = lstfilter_attach( p$storage.backend, p$ptr$Y )
+    Yloc = lstfilter_attach( p$storage.backend, p$ptr$Yloc )
 
     Yi = 1:length(Y) # index with useable data
     bad = which( !is.finite( Y[]))
@@ -500,7 +500,7 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
 
   # data locations
     if (exists("COV", p$variables)) {
-      Ycov = conker_attach( p$storage.backend, p$ptr$Ycov )
+      Ycov = lstfilter_attach( p$storage.backend, p$ptr$Ycov )
       if (length(p$variables$COV)==1) {
         bad = which( !is.finite( Ycov[] ))
       } else {
@@ -512,7 +512,7 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
 
     # data locations
     if (exists("TIME", p$variables)) {
-      Ytime = conker_attach( p$storage.backend, p$ptr$Ytime )
+      Ytime = lstfilter_attach( p$storage.backend, p$ptr$Ytime )
       bad = which( !is.finite( Ytime[] ))
       if (length(bad)> 0 ) Yi[bad] = NA
       Yi = na.omit(Yi)
@@ -534,20 +534,20 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
       }
     rm(Yi)
 
-    if ( !exists("conker_distance_scale", p)) {
-      Yloc = conker_attach( p$storage.backend, p$ptr$Yloc )
-      p$conker_distance_scale = min( diff(range( Yloc[,1]) ), diff(range( Yloc[,2]) ) ) / 10
-      message( paste( "Crude distance scale:", p$conker_distance_scale ) )
+    if ( !exists("lstfilter_distance_scale", p)) {
+      Yloc = lstfilter_attach( p$storage.backend, p$ptr$Yloc )
+      p$lstfilter_distance_scale = min( diff(range( Yloc[,1]) ), diff(range( Yloc[,2]) ) ) / 10
+      message( paste( "Crude distance scale:", p$lstfilter_distance_scale ) )
     }
-    if ( !exists("conker_distance_min", p)) p$conker_distance_min = mean( c(p$conker_distance_prediction, p$conker_distance_scale /20 ) )
-    if ( !exists("conker_distance_max", p)) p$conker_distance_max = mean( c(p$conker_distance_prediction*10, p$conker_distance_scale * 2 ) )
+    if ( !exists("lstfilter_distance_min", p)) p$lstfilter_distance_min = mean( c(p$lstfilter_distance_prediction, p$lstfilter_distance_scale /20 ) )
+    if ( !exists("lstfilter_distance_max", p)) p$lstfilter_distance_max = mean( c(p$lstfilter_distance_prediction*10, p$lstfilter_distance_scale * 2 ) )
 
     if ( !exists("sampling", p))  {
       # fractions of distance scale  to try in local block search
       p$sampling = c( 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.5, 1.75, 2 )
     }
 
-    conker_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
+    lstfilter_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
     message( "Finished. Moving onto analysis... ")
     gc()
 
@@ -555,12 +555,12 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
 
     message( "Restart only works with bigmemory.filebacked and ff methods. " )
     message( "bigmemory.ram method loses the pointers upon a restart. ")
-    p = conker_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
+    p = lstfilter_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
     RLibrary( p$libs )
 
   }
 
-  if ( exists("TIME", p$variables) & (p$conker_local_modelengine=="kernel.density") ) {
+  if ( exists("TIME", p$variables) & (p$lstfilter_local_modelengine=="kernel.density") ) {
     message( "The kernel.density method really should not be used in a timeseries context,")
     message( "unless you have a lot of data in each time slice ..")
   }
@@ -568,10 +568,10 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
   # -------------------------------------
   # localized space-time modelling/interpolation/prediction
   p$timei0 =  Sys.time()
-  o = conker_db( p=p, DS="statistics.status" )
+  o = lstfilter_db( p=p, DS="statistics.status" )
   p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
-  # conker_interpolate (p=p )
-  parallel.run( conker_interpolate, p=p )
+  # lstfilter_interpolate (p=p )
+  parallel.run( lstfilter_interpolate, p=p )
   p$timei1 =  Sys.time()
   message( paste( "Time taken for main interpolations (mins):", round( difftime( p$timei1, p$timei0, units="mins" ),3) ) )
   gc()
@@ -579,8 +579,8 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
 
       if (0) {
         require(lattice)
-        Plocs = conker_attach( p$storage.backend, p$ptr$Plocs )
-        P = conker_attach( p$storage.backend, p$ptr$P )
+        Plocs = lstfilter_attach( p$storage.backend, p$ptr$Plocs )
+        P = lstfilter_attach( p$storage.backend, p$ptr$P )
         lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==2012.05,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
         for (i in 1:p$nt) {
           print( lattice::levelplot( P[,i] ~ Ploc[,1] + Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
@@ -589,21 +589,21 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
 
 
   # save solutions to disk before continuuing
-  conker_db( p=p, DS="conker.prediction.redo" ) # save to disk for use outside conker*
-  conker_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside conker*
+  lstfilter_db( p=p, DS="lstfilter.prediction.redo" ) # save to disk for use outside lstfilter*
+  lstfilter_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside lstfilter*
 
   # 2. same interpolation method but relax the spatial extent
   # this would make sense but it can be costly in terms of time .. use only for research purposes
   if ( do.secondstage ) {
      p$timei2 =  Sys.time()
-    conker_db( p=p, DS="statistics.reset.problem.locations" )
-    o = conker_db( p=p, DS="statistics.status" )
+    lstfilter_db( p=p, DS="statistics.reset.problem.locations" )
+    o = lstfilter_db( p=p, DS="statistics.status" )
     if (length(o$todo) > 0) {
-      p$conker_distance_prediction = p$conker_distance_prediction * 2
-      p$conker_distance_max = p$conker_distance_max * 2
-      p$conker_distance_scale = p$conker_distance_scale*2 # km ... approx guess of 95% AC range 
+      p$lstfilter_distance_prediction = p$lstfilter_distance_prediction * 2
+      p$lstfilter_distance_max = p$lstfilter_distance_max * 2
+      p$lstfilter_distance_scale = p$lstfilter_distance_scale*2 # km ... approx guess of 95% AC range 
       p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
-      parallel.run( conker_interpolate, p=p )
+      parallel.run( lstfilter_interpolate, p=p )
     }
     p$timei3 =  Sys.time()
     message( paste( "Time taken to stage 2 interpolations (mins):", round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
@@ -611,20 +611,20 @@ conker = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do
 
   message( "Doing a fast interpolation to fill in large data gaps.")
   p = make.list( list( time_index=1:p$nt), Y=p ) # random order helps use all cpus
-  parallel.run( conker_interpolate_fast, p=p ) # fast fft smooth
+  parallel.run( lstfilter_interpolate_fast, p=p ) # fast fft smooth
 
   # save solutions to disk (again .. overwrite)
   message( "Saving results to disk" )
-  conker_db( p=p, DS="conker.prediction.redo" ) # save to disk for use outside conker*
-  conker_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside conker*
+  lstfilter_db( p=p, DS="lstfilter.prediction.redo" ) # save to disk for use outside lstfilter*
+  lstfilter_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside lstfilter*
 
   message ("Finished! \n")
   resp = readline( "To delete temporary files, type <Yes>:  ")
   if (resp=="Yes") {
-    conker_db( p=p, DS="cleanup" )
+    lstfilter_db( p=p, DS="cleanup" )
   } else {
     message( "Leaving temporary files alone in case you need to examine them or restart a process.")
-    message( "You can delete them by running: conker_db( p=p, DS='cleanup' ), once you are done.")
+    message( "You can delete them by running: lstfilter_db( p=p, DS='cleanup' ), once you are done.")
   }
 
   p$time.end =  Sys.time()

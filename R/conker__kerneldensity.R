@@ -1,13 +1,13 @@
 
-conker__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
+lstfilter__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
 
-  #\\ this is the core engine of conker .. localised space (no-time) modelling interpolation 
+  #\\ this is the core engine of lstfilter .. localised space (no-time) modelling interpolation 
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice
 
 
-  if (is.null(phi)) phi=p$conker_phi
-  if (is.null(nu)) nu=p$conker_nu # nu=0.5 an exponential covariance
+  if (is.null(phi)) phi=p$lstfilter_phi
+  if (is.null(nu)) nu=p$lstfilter_nu # nu=0.5 an exponential covariance
 
   x_r = range(x[,p$variables$LOCS[1]])
   x_c = range(x[,p$variables$LOCS[2]])
@@ -80,7 +80,7 @@ conker__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     # image(Z)
 
     # matrix representation of the output surface
-     # Z = try( fields::image.smooth( mY, dx=p$pres, dy=p$pres, theta=p$conker_phi)$z ) # phi==theta
+     # Z = try( fields::image.smooth( mY, dx=p$pres, dy=p$pres, theta=p$lstfilter_phi)$z ) # phi==theta
   
     if (0) {
       # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
@@ -103,7 +103,7 @@ conker__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     ss = lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit)
     if ( "try-error" %in% class( ss ) ) next()
     rsquared = summary(ss)$r.squared
-    if (rsquared < p$conker_rsquared_threshold ) next()
+    if (rsquared < p$lstfilter_rsquared_threshold ) next()
     
     if (exists("TIME", p$variables) ) {
       pa_i =  which( pa[, p$variables$TIME]==p$ts[ti])
@@ -126,12 +126,12 @@ conker__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
   ss = lm( x$mean ~ x[,p$variables$Y], na.action=na.omit )
   if ( "try-error" %in% class( ss ) ) return( NULL )
   rsquared = summary(ss)$r.squared
-  if (rsquared < p$conker_rsquared_threshold ) return(NULL)
+  if (rsquared < p$lstfilter_rsquared_threshold ) return(NULL)
 
-  conker_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
+  lstfilter_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 
-  return( list( predictions=pa, conker_stats=conker_stats ) )  
+  return( list( predictions=pa, lstfilter_stats=lstfilter_stats ) )  
 }
 

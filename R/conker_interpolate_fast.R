@@ -1,17 +1,17 @@
 
-conker_interpolate_fast = function( ip=NULL, p ) {
-  #// designed to be called from conker_interpolate
+lstfilter_interpolate_fast = function( ip=NULL, p ) {
+  #// designed to be called from lstfilter_interpolate
   #// for the sake of speed and parallelization, the kernel density method is written out again .. it is taken from fields::smooth.2d 
 
   if (exists( "libs", p)) RLibrary( p$libs )
   if (is.null(ip)) if( exists( "nruns", p ) ) ip = 1:p$nruns
 
-  phi = p$conker_phi # want phi to be small to retain local structure
-  nu = p$conker_nu
+  phi = p$lstfilter_phi # want phi to be small to retain local structure
+  nu = p$lstfilter_nu
 
-  P = conker_attach( p$storage.backend, p$ptr$P )
-  Psd = conker_attach( p$storage.backend, p$ptr$Psd )
-  Ploc = conker_attach( p$storage.backend, p$ptr$Ploc )
+  P = lstfilter_attach( p$storage.backend, p$ptr$P )
+  Psd = lstfilter_attach( p$storage.backend, p$ptr$Psd )
+  Ploc = lstfilter_attach( p$storage.backend, p$ptr$Ploc )
   
   Z2P = as.matrix( cbind( Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1] ) /p$pres + 1 ) # row, col indices in matrix form Z
 

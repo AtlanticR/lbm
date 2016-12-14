@@ -1,5 +1,5 @@
 
-  conker_db = function( ip=NULL, DS, p, B=NULL, yr=NULL, ret="mean"  ) {
+  lstfilter_db = function( ip=NULL, DS, p, B=NULL, yr=NULL, ret="mean"  ) {
     #// usage: low level function to convert data into file-based data obects to permit parallel
     #// data access and manipulation and deletes/updates
     #// B is the xyz or xytz data or the function to get the data to work upon
@@ -35,7 +35,7 @@
 
       p$cache$Ploc =  file.path( p$stloc, "predictions_loc.cache" )
 
-      if (exists("conker_global_modelengine", p) ) {
+      if (exists("lstfilter_global_modelengine", p) ) {
         p$cache$P0 = file.path( p$stloc, "P0.cache" )
         p$cache$P0sd = file.path( p$stloc, "P0sd.cache" )
       }
@@ -91,13 +91,13 @@
     if ( DS=="statistics.status" ) {
       # find locations for statistic computation and trim area based on availability of data
       # stats:
-      bnds = try( conker_db( p=p, DS="boundary" ) )
+      bnds = try( lstfilter_db( p=p, DS="boundary" ) )
       ioutside = NA
       if (!is.null(bnds)) {
         if( !("try-error" %in% class(bnds) ) ) {
           ioutside = which( bnds$inside.polygon == 0 ) # outside boundary
       }}
-      Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
+      Sflag = lstfilter_attach( p$storage.backend, p$ptr$Sflag )
       itodo = setdiff( which( is.nan( Sflag[] )), ioutside)       # incomplete
       idone = setdiff( which( is.finite (Sflag[] )  ), ioutside)      # completed
       iskipped = which( is.infinite( Sflag[] )  ) # skipped due to problems or out of bounds
@@ -116,8 +116,8 @@
 
     if ( DS=="statistics.reset.problem.locations" ) {
         # to reset all rejected locations 
-        Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
-        o = conker_db( p=p, DS="statistics.status" )
+        Sflag = lstfilter_attach( p$storage.backend, p$ptr$Sflag )
+        o = lstfilter_db( p=p, DS="statistics.status" )
         if (length(which(is.finite(o$skipped))) > 0) Sflag[o$skipped] = NaN  # to reset all the flags
         if (length(which(is.finite(o$outside))) > 0) Sflag[o$outside] = Inf  # flag area outside of data boundary to skip
       }
@@ -130,10 +130,10 @@
         p$timeb0 =  Sys.time()
         message( "Defining boundary polygon for data .. this reduces the number of points to analyse")
         message( "but takes a few minutes to set up ...")
-        conker_db( p=p, DS="boundary.redo" ) # ~ 5 min on nfs
+        lstfilter_db( p=p, DS="boundary.redo" ) # ~ 5 min on nfs
       # last set of filters to reduce problem size
-        Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
-        bnds = try( conker_db( p=p, DS="boundary" ) )
+        Sflag = lstfilter_attach( p$storage.backend, p$ptr$Sflag )
+        bnds = try( lstfilter_db( p=p, DS="boundary" ) )
         if (!is.null(bnds)) {
           if( !("try-error" %in% class(bnds) ) ) {
             to.ignore = which( bnds$inside.polygon == 0 ) # outside boundary
@@ -147,13 +147,13 @@
       if ( !is.null(p$depth.filter) ) {
         # assuming that there is depth information in Pcov, match Sloc's and filter out locations that fall on land
         if ( "z" %in% p$variables$COV ){
-          depths = conker_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
-          Ploc = conker_attach( p$storage.backend, p$ptr$Ploc )
-          Sloc = conker_attach( p$storage.backend, p$ptr$Sloc )
+          depths = lstfilter_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
+          Ploc = lstfilter_attach( p$storage.backend, p$ptr$Ploc )
+          Sloc = lstfilter_attach( p$storage.backend, p$ptr$Sloc )
           S_index = match( array_map( "2->1", cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ), 
                            array_map( "2->1", cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ) )
           land = which( depths[ S_index ] < p$depth.filter )
-          Sflag = conker_attach( p$storage.backend, p$ptr$Sflag )
+          Sflag = lstfilter_attach( p$storage.backend, p$ptr$Sflag )
           if (length(land)>0) Sflag[land,] = Inf 
           rm(land, S_index); gc()
         }
@@ -173,14 +173,14 @@
       }
 
       # data:
-      Y = conker_attach(  p$storage.backend, p$ptr$Y )
+      Y = lstfilter_attach(  p$storage.backend, p$ptr$Y )
       hasdata = 1:length(Y)
       bad = which( !is.finite( Y[]))
       if (length(bad)> 0 ) hasdata[bad] = NA
 
       # covariates (independent vars)
       if ( exists( "COV", p$variables) ) {
-        Ycov = conker_attach(  p$storage.backend, p$ptr$Ycov )
+        Ycov = lstfilter_attach(  p$storage.backend, p$ptr$Ycov )
         if ( length( p$variables$COV ) == 1 ) {
           bad = which( !is.finite( Ycov[]) )
         } else {
@@ -190,18 +190,18 @@
       }
 
       ii = na.omit(hasdata)
-      Yloc = conker_attach(  p$storage.backend, p$ptr$Yloc )
+      Yloc = lstfilter_attach(  p$storage.backend, p$ptr$Yloc )
       yplon = (grid.internal( Yloc[ii,1], p$plons ) - p$plons[1] )/p$pres + 1
       yplat = (grid.internal( Yloc[ii,2], p$plats ) - p$plats[1] )/p$pres + 1
       uu = unique( array_map( "2->1", cbind(yplon, yplat), c(p$nplons, p$nplats) ) )
       vv = array_map( "1->2", uu, c(p$nplons, p$nplats) )
       
-      Ploc = conker_attach(  p$storage.backend, p$ptr$Ploc )
-      if (!exists("conker_nonconvexhull_alpha", p)) p$conker_nonconvexhull_alpha=20
-      boundary=list( polygon = non_convex_hull( Ploc[vv,], alpha=p$conker_nonconvexhull_alpha, plot=FALSE ) )
+      Ploc = lstfilter_attach(  p$storage.backend, p$ptr$Ploc )
+      if (!exists("lstfilter_nonconvexhull_alpha", p)) p$lstfilter_nonconvexhull_alpha=20
+      boundary=list( polygon = non_convex_hull( Ploc[vv,], alpha=p$lstfilter_nonconvexhull_alpha, plot=FALSE ) )
       
       # statistical output locations
-      Sloc = conker_attach(  p$storage.backend, p$ptr$Sloc )
+      Sloc = lstfilter_attach(  p$storage.backend, p$ptr$Sloc )
       boundary$inside.polygon = point.in.polygon( Sloc[,1], Sloc[,2],
           boundary$polygon[,1], boundary$polygon[,2], mode.checked=TRUE )
       
@@ -210,8 +210,8 @@
       points( Sloc[which(boundary$inside.polygon==1),], pch=".", col="orange" )
       lines( boundary$polygon[] , col="green", pch=2 )
       message( "Check the map of data and boundaries. ")
-      message( "If not suitable, set another value for p$conker_nonconvexhull_alpha value (radius; distance) ")
-      message( "and re-run conker() " )
+      message( "If not suitable, set another value for p$lstfilter_nonconvexhull_alpha value (radius; distance) ")
+      message( "and re-run lstfilter() " )
       return( fn )
     }
 
@@ -219,7 +219,7 @@
   
     if (DS %in% c("global_model", "global_model.redo") ) {
       
-      fn.global_model = file.path( p$savedir, paste( "global_model", p$conker_global_modelengine, "rdata", sep=".") )
+      fn.global_model = file.path( p$savedir, paste( "global_model", p$lstfilter_global_modelengine, "rdata", sep=".") )
 
       if (DS =="global_model") {
         global_model = NULL
@@ -231,9 +231,9 @@
       if (length(good)>0) B= B[good,]
 
       # as a first pass, model the time-independent factors as a user-defined model
-      if (p$conker_global_modelengine=="gam") {
+      if (p$lstfilter_global_modelengine=="gam") {
         global_model = try( 
-          gam( formula=p$conker_global_modelformula, data=B, optimizer=c("outer","bfgs"), family=p$conker_global_family ) ) 
+          gam( formula=p$lstfilter_global_modelformula, data=B, optimizer=c("outer","bfgs"), family=p$lstfilter_global_family ) ) 
       }
 
       if ( "try-error" %in% class(global_model) ) stop( "The covariate model was problematic" )
@@ -248,17 +248,17 @@
     if (DS %in% c("global.prediction.surface") ) {
       if (exists( "libs", p)) RLibrary( p$libs )
       if (is.null(ip)) if( exists( "nruns", p ) ) ip = 1:p$nruns
-      global_model = conker_db( p=p, DS="global_model") 
+      global_model = lstfilter_db( p=p, DS="global_model") 
       if (is.null(global_model)) stop("Covariate model not found.")
 
-      P0 = conker_attach( p$storage.backend, p$ptr$P0 ) 
-      P0sd = conker_attach( p$storage.backend, p$ptr$P0sd ) 
+      P0 = lstfilter_attach( p$storage.backend, p$ptr$P0 ) 
+      P0sd = lstfilter_attach( p$storage.backend, p$ptr$P0sd ) 
       
       for ( iip in ip ) {
         it = p$runs$tindex[iip]
         pa = NULL # construct prediction surface
         for (i in p$variables$COV ) {
-          pu = conker_attach( p$storage.backend, p$ptr$Pcov[[i]] )
+          pu = lstfilter_attach( p$storage.backend, p$ptr$Pcov[[i]] )
           ncpu = ncol(pu)
           if ( ncpu== 1 ) {
             pa = cbind( pa, pu[] ) # ie. a static variable
@@ -271,7 +271,7 @@
         }
         pa = as.data.frame( pa )
         names(pa) = p$variables$COV
-        if (p$conker_global_modelengine=="gam") {
+        if (p$lstfilter_global_modelengine=="gam") {
           Pbaseline = try( predict( global_model, newdata=pa, type="response", se.fit=TRUE ) ) 
           pa = NULL
           gc()
@@ -280,7 +280,7 @@
             P0sd[,it] = Pbaseline$se.fit
           } 
           Pbaseline = NULL; gc()
-        } else if (p$conker_global_modelengine=="abc") {
+        } else if (p$lstfilter_global_modelengine=="abc") {
           # ... other methods ..
         }
         
@@ -303,32 +303,32 @@
 
     # -----
     
-    if (DS %in% c("conker.prediction.redo", "conker.prediction") )  {
+    if (DS %in% c("lstfilter.prediction.redo", "lstfilter.prediction") )  {
 
-      if (DS=="conker.prediction")  {
+      if (DS=="lstfilter.prediction")  {
         if (! exists("TIME", p$variables)) {
-          fn = file.path( p$savedir, paste("conker.prediction", ret, "rdata", sep="." ) )
+          fn = file.path( p$savedir, paste("lstfilter.prediction", ret, "rdata", sep="." ) )
         } else {
-          fn = file.path( p$savedir, paste("conker.prediction", ret, yr, "rdata", sep="." ) ) 
+          fn = file.path( p$savedir, paste("lstfilter.prediction", ret, yr, "rdata", sep="." ) ) 
         }
         if (file.exists(fn) ) load(fn) 
         if (ret=="mean") return (P)
         if (ret=="sd") return( V)
       }
 
-      PP = conker_attach( p$storage.backend, p$ptr$P )
-      PPsd = conker_attach( p$storage.backend, p$ptr$Psd )
-      if (exists("conker_global_modelengine", p)) {
-        P0 = conker_attach( p$storage.backend, p$ptr$P0 )
-        P0sd = conker_attach( p$storage.backend, p$ptr$P0sd )
+      PP = lstfilter_attach( p$storage.backend, p$ptr$P )
+      PPsd = lstfilter_attach( p$storage.backend, p$ptr$Psd )
+      if (exists("lstfilter_global_modelengine", p)) {
+        P0 = lstfilter_attach( p$storage.backend, p$ptr$P0 )
+        P0sd = lstfilter_attach( p$storage.backend, p$ptr$P0sd )
       }
 
       if ( exists("TIME", p$variables)) {
         # outputs are on yearly breakdown
         for ( r in 1:p$ny ) {
           y = p$yrs[r]
-          fn1 = file.path( p$savedir, paste("conker.prediction.mean",  y, "rdata", sep="." ) )
-          fn2 = file.path( p$savedir, paste("conker.prediction.sd",  y, "rdata", sep="." ) )
+          fn1 = file.path( p$savedir, paste("lstfilter.prediction.mean",  y, "rdata", sep="." ) )
+          fn2 = file.path( p$savedir, paste("lstfilter.prediction.sd",  y, "rdata", sep="." ) )
           if (exists("nw", p)) {
             col.ranges = (r-1) * p$nw + (1:p$nw) 
             P = PP  [,col.ranges]
@@ -337,7 +337,7 @@
             P = PP[,r]
             V = PPsd[,r]
           }
-          if (exists("conker_global_modelengine", p) ) {
+          if (exists("lstfilter_global_modelengine", p) ) {
             ## maybe add via simulation ? ... 
             P = P + P0[,r] 
             V = sqrt( V^2 + P0sd[,r]^2) # simple additive independent errors assumed
@@ -347,11 +347,11 @@
           print ( paste("Year:", y)  )
         } 
       } else {
-          fn1 = file.path( p$savedir, paste("conker.prediction.mean",  "rdata", sep="." ) )
-          fn2 = file.path( p$savedir, paste("conker.prediction.sd", "rdata", sep="." ) )
+          fn1 = file.path( p$savedir, paste("lstfilter.prediction.mean",  "rdata", sep="." ) )
+          fn2 = file.path( p$savedir, paste("lstfilter.prediction.sd", "rdata", sep="." ) )
           P = PP
           V = PPsd
-          if (exists("conker_global_modelengine", p) ) {
+          if (exists("lstfilter_global_modelengine", p) ) {
             P = P + P0 
             V = sqrt( V^2 + P0sd^2) # simple additive independent errors assumed
           }
@@ -364,16 +364,16 @@
 
     if (DS %in% c("stats.to.prediction.grid.redo", "stats.to.prediction.grid") ) {
 
-      fn = file.path( p$savedir, paste( "conker.statistics", "rdata", sep=".") )
+      fn = file.path( p$savedir, paste( "lstfilter.statistics", "rdata", sep=".") )
       if (DS=="stats.to.prediction.grid") {
         stats = NULL
         if (file.exists(fn)) load(fn)
         return(stats)
       }
     
-      Ploc = conker_attach( p$storage.backend, p$ptr$Ploc )
-      S = conker_attach( p$storage.backend, p$ptr$S )
-      Sloc = conker_attach( p$storage.backend, p$ptr$Sloc )
+      Ploc = lstfilter_attach( p$storage.backend, p$ptr$Ploc )
+      S = lstfilter_attach( p$storage.backend, p$ptr$S )
+      Sloc = lstfilter_attach( p$storage.backend, p$ptr$Sloc )
     
       # locations of the new (output) coord system
       locsout = expand.grid( p$plons, p$plats ) # final output grid
@@ -392,12 +392,12 @@
       for ( i in 1:length( p$statsvars ) ) {
         M = M[] * NA  # init
         M[l2M] = S[,i] # fill with data in correct locations
-        Z = smooth.2d( Y=S[,i], x=Sloc[], ncol=p$nplats, nrow=p$nplons, cov.function=stationary.cov, Covariance="Matern", range=p$conker_phi, nu=p$conker_nu ) 
+        Z = smooth.2d( Y=S[,i], x=Sloc[], ncol=p$nplats, nrow=p$nplons, cov.function=stationary.cov, Covariance="Matern", range=p$lstfilter_phi, nu=p$lstfilter_nu ) 
         stats[,i] = Z$z
       }
      # lattice::levelplot( stats[,1] ~ locsout[,1]+locsout[,2])
  
-      boundary = try( conker_db( p=p, DS="boundary" ) )
+      boundary = try( lstfilter_db( p=p, DS="boundary" ) )
       if (!is.null(boundary)) {
         if( !("try-error" %in% class(boundary) ) ) {
         inside.polygon = point.in.polygon( locsout[,1], locsout[,2],
@@ -424,7 +424,7 @@
       if ( !is.null(p$depth.filter) ) {
         # stats is now with the same indices as Pcov, Ploc, etc..
         if ( "z" %in% p$variables$COV ){
-          depths = conker_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
+          depths = lstfilter_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
           land = which( depths[] < p$depth.filter )
           if (length(land)>0) stats[land,] = NA 
           rm(land); gc()
@@ -439,7 +439,7 @@
 
     if (DS=="presence.absense") {
 
-      Y = conker_attach( p$storage.backend, p$ptr$Y )
+      Y = lstfilter_attach( p$storage.backend, p$ptr$Y )
       z = which( Y == 0) # assumed to be real zeros
       i = which( Y >  0)  # positive values
       

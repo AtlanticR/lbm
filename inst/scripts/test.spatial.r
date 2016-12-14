@@ -64,11 +64,11 @@ if (using.random) {
   xy = ss[,c("x","y")]
   z =  ss[,"z"]
 
-  vgs = conker_variogram( xy, z, methods="gstat" )
-  vgr = conker_variogram( xy, z, methods="geoR" )
-  vsp = conker_variogram( xy, z, methods="spBayes" )
-  vrf = conker_variogram( xy, z, methods="RandomFields" )
-  vin = conker_variogram( xy, z, methods="inla" )
+  vgs = lstfilter_variogram( xy, z, methods="gstat" )
+  vgr = lstfilter_variogram( xy, z, methods="geoR" )
+  vsp = lstfilter_variogram( xy, z, methods="spBayes" )
+  vrf = lstfilter_variogram( xy, z, methods="RandomFields" )
+  vin = lstfilter_variogram( xy, z, methods="inla" )
 
 }
 

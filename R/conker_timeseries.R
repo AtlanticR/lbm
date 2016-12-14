@@ -1,5 +1,5 @@
 
-conker_timeseries  = function( x, method="spec.pgram", quant=0.95, taper=0.05, kernel= kernel("modified.daniell", c(1,1)) , freq=1, plotdata=FALSE ) {
+lstfilter_timeseries  = function( x, method="spec.pgram", quant=0.95, taper=0.05, kernel= kernel("modified.daniell", c(1,1)) , freq=1, plotdata=FALSE ) {
   #\\ estimate simple time series autocorrelation (serial)
   # x = sunspot.year
   u = NULL

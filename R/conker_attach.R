@@ -1,5 +1,5 @@
 
-conker_attach = function( method, pointer ) {
+lstfilter_attach = function( method, pointer ) {
    return( 
       switch( method, 
         bigmemory.ram=attach.big.matrix(pointer), 
