@@ -101,7 +101,7 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     
     # counts
     mW = matrix(0, nrow = nr2, ncol = nc2)
-    mW[xxii] = tapply( rep(1, length(xi)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    mW[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
     mW[!is.finite(mW)] = 0
     fN = Re(fft(fft(mW) * fW, inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN

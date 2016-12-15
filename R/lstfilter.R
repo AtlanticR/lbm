@@ -15,7 +15,7 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE,
 
   if(0) {
     p = bio.temperature::temperature.parameters( current.year=2016 )
-    p$lstfilter_local_modelengine="twostep"
+    p$lstfilter_local_modelengine="gam"
     p$storage.backend="bigmemory.ram"
     p = bio.temperature::temperature.parameters( DS="lstfilter", p=p )
     continue=FALSE
