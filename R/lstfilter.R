@@ -40,7 +40,7 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE,
     message( "bigmemory.ram method loses the pointers upon a restart. But, if you resend p, it just might work if p was not modified ...")
     if (exists("storage.backend", p) && p$storage.backend !="bigmemory.ram" ) p = lstfilter_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
     RLibrary( p$libs )
-
+    lstfilter_db(p=p, DS="statistics.reset.problem.locations" )
 
   } else {
 
@@ -564,6 +564,7 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE,
   p$timei0 =  Sys.time()
   o = lstfilter_db( p=p, DS="statistics.status" )
   p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
+  # lstfilter_db(p=p, DS="statistics.reset.problem.locations" )
   # lstfilter_interpolate (p=p )
   parallel.run( lstfilter_interpolate, p=p )
   p$timei1 =  Sys.time()
