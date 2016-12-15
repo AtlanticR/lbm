@@ -104,12 +104,12 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
 
     # counts
     mN = matrix(0, nrow = nr2, ncol = nc2)
-    mN[xxii] = tapply( rep(1, length(xi)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    mN[xxii] = tapply( rep(1, length(px_i)), INDEX=xxii, FUN=sum, na.rm=TRUE )
     mN[!is.finite(mN)] = 0
     
     # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
-    mY[xxii] = px[px_i,p$variables$Y] # fill with data in correct locations
+    mY[xxii] = px[px_i, "mean"] # fill with data in correct locations
     mY[!is.finite(mY)] = 0
     
     # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
@@ -138,6 +138,7 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
 
     toreplace = which(!is.finite(Z)) 
     if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
+    pa$mean[pa_i] = Z[Z_all[ pa_i, ]]
     
     # Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
     
@@ -152,7 +153,7 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     Z = fY/fN
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
-    lb = which( Z < rY[1] )
+    lb = which( Z < 0 )
     if (length(lb) > 0) Z[lb] = NA
     ub = which( Z > rY[2] )
     if (length(ub) > 0) Z[ub] = NA
@@ -165,17 +166,14 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     Z_local = fY/fN
     iZ = which( !is.finite( Z_local))
     if (length(iZ) > 0) Z_local[iZ] = NA
-    lb = which( Z_local < rY[1] )
+    lb = which( Z_local < 0 )
     if (length(lb) > 0) Z_local[lb] = NA
     ub = which( Z_local > rY[2] )
     if (length(ub) > 0) Z_local[ub] = NA
 
     toreplace = which(!is.finite(Z)) 
     if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
-
-    if ( "try-error" %in% class(Zsd) ) next()
-    pa$mean[pa_i] = Z$z[Z_all[ pa_i, ]]
-    pa$sd[pa_i] = Zsd$z[Z_all[ pa_i, ]]
+    pa$sd[pa_i] = Z[Z_all[ pa_i, ]]
   }
   
   rm (px); gc()

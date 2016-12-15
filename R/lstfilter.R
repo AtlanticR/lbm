@@ -553,6 +553,8 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE,
 
     p <<- p  # push to parent in case a manual restart is possible
 
+
+
   } 
   
   

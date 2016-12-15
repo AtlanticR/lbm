@@ -385,10 +385,12 @@ lstfilter_interpolate = function( ip=NULL, p ) {
       } # end if
     }
 
-    o = NULL
-    o = try( lstfilter_variogram( xy=dat[,p$variables$LOC], 
-      z=p$lstfilter_local_family$linkfun(dat[, p$variables$Y ]), 
-      methods=p$lstfilter_variogram_method) ) 
+    if (is.null(ores)) {
+      # try again with current data subset if no solution yet
+      o = NULL
+      o = try( lstfilter_variogram( xy=dat[,p$variables$LOC], 
+        z = p$lstfilter_local_family$linkfun(dat[, p$variables$Y ]), 
+        methods=p$lstfilter_variogram_method) ) 
       if (!inherits(o, "try-error")) {
         if ( !is.null(o) ) {
           if ( exists( p$lstfilter_variogram_method, o )) {
@@ -401,14 +403,17 @@ lstfilter_interpolate = function( ip=NULL, p ) {
           }  
         }
       } 
-    
-    phi = NULL
+    }
+
+    nu = phi = NULL
     if (!is.null(ores)) {
       if ( exists("nu", ores) ) nu = ores$nu
       if ( exists("phi", ores) ) phi = ores$phi 
     }
-    if (is.null(phi)) phi = p$lstfilter_phi
 
+    if (is.null(nu)) nu = p$lstfilter_nu
+    if (is.null(phi)) phi = lstfilter_distance_cur/sqrt( 8*nu) # crude estimate of phi based upon current scaling  distance approximates the range at 90% autocorrelation(e.g., see Lindgren et al. 2011)
+    
     # model and prediction 
     # the following permits user-defined models (might want to use compiler::cmpfun )
     gc()

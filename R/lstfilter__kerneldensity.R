@@ -53,7 +53,7 @@ lstfilter__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
 
 
   for ( ti in 1:p$nt ) {
-    print (ti)
+
     if ( exists("TIME", p$variables)) {
       xi = which( x[, p$variables$TIME]==p$ts[ti]) 
     } else {
@@ -67,7 +67,7 @@ lstfilter__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     
     # counts
     mN = matrix(0, nrow = nr2, ncol = nc2)
-    mN[xxii] = tapply( rep(1, length(xi)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    mN[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
     mN[!is.finite(mN)] = 0
     
     # density

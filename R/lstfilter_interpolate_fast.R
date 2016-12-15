@@ -111,7 +111,7 @@ lstfilter_interpolate_fast = function( ip=NULL, p ) {
       Z = fY/fN
       iZ = which( !is.finite( Z))
       if (length(iZ) > 0) Z[iZ] = NA
-      lb = which( Z < rY[1] )
+      lb = which( Z < 0 )
       if (length(lb) > 0) Z[lb] = NA
       ub = which( Z > rY[2] )
       if (length(ub) > 0) Z[ub] = NA
@@ -124,7 +124,7 @@ lstfilter_interpolate_fast = function( ip=NULL, p ) {
       Z_local = fY/fN
       iZ = which( !is.finite( Z_local))
       if (length(iZ) > 0) Z_local[iZ] = NA
-      lb = which( Z_local < rY[1] )
+      lb = which( Z_local < 0 )
       if (length(lb) > 0) Z_local[lb] = NA
       ub = which( Z_local > rY[2] )
       if (length(ub) > 0) Z_local[ub] = NA
