@@ -72,12 +72,12 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
 
   # first pass with the global params to get closest fit to data 
   AC_global = stationary.cov( dgrid, center, Covariance="Matern", range=p$lstfilter_phi, nu=p$lstfilter_nu )
-  mAC_global = matrix(c(AC_global), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+  mAC_global = as.surface(dgrid, c(AC_global))$z
   fW_global = fft(mAC_global)/(fft(mC) * nr2 * nc2)
 
   # second pass with local fits to data to smooth what can be smoothed
   AC_local  = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-  mAC_local = matrix(c(AC_local), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+  mAC_local = as.surface(dgrid, c(AC_local))$z
   fW_local = fft(mAC_local)/(fft(mC) * nr2 * nc2)
 
   rm(dgrid, AC_global, AC_local, mAC_global, mAC_local, mC); gc()
