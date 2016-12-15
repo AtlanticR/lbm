@@ -49,7 +49,7 @@ lstfilter__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
   mAC_local = matrix(c(AC_local), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
   fW_local = fft(mAC_local)/(fft(mC) * nr2 * nc2)
 
-  rm(dgrid, AC_global, AC_local, mC_local, mC); gc()
+  rm(dgrid, AC_global, AC_local, mAC_local, mAC_global, mC); gc()
 
 
   for ( ti in 1:p$nt ) {
@@ -106,7 +106,7 @@ lstfilter__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     # image(Z_local)
 
 
-    if ( iinherits(Z, "try-error") ) next()
+    if ( inherits(Z, "try-error") ) next()
     # match prediction to input data 
     x$mean[xi] = Z[xxii]
     ss = lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit)
