@@ -121,10 +121,13 @@ lstfilter_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c
     vario = RFempiricalvariogram( data=Yyy )
     
     # remove the (0,0) point -- force intercept
-    vg = vario@emp.vario[-1]
-    vx = vario@centers[-1]
-    mvg = max(vg)
-    mvx = max(vx)
+    todrop = which( !is.finite(vario@emp.vario )) # occasionally NaN's are created!
+    todrop = unique( c(1, todrop) )
+    vg = vario@emp.vario[-todrop]
+    vx = vario@centers[-todrop]
+    
+    mvg = max(vg, na.rm=TRUE)
+    mvx = max(vx, na.rm=TRUE)
     eps = 1e-6
     lower =c(eps,eps,eps, eps)
     upper =c(mvg, mvg, mvx, 2)
@@ -151,6 +154,7 @@ lstfilter_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c
         }
       } else {
         out = try( lstfilter_variogram( xy=xy, z=z, methods="gstat") )
+        if (!inherits(out, "try-error") )
         out$fast =out$gstat
         out$gstat =NULL
         return(out)

@@ -417,15 +417,16 @@ lstfilter_interpolate = function( ip=NULL, p ) {
       bayesx = lstfilter__bayesx( p, dat, pa ),
       habitat = lstfilter__habitat( p, dat, pa ), # TODO 
       inla = lstfilter__inla( p, dat, pa ),
-      kernel.density = lstfilter__kerneldensity( p, dat, pa, nu, phi ),
       gam = lstfilter_gam( p, dat, pa ), 
       gaussianprocess2Dt = lstfilter__gaussianprocess2Dt( p, dat, pa ), 
       gaussianprocess = lstfilter__gaussianprocess( p, dat, pa ),  # TODO
-      glm = lstfilter_glm( p, dat, pa ), 
+      glm = lstfilter_glm( p, dat, pa, nu=nu, phi=phi ), 
+      gstat = lstfilter_gstat( p, dat, pa ), # TODO
       LaplacesDemon = lstfilter__LaplacesDemon( p, dat, pa ),
-      spate = lstfilter__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 
       splancs = lstfilter__spate( p, dat, pa ), # TODO
-      twostep = lstfilter__twostep( p, dat, pa, nu=nu , phi=phi, px=px ), # slow ...
+      spate = lstfilter__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 
+      kernel.density = lstfilter__kerneldensity( p, dat, pa, nu=nu, phi=phi ), 
+      twostep = lstfilter__twostep( p, dat, pa, px=px, nu=nu, phi=phi  ), # slow ...!
       lstfilter_local_modelengine_userdefined = p$lstfilter_local_modelengine_userdefined( p, dat, pa)
     ) )
 

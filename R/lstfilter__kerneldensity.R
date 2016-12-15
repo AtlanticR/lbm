@@ -5,9 +5,10 @@ lstfilter__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice
 
-
   if (is.null(phi)) phi=p$lstfilter_phi
   if (is.null(nu)) nu=p$lstfilter_nu # nu=0.5 an exponential covariance
+
+  rY = quantile( x[,p$variables$Y], probs=p$lstfilter_quantile_bounds, na.rm=TRUE)
 
   x_r = range(x[,p$variables$LOCS[1]])
   x_c = range(x[,p$variables$LOCS[2]])
@@ -34,19 +35,25 @@ lstfilter__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
   dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
   center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
       ncol = 2)
-  AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-    
-  mAC = matrix(c(AC), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+
   mC = matrix(0, nrow = nr2, ncol = nc2)
   mC[nr, nc] = 1
-  fW = fft(mAC)/(fft(mC) * nr2 * nc2)
-  rm(dgrid, AC, mAC, mC); gc()
 
-  rY = range( x[,p$variables$Y], na.rm=TRUE)
+  # first pass with the global params to get closest fit to data 
+  AC_global = stationary.cov( dgrid, center, Covariance="Matern", range=p$lstfilter_phi, nu=p$lstfilter_nu )
+  mAC_global = matrix(c(AC_global), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+  fW_global = fft(mAC_global)/(fft(mC) * nr2 * nc2)
+
+  # second pass with local fits to data to smooth what can be smoothed
+  AC_local  = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+  mAC_local = matrix(c(AC_local), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+  fW_local = fft(mAC_local)/(fft(mC) * nr2 * nc2)
+
+  rm(dgrid, AC_global, AC_local, mC_local, mC); gc()
 
 
   for ( ti in 1:p$nt ) {
-     
+    print (ti)
     if ( exists("TIME", p$variables)) {
       xi = which( x[, p$variables$TIME]==p$ts[ti]) 
     } else {
@@ -57,47 +64,49 @@ lstfilter__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     x_id = cbind( (x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
                   (x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
     xxii = array_map( "2->1", x_id, c(nr2, nc2) )
+    
     # counts
-    mW = matrix(0, nrow = nr2, ncol = nc2)
-    mW[xxii] = tapply( rep(1, length(xi)), INDEX=xxii, FUN=sum, na.rm=TRUE )
-    mW[!is.finite(mW)] = 0
-    fN = Re(fft(fft(mW) * fW, inverse = TRUE))[1:nr,1:nc]
-   
+    mN = matrix(0, nrow = nr2, ncol = nc2)
+    mN[xxii] = tapply( rep(1, length(xi)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    mN[!is.finite(mN)] = 0
+    
+    # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
     mY[xxii] = x[xi,p$variables$Y] # fill with data in correct locations
     mY[!is.finite(mY)] = 0
-    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
     
+    # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
+    fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
-
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
     lb = which( Z < rY[1] )
     if (length(lb) > 0) Z[lb] = NA
     ub = which( Z > rY[2] )
     if (length(ub) > 0) Z[ub] = NA
-    
     # image(Z)
 
-    # matrix representation of the output surface
-     # Z = try( fields::image.smooth( mY, dx=p$pres, dy=p$pres, theta=p$lstfilter_phi)$z ) # phi==theta
-  
-    if (0) {
-      # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
-      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=nc, nrow=nr, range=phi, nu=nu, cov.function=stationary.cov, Covariance="Exponential" ) )
-      iZ = which( !is.finite( Z$z))
-      if (length(iZ) > 0) Z$z[iZ] = NA
-      rY = range( x[xi,p$variables$Y], na.rm=TRUE)
-      nZ = which( Z$z < rY[1] )
-      if (length(nZ) > 0) Z$z[nZ] = NA
-      mZ = which( Z$z > rY[2] )
-      if (length(mZ) > 0) Z$z[mZ] = NA
-      
-      x11(); image.plot(Z)
-      Z = Z$z
-    }
-  
-    if ( "try-error" %in% class(Z) ) next()
+    # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
+    # to fill in areas with no data (e.g., far away from data locations)
+    fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
+    Z_local = fY/fN
+    iZ = which( !is.finite( Z_local))
+    if (length(iZ) > 0) Z_local[iZ] = NA
+    lb = which( Z_local < rY[1] )
+    if (length(lb) > 0) Z_local[lb] = NA
+    ub = which( Z_local > rY[2] )
+    if (length(ub) > 0) Z_local[ub] = NA
+
+    toreplace = which(!is.finite(Z)) 
+    if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
+    
+    # image(Z)
+    # image(Z_local)
+
+
+    if ( iinherits(Z, "try-error") ) next()
     # match prediction to input data 
     x$mean[xi] = Z[xxii]
     ss = lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit)
@@ -120,6 +129,7 @@ lstfilter__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     if ( any( Z_i[,2] > nc) ) next()
     pa$mean[pa_i] = Z[Z_i]
     pa$sd[pa_i] = 1
+
   }
 
   # plot(mean ~ z , x)

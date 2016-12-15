@@ -36,6 +36,8 @@ lstfilter_interpolate_xy_simple = function( interp.method, data, locsout, datagr
   if (interp.method == "fft") {
     require(fields)
 
+    rY = quantile( x[,p$variables$Y], probs=p$lstfilter_quantile_bounds, na.rm=TRUE)
+
     im = as.image(data, x=locsout, nx=nr, ny=nc, na.rm=TRUE)
     grid <- list(x = im$x, y = im$y)
     dx <- grid$x[2] - grid$x[1]
@@ -46,38 +48,65 @@ lstfilter_interpolate_xy_simple = function( interp.method, data, locsout, datagr
     dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
     center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
         ncol = 2)
-    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-      
-    mAC = matrix(c(AC), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+
     mC = matrix(0, nrow = nr2, ncol = nc2)
     mC[nr, nc] = 1
-    fW = fft(mAC)/(fft(mC) * nr2 * nc2)
-    rm(dgrid, AC, mAC, mC); gc()
 
-    rY = range( data, na.rm=TRUE)
+    
+    # first pass with the global params to get closest fit to data 
+    AC_global = stationary.cov( dgrid, center, Covariance="Matern", range=p$lstfilter_phi, nu=p$lstfilter_nu )
+    mAC_global = matrix(c(AC_global), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+    fW_global = fft(mAC_global)/(fft(mC) * nr2 * nc2)
+
+    # second pass with local fits to data to smooth what can be smoothed
+    AC_local  = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+    mAC_local = matrix(c(AC_local), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+    fW_local = fft(mAC_local)/(fft(mC) * nr2 * nc2)
+
+    rm(dgrid, AC_global, AC_local, mC, mAC_local, mAC_global); gc()
+
+    
     # not finished, see lstfilter__kerneldensity
     x_id = cbind( (x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
                   (x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
-  
+        
+    # counts
+    mN = matrix(0, nrow = nr2, ncol = nc2)
+    mN[x_id] = tapply( rep(1, length(xi)), INDEX=x_id, FUN=sum, na.rm=TRUE )
+    mN[!is.finite(mN)] = 0
+    
+    # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
     mY[x_id] = x[xi,p$variables$Y] # fill with data in correct locations
     mY[!is.finite(mY)] = 0
-    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
     
-    # counts
-    mW = matrix(0, nrow = nr2, ncol = nc2)
-    mW[x_id] = tapply( rep(1, length(xi)), INDEX=x_id, FUN=sum, na.rm=TRUE )
-    mW[!is.finite(mW)] = 0
-    fN = Re(fft(fft(mW) * fW, inverse = TRUE))[1:nr,1:nc]
+    # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
+    fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
-
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
     lb = which( Z < rY[1] )
     if (length(lb) > 0) Z[lb] = NA
     ub = which( Z > rY[2] )
     if (length(ub) > 0) Z[ub] = NA
-    
+    # image(Z)
+
+    # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
+    # to fill in areas with no data (e.g., far away from data locations)
+    fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
+    Z_local = fY/fN
+    iZ = which( !is.finite( Z_local))
+    if (length(iZ) > 0) Z_local[iZ] = NA
+    lb = which( Z_local < rY[1] )
+    if (length(lb) > 0) Z_local[lb] = NA
+    ub = which( Z_local > rY[2] )
+    if (length(ub) > 0) Z_local[ub] = NA
+
+    toreplace = which(!is.finite(Z)) 
+    if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
+
     # image(Z)
     return (Z)
   }

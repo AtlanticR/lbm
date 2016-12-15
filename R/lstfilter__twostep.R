@@ -11,6 +11,8 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   if (is.null(phi)) phi=p$lstfilter_phi # range parameter
   if (is.null(nu)) nu=p$lstfilter_nu  # this is an exponential covariance
 
+  rY = quantile( x[,p$variables$Y], probs=p$lstfilter_quantile_bounds, na.rm=TRUE)
+
   if ( exists("lstfilter_local_model_distanceweighted", p) ) {
     if (p$lstfilter_local_model_distanceweighted) {
       hmod = try( gam( p$lstfilter_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
@@ -31,8 +33,8 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   preds = try( predict( hmod, newdata=px, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
 
   reject = which( preds$se.fit > quantile( preds$se.fit, probs= p$lstfilter_quantile_bounds[2], na.rm=TRUE ) 
-                | preds$fit > p$qs[2] 
-                | preds$fit < p$qs[1] )
+                | preds$fit > rY[2] 
+                | preds$fit < rY[1] )
 
   preds$fit[reject] = NA
 
@@ -64,16 +66,21 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
   center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
       ncol = 2)
-  AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-    
-  mAC = matrix(c(AC), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+
   mC = matrix(0, nrow = nr2, ncol = nc2)
   mC[nr, nc] = 1
-  fW = fft(mAC)/(fft(mC) * nr2 * nc2)
-  rm(dgrid, AC, mAC, mC); gc()
 
-  rY = range( x[,p$variables$Y], na.rm=TRUE)
+  # first pass with the global params to get closest fit to data 
+  AC_global = stationary.cov( dgrid, center, Covariance="Matern", range=p$lstfilter_phi, nu=p$lstfilter_nu )
+  mAC_global = matrix(c(AC_global), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+  fW_global = fft(mAC_global)/(fft(mC) * nr2 * nc2)
 
+  # second pass with local fits to data to smooth what can be smoothed
+  AC_local  = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+  mAC_local = matrix(c(AC_local), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
+  fW_local = fft(mAC_local)/(fft(mC) * nr2 * nc2)
+
+  rm(dgrid, AC_global, AC_local, mAC_global, mAC_local, mC); gc()
 
   for ( ti in 1:p$nt ) {
   
@@ -90,61 +97,81 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     # matrix representation of the output surface
     # Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
     
-    x_id = cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+    xi = cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
                   (px[px_i,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 )
-    xxii = array_map( "2->1", x_id, c(nr2, nc2) )
+    xxii = array_map( "2->1", xi, c(nr2, nc2) )
     
-    mY = matrix(0, nrow = nr2, ncol = nc2)
-    mY[xxii] = px[px_i,"mean"] # fill with data in correct locations
-    mY[!is.finite(mY)] = 0
-    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
-    
+
     # counts
-    mW = matrix(0, nrow = nr2, ncol = nc2)
-    mW[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
-    mW[!is.finite(mW)] = 0
-    fN = Re(fft(fft(mW) * fW, inverse = TRUE))[1:nr,1:nc]
+    mN = matrix(0, nrow = nr2, ncol = nc2)
+    mN[xxii] = tapply( rep(1, length(xi)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    mN[!is.finite(mN)] = 0
+    
+    # density
+    mY = matrix(0, nrow = nr2, ncol = nc2)
+    mY[xxii] = px[px_i,p$variables$Y] # fill with data in correct locations
+    mY[!is.finite(mY)] = 0
+    
+    # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
+    fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
-
-    if ( "try-error" %in% class(Z) ) next()
-
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
     lb = which( Z < rY[1] )
     if (length(lb) > 0) Z[lb] = NA
     ub = which( Z > rY[2] )
     if (length(ub) > 0) Z[ub] = NA
+    # image(Z)
 
+    # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
+    # to fill in areas with no data (e.g., far away from data locations)
+    fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
+    Z_local = fY/fN
+    iZ = which( !is.finite( Z_local))
+    if (length(iZ) > 0) Z_local[iZ] = NA
+    lb = which( Z_local < rY[1] )
+    if (length(lb) > 0) Z_local[lb] = NA
+    ub = which( Z_local > rY[2] )
+    if (length(ub) > 0) Z_local[ub] = NA
+
+    toreplace = which(!is.finite(Z)) 
+    if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
+    
     # Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
     
+    # sd
     mY = matrix(0, nrow = nr2, ncol = nc2)
     mY[xxii] = px[px_i,"sd"] # fill with data in correct locations
     mY[!is.finite(mY)] = 0
-    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
-    # mW, fW already computed above
-    fN = Re(fft(fft(mW) * fW, inverse = TRUE))[1:nr,1:nc]
+    
+    # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
+    fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
-  
-
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
-    lb = which( Z < 0 )
+    lb = which( Z < rY[1] )
     if (length(lb) > 0) Z[lb] = NA
     ub = which( Z > rY[2] )
     if (length(ub) > 0) Z[ub] = NA
+    # image(Z)
 
-    # Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, cov.function=stationary.cov, Covariance="Matern", nu=nu, range=phi ) )
-    # if ( "try-error" %in% class(Z) ) next()
+    # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
+    # to fill in areas with no data (e.g., far away from data locations)
+    fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
+    Z_local = fY/fN
+    iZ = which( !is.finite( Z_local))
+    if (length(iZ) > 0) Z_local[iZ] = NA
+    lb = which( Z_local < rY[1] )
+    if (length(lb) > 0) Z_local[lb] = NA
+    ub = which( Z_local > rY[2] )
+    if (length(ub) > 0) Z_local[ub] = NA
 
-    # iZ = which( !is.finite( Z$z))
-    # if (length(iZ) > 0) Z$z[iZ] = NA
-    # rY = range( x[ ,p$variables$Y ], na.rm=TRUE)
-    # nZ = which( Z$z < rY[1] )
-    # if (length(nZ) > 0) Z$z[nZ] = NA
-    # mZ = which( Z$z > rY[2] )
-    # if (length(mZ) > 0) Z$z[mZ] = NA
-    # # x11(); image.plot(Z)
-    # Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], ncol=px_nc, nrow=px_nr, cov.function=stationary.cov, Covariance="Matern", nu=nu, range=phi ) )
+    toreplace = which(!is.finite(Z)) 
+    if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
 
     if ( "try-error" %in% class(Zsd) ) next()
     pa$mean[pa_i] = Z$z[Z_all[ pa_i, ]]
