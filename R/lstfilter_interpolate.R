@@ -323,13 +323,9 @@ lstfilter_interpolate = function( ip=NULL, p ) {
       # ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
       # test which is faster ... remove non-unique?
       ids = array_map( "2->1", trunc(cbind(px$plon, px$plat)/p$pres+1), c(p$nplons, p$nplats) ) # 100X faster than paste 
-
       todrop = which(duplicated( ids) )
-      if (length(todrop>0)) {
-        ids = ids[-todrop]
-        px = px[ ids, ]
-      }
-      rm (ids)
+      if (length(todrop>0)) px = px[-todrop,]
+      rm(ids, todrop)
 
       # static vars .. don't need to look up
       tokeep = c(p$variables$LOCS )

@@ -36,13 +36,13 @@ lstfilter__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
                 | preds$fit > rY[2] 
                 | preds$fit < rY[1] )
 
-  preds$fit[reject] = NA
+  if (length(reject) > 0) preds$fit[reject] = NA
 
   px$mean = as.vector( preds$fit )
   px$sd = as.vector( preds$se.fit )
 
-  px_r = range(px[,p$variables$LOCS[1]])
-  px_c = range(px[,p$variables$LOCS[2]])
+  px_r = range(px[,p$variables$LOCS[1]], na.rm=TRUE)
+  px_c = range(px[,p$variables$LOCS[2]], na.rm=TRUE)
   
   nr = diff(px_r)/p$pres + 1
   nc = diff(px_c)/p$pres + 1
