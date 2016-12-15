@@ -44,6 +44,7 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE,
 
   } else {
 
+
     p$time.start =  Sys.time()
 
     p$savedir = file.path(p$project.root, "lstfilter", p$spatial.domain )

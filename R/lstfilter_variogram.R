@@ -125,11 +125,12 @@ lstfilter_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c
     vx = vario@centers[-1]
     mvg = max(vg)
     mvx = max(vx)
+    eps = 1e-6
+    lower =c(eps,eps,eps, eps)
+    upper =c(mvg, mvg, mvx, 2)
     #nonlinear est
     par = c(tau.sq=mvg*0.05, sigma.sq=mvg*0.95, phi=mvx/5, nu=0.5) 
-    o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", 
-      lower =c(0,0,0, 0),
-      upper =c(mvg, mvg, mvx, 2),
+    o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", lower=lower, upper=upper,
       control=list(maxit=100),
       fn=function(par, vg, vx){ 
         vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )

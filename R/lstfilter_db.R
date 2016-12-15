@@ -158,7 +158,18 @@
           Sflag = lstfilter_attach( p$storage.backend, p$ptr$Sflag )
           if (length(Sland)>0) Sflag[Sland] = Inf
           if (length(Sland)>0) Sflag[Swater] = NaN
-           
+
+          Yloc = lstfilter_attach( p$storage.backend, p$ptr$Yloc )
+          plot( Yloc[], pch=".", col="grey" ) # data locations
+          bnds = try( lstfilter_db( p=p, DS="boundary" ) )
+          if (!is.null(bnds)) {
+            if ( !("try-error" %in% class(bnds) ) ) {
+              points( Sloc[which(bnds$inside.polygon==1),], pch=".", col="orange" )
+              lines( bnds$polygon[] , col="green", pch=2 )
+            }
+          }
+          points( Sloc[which(is.nan( Sflag[])),], pch=".", col="blue" )
+              
           rm(land, S_index); gc()
         }
       }
