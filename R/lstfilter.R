@@ -1,5 +1,5 @@
 
-lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL, do.secondstage=FALSE ) {
+lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE, do.secondstage=FALSE ) {
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
@@ -16,71 +16,74 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL,
   if(0) {
     p = bio.temperature::temperature.parameters( current.year=2016 )
     p$lstfilter_local_modelengine="twostep"
+    p$storage.backend="bigmemory.ram"
     p = bio.temperature::temperature.parameters( DS="lstfilter", p=p )
-    overwrite=NULL
+    continue=FALSE
+    do.secondstage=FALSE
     DATA='hydro.db( p=p, DS="lstfilter.input" )'
-    storage.backend="bigmemory.ram"
 
 
     p = bio.bathymetry::bathymetry.parameters( )
     p$lstfilter_local_modelengine = "kernel.density"  # about 5 X faster than bayesx-mcmc method
-    p = bio.bathymetry::bathymetry.parameters( p=p, DS="lstfilter" )
-    overwrite=NULL
-    DATA='bathymetry.db( p=p, DS="bathymetry.lstfilter.data" )'
     p$storage.backend="bigmemory.ram"
+    p = bio.bathymetry::bathymetry.parameters( p=p, DS="lstfilter" )
+    continue=FALSE
+    do.secondstage=FALSE
+    DATA='bathymetry.db( p=p, DS="bathymetry.lstfilter.data" )'
   }
 
-  p$time.start =  Sys.time()
 
-  p$savedir = file.path(p$project.root, "lstfilter", p$spatial.domain )
-  message( paste( "In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
-  if ( !file.exists(p$savedir)) dir.create( p$savedir, recursive=TRUE, showWarnings=FALSE )
+  if (continue) {
 
-  p$stloc = file.path( p$project.root, "lstfilter", p$spatial.domain, "tmp" )
-  message( paste( "Temporary files are being created at:", p$stloc ) )
-  if ( !file.exists(p$stloc)) dir.create( p$stloc, recursive=TRUE, showWarnings=FALSE )
+  
+    message( "Restart only works reliably with bigmemory.filebacked and ff methods. " )
+    message( "bigmemory.ram method loses the pointers upon a restart. But, if you resend p, it just might work if p was not modified ...")
+    if (exists("storage.backend", p) && p$storage.backend !="bigmemory.ram" ) p = lstfilter_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
+    RLibrary( p$libs )
 
-  p$libs = unique( c( p$libs, "sp", "rgdal", "parallel", "RandomFields", "geoR" ) )
 
-  if (!exists("storage.backend", p)) p$storage.backend = storage.backend
-  if (any( grepl ("ff", p$storage.backend)))         p$libs = c( p$libs, "ff", "ffbase" )
-  if (any( grepl ("bigmemory", p$storage.backend)))  p$libs = c( p$libs, "bigmemory" )
+  } else {
 
-  if (p$lstfilter_local_modelengine=="bayesx")  p$libs = c( p$libs, "R2BayesX" )
-  if (p$lstfilter_local_modelengine %in% c("gam", "mgcv", "habitat") )  p$libs = c( p$libs, "mgcv" )
-  if (p$lstfilter_local_modelengine %in% c("LaplacesDemon") )  p$libs = c( p$libs, "LaplacesDemonCpp" )
-  if (p$lstfilter_local_modelengine %in% c("inla") )  p$libs = c( p$libs, "INLA" )
-  if (p$lstfilter_local_modelengine %in% c("kernel.density", "gaussianprocess2Dt") )  p$libs = c( p$libs, "fields" )
-  if (p$lstfilter_local_modelengine %in% c("spate") )  p$libs = c( p$libs, "spate" )
-  if (p$lstfilter_local_modelengine %in% c("splancs") )  p$libs = c( p$libs, "splancs" )
-  if (p$lstfilter_local_modelengine %in% c("twostep") )  p$libs = c( p$libs, "mgcv", "fields" )
+    p$time.start =  Sys.time()
 
-  p$libs = unique( p$libs )
-  RLibrary( p$libs )
+    p$savedir = file.path(p$project.root, "lstfilter", p$spatial.domain )
+    message( paste( "In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
+    if ( !file.exists(p$savedir)) dir.create( p$savedir, recursive=TRUE, showWarnings=FALSE )
 
-  if (p$storage.backend=="bigmemory.ram") {
-    if ( length( unique(p$clusters)) > 1 ) stop( "More than one unique cluster server was specified .. the RAM-based method only works within one server." )
-  }
+    p$stloc = file.path( p$project.root, "lstfilter", p$spatial.domain, "tmp" )
+    message( paste( "Temporary files are being created at:", p$stloc ) )
+    if ( !file.exists(p$stloc)) dir.create( p$stloc, recursive=TRUE, showWarnings=FALSE )
 
-  p = lstfilter_parameters(p=p) # fill in parameters with defaults where possible
-  p = lstfilter_db( p=p, DS="filenames" )
-  p$ptr = list() # location for data pointers
+    p$libs = unique( c( p$libs, "sp", "rgdal", "parallel", "RandomFields", "geoR" ) )
 
-  # set up the data and problem using data objects
-  if (is.null(overwrite)) {
+    if (!exists("storage.backend", p)) p$storage.backend = storage.backend
+    if (any( grepl ("ff", p$storage.backend)))         p$libs = c( p$libs, "ff", "ffbase" )
+    if (any( grepl ("bigmemory", p$storage.backend)))  p$libs = c( p$libs, "bigmemory" )
+
+    if (p$lstfilter_local_modelengine=="bayesx")  p$libs = c( p$libs, "R2BayesX" )
+    if (p$lstfilter_local_modelengine %in% c("gam", "mgcv", "habitat") )  p$libs = c( p$libs, "mgcv" )
+    if (p$lstfilter_local_modelengine %in% c("LaplacesDemon") )  p$libs = c( p$libs, "LaplacesDemonCpp" )
+    if (p$lstfilter_local_modelengine %in% c("inla") )  p$libs = c( p$libs, "INLA" )
+    if (p$lstfilter_local_modelengine %in% c("kernel.density", "gaussianprocess2Dt") )  p$libs = c( p$libs, "fields" )
+    if (p$lstfilter_local_modelengine %in% c("spate") )  p$libs = c( p$libs, "spate" )
+    if (p$lstfilter_local_modelengine %in% c("splancs") )  p$libs = c( p$libs, "splancs" )
+    if (p$lstfilter_local_modelengine %in% c("twostep") )  p$libs = c( p$libs, "mgcv", "fields" )
+
+    p$libs = unique( p$libs )
+    RLibrary( p$libs )
+
+    if (p$storage.backend=="bigmemory.ram") {
+      if ( length( unique(p$clusters)) > 1 ) stop( "More than one unique cluster server was specified .. the RAM-based method only works within one server." )
+    }
+
+    p = lstfilter_parameters(p=p) # fill in parameters with defaults where possible
+    p = lstfilter_db( p=p, DS="filenames" )
+    p$ptr = list() # location for data pointers
+
+    # set up the data and problem using data objects
+
     tmpfiles = unlist( p$cache)
-	  for (tf in tmpfiles) {
-  		if (file.exists( tf)) {
-  			cat( "Temporary files exist from a previous run found at: \n")
-        cat( tf )
-        cat( "\n")
-  			cat( "Send an explicit overwrite=TRUE (i.e., restart) or overwrite=FALSE (i.e., continue) option to proceed. \n")
-  			return(NULL)
-  		}
-  	}
-	}
-
-  if ( is.null(overwrite) || overwrite ) {
+	  for (tf in tmpfiles) if (file.exists( tf)) file.remove(tf)
 
     p$variables$all = NULL
     if (exists("lstfilter_local_modelformula", p))  {
@@ -149,7 +152,7 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL,
         if (p$storage.backend == "ff" ) {
           p$ptr$Sloc = ff( Sloc, dim=dim(Sloc), file=p$cache$Sloc, overwrite=TRUE )
         }
-    rm( sbox )
+      rm( sbox )
 
       S = matrix( NaN, nrow=nrow(Sloc), ncol=length( p$statsvars ) ) # NA forces into logical
         if (p$storage.backend == "bigmemory.ram" ) {
@@ -425,31 +428,31 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL,
       if (exists("lstfilter_global_modelengine", p) ) {
       # create prediction suface with covariate-based additive offsets
 
-          if (p$storage.backend == "bigmemory.ram" ) {
-            p$bm$P0= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
-            p$bm$P0[] = P
-            p$ptr$P0 = bigmemory::describe(p$bm$P0 )
-          }
-          if (p$storage.backend == "bigmemory.filebacked" ) {
-            p$ptr$P0  = p$cache$P0
-            bigmemory::as.big.matrix( P, type="double", backingfile=basename(p$bm$P0), descriptorfile=basename(p$cache$P0), backingpath=p$stloc )
-          }
-          if (p$storage.backend == "ff" ) {
-            p$ptr$P0 = ff( P, dim=dim(P), file=p$cache$P0, overwrite=TRUE )
-          }
+        if (p$storage.backend == "bigmemory.ram" ) {
+          p$bm$P0= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
+          p$bm$P0[] = P
+          p$ptr$P0 = bigmemory::describe(p$bm$P0 )
+        }
+        if (p$storage.backend == "bigmemory.filebacked" ) {
+          p$ptr$P0  = p$cache$P0
+          bigmemory::as.big.matrix( P, type="double", backingfile=basename(p$bm$P0), descriptorfile=basename(p$cache$P0), backingpath=p$stloc )
+        }
+        if (p$storage.backend == "ff" ) {
+          p$ptr$P0 = ff( P, dim=dim(P), file=p$cache$P0, overwrite=TRUE )
+        }
 
-          if (p$storage.backend == "bigmemory.ram" ) {
-            p$bm$P0sd= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
-            p$bm$P0sd[] = P
-            p$ptr$P0sd = bigmemory::describe(p$bm$P0sd )
-          }
-          if (p$storage.backend == "bigmemory.filebacked" ) {
-            p$ptr$P0sd  = p$cache$P0sd
-            bigmemory::as.big.matrix( P, type="double", backingfile=basename(p$bm$P0sd), descriptorfile=basename(p$cache$P0sd), backingpath=p$stloc )
-          }
-          if (p$storage.backend == "ff" ) {
-            p$ptr$P0sd = ff( P, dim=dim(P), file=p$cache$P0sd, overwrite=TRUE )
-          }
+        if (p$storage.backend == "bigmemory.ram" ) {
+          p$bm$P0sd= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
+          p$bm$P0sd[] = P
+          p$ptr$P0sd = bigmemory::describe(p$bm$P0sd )
+        }
+        if (p$storage.backend == "bigmemory.filebacked" ) {
+          p$ptr$P0sd  = p$cache$P0sd
+          bigmemory::as.big.matrix( P, type="double", backingfile=basename(p$bm$P0sd), descriptorfile=basename(p$cache$P0sd), backingpath=p$stloc )
+        }
+        if (p$storage.backend == "ff" ) {
+          p$ptr$P0sd = ff( P, dim=dim(P), file=p$cache$P0sd, overwrite=TRUE )
+        }
 
         P=NULL; gc()
 
@@ -547,19 +550,11 @@ lstfilter = function( p, DATA,  storage.backend="bigmemory.ram", overwrite=NULL,
     message( "Finished. Moving onto analysis... ")
     gc()
 
-  } else {
+    p <<- p  # push to parent in case a manual restart is possible
 
-    message( "Restart only works with bigmemory.filebacked and ff methods. " )
-    message( "bigmemory.ram method loses the pointers upon a restart. ")
-    p = lstfilter_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
-    RLibrary( p$libs )
-
-  }
-
-  if ( exists("TIME", p$variables) & (p$lstfilter_local_modelengine=="kernel.density") ) {
-    message( "The kernel.density method really should not be used in a timeseries context,")
-    message( "unless you have a lot of data in each time slice ..")
-  }
+  } 
+  
+  
 
   # -------------------------------------
   # localized space-time modelling/interpolation/prediction

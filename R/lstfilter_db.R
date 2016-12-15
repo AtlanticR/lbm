@@ -144,19 +144,16 @@
         message( paste( "Time taken to estimate spatial bounds (mins):", round( difftime( p$timeb1, p$timeb0, units="mins" ),3) ) )
       }
 
-      if ( !is.null(p$depth.filter) ) {
+      if ( exists("depth.filter", p) && p$depth.filter ) {
         # assuming that there is depth information in Pcov, match Sloc's and filter out locations that fall on land
         if ( "z" %in% p$variables$COV ){
           Pland = which( lstfilter_attach( p$storage.backend, p$ptr$Pcov[["z"]] )[] < p$depth.filter )
-          
           Ploc = lstfilter_attach( p$storage.backend, p$ptr$Ploc )
           Sloc = lstfilter_attach( p$storage.backend, p$ptr$Sloc )
-          
           Swater = match( array_map( "2->1", cbind(Ploc[-Pland,1]-p$plons[1], Ploc[-Pland,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ), 
-                           array_map( "2->1", cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ) )
+                          array_map( "2->1", cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ) )
           Swater = unique( Swater )
           Swater = Swater[ is.finite(Swater)]
-
           Sland = setdiff( 1:nrow(Sloc), Swater )
           Sflag = lstfilter_attach( p$storage.backend, p$ptr$Sflag )
           if (length(Sland)>0) Sflag[Sland] = Inf
@@ -429,7 +426,7 @@
       rm (good); gc()
      # lattice::levelplot( stats[,1] ~ Ploc[,1]+Ploc[,2])
  
-      if ( !is.null(p$depth.filter) ) {
+      if ( exists("depth.filter", p) && p$depth.filter ) {
         # stats is now with the same indices as Pcov, Ploc, etc..
         if ( "z" %in% p$variables$COV ){
           depths = lstfilter_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
