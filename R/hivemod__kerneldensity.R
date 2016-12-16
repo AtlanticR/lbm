@@ -61,8 +61,8 @@ hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     } 
     
     # map of row, col indices of input data in the new (output) coordinate system
-    x_id = cbind( (x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
-                  (x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
+    x_id = cbind( trunc(( x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres) + 1, 
+                  trunc(( x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres) + 1 )
     xxii = array_map( "2->1", x_id, c(nr2, nc2) )
     
     # counts

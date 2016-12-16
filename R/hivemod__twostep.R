@@ -99,7 +99,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     
     xi = cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
                   (px[px_i,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 )
-    xxii = array_map( "2->1", xi, c(nr2, nc2) )
+    xxii = array_map( "2->1", trunc(xi), c(nr2, nc2) )
     
 
     # counts

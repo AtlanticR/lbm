@@ -87,45 +87,37 @@
     }
 
     # -----------------
+
+    if ( DS %in% c( "statistics.status", "statistics.status.reset") ) {
     
-    if ( DS=="statistics.status" ) {
-      # find locations for statistic computation and trim area based on availability of data
-      # stats:
-      bnds = try( hivemod_db( p=p, DS="boundary" ) )
-      ioutside = NA
-      if (!is.null(bnds)) {
-        if( !("try-error" %in% class(bnds) ) ) {
-          ioutside = which( bnds$inside.polygon == 0 ) # outside boundary
-      }}
       Sflag = hivemod_attach( p$storage.backend, p$ptr$Sflag )
-      itodo = setdiff( which( is.nan( Sflag[] )), ioutside)       # incomplete
-      idone = setdiff( which( is.finite (Sflag[] )  ), ioutside)      # completed
-      iskipped = which( is.infinite( Sflag[] )  ) # skipped due to problems or out of bounds
-      iproblems = setdiff( iskipped, ioutside)    # not completed due to a failed attempt
-      out = list(problematic=iproblems, skipped=iskipped, todo=itodo, completed=idone, outside=ioutside,
-                 n.total=length(Sflag) , n.skipped=length(iskipped),
+      ioutside = which( Sflag[]==2L )
+      itodo = which( Sflag[]==0L )       # 0 = TODO
+      idone = which( Sflag[]==1L )       # 1 = completed
+      iland = which( Sflag[]==3L )       # 3 = land
+      iproblems = which( Sflag[] == 9L ) # 9 not completed due to a failed attempt
+      out = list(problematic=iproblems, todo=itodo, completed=idone, outside=ioutside, land=iland,
+                 n.total=length(Sflag), n.land=length(iland),
                  n.todo=length(itodo), n.problematic=length(iproblems), 
                  n.outside=length(which(is.finite(ioutside))),
                  n.complete=length(idone) )
       out$prop_incomp=out$n.todo / ( out$n.todo + out$n.complete)
+
+      if ( DS=="statistics.reset.problem.locations" ) {
+        # to reset all rejected locations 
+        if (length(which(is.finite(out$problematic))) > 0) Sflag[out$problematic] = 0  # to reset all the problem flags to todo
+      }
+
       message( paste("Proportion to do:", round(out$prop_incomp,5), "\n" )) 
       return( out )
+  
     }
-    
-  # -------------------
 
-    if ( DS=="statistics.reset.problem.locations" ) {
-        # to reset all rejected locations 
-        Sflag = hivemod_attach( p$storage.backend, p$ptr$Sflag )
-        o = hivemod_db( p=p, DS="statistics.status" )
-        if (length(which(is.finite(o$skipped))) > 0) Sflag[o$skipped] = NaN  # to reset all the flags
-        if (length(which(is.finite(o$outside))) > 0) Sflag[o$outside] = Inf  # flag area outside of data boundary to skip
-      }
 
     #-------------------
 
     if ( DS %in% c( "statistics.Sflag" ) ) {
-    
+      # create location specific flags for analysis, etc..
       if (exists( "boundary", p) && p$boundary) {
         p$timeb0 =  Sys.time()
         message( "Defining boundary polygon for data .. this reduces the number of points to analyse")
@@ -136,8 +128,8 @@
         bnds = try( hivemod_db( p=p, DS="boundary" ) )
         if (!is.null(bnds)) {
           if( !("try-error" %in% class(bnds) ) ) {
-            to.ignore = which( bnds$inside.polygon == 0 ) # outside boundary
-            if (length(to.ignore)>0) Sflag[to.ignore] = Inf
+            outside = which( bnds$inside.polygon == 0 ) # outside boundary
+            if (length(outside)>0) Sflag[outside] = 2L
         }}
         bnds = NULL
         p$timeb1 =  Sys.time()
@@ -145,19 +137,20 @@
       }
 
       if ( exists("depth.filter", p) && p$depth.filter ) {
+        # additionaldepth-based filter:
         # assuming that there is depth information in Pcov, match Sloc's and filter out locations that fall on land
         if ( "z" %in% p$variables$COV ){
           Pland = which( hivemod_attach( p$storage.backend, p$ptr$Pcov[["z"]] )[] < p$depth.filter )
           Ploc = hivemod_attach( p$storage.backend, p$ptr$Ploc )
           Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )
-          Swater = match( array_map( "2->1", cbind(Ploc[-Pland,1]-p$plons[1], Ploc[-Pland,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ), 
-                          array_map( "2->1", cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ) )
+          Swater = match( array_map( "2->1", trunc( cbind(Ploc[-Pland,1]-p$plons[1], Ploc[-Pland,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ), 
+                          array_map( "2->1", trunc( cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) )
           Swater = unique( Swater )
           Swater = Swater[ is.finite(Swater)]
           Sland = setdiff( 1:nrow(Sloc), Swater )
           Sflag = hivemod_attach( p$storage.backend, p$ptr$Sflag )
-          if (length(Sland)>0) Sflag[Sland] = Inf
-          if (length(Sland)>0) Sflag[Swater] = NaN
+          if (length(Sland)>0) Sflag[Sland] = 2L
+          if (length(Sland)>0) Sflag[Swater] = 0L
 
           Yloc = hivemod_attach( p$storage.backend, p$ptr$Yloc )
           plot( Yloc[], pch=".", col="grey" ) # data locations
@@ -168,7 +161,7 @@
               lines( bnds$polygon[] , col="green", pch=2 )
             }
           }
-          points( Sloc[which(is.nan( Sflag[])),], pch=".", col="blue" )
+          points( Sloc[which( Sflag[]== 0L),], pch=".", col="blue" )
               
           rm(land, S_index); gc()
         }
@@ -206,8 +199,8 @@
 
       ii = na.omit(hasdata)
       Yloc = hivemod_attach(  p$storage.backend, p$ptr$Yloc )
-      yplon = (grid.internal( Yloc[ii,1], p$plons ) - p$plons[1] )/p$pres + 1
-      yplat = (grid.internal( Yloc[ii,2], p$plats ) - p$plats[1] )/p$pres + 1
+      yplon = trunc( ( Yloc[ii,1] - p$plons[1] )/p$pres) + 1
+      yplat = trunc( ( Yloc[ii,2] - p$plats[1] )/p$pres) + 1
       uu = unique( array_map( "2->1", cbind(yplon, yplat), c(p$nplons, p$nplats) ) )
       vv = array_map( "1->2", uu, c(p$nplons, p$nplats) )
       
@@ -396,7 +389,7 @@
       attr( locsout , "out.attrs") = NULL
       names( locsout ) = p$variables$LOCS
 
-      stats = matrix( NaN, ncol=length( p$statsvars ), nrow=nrow( locsout) )  # output data
+      stats = matrix( NaN, ncol=length( p$statsvars ), nrow=nrow( locsout) )  # output data .. ff does not handle NA's .. using NaN for now
       colnames(stats)=p$statsvars
 
       # map of row, col indices of input data in the new (output) coordinate system
@@ -423,8 +416,8 @@
       }}
 
       # subset to match to Ploc
-      good = match( array_map( "2->1", cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ), 
-                    array_map( "2->1", cbind(locsout[,1]-p$plons[1], locsout[,2]-p$plats[1])/p$pres+1, c(p$nplons, p$nplats) ) )
+      good = match( array_map( "2->1", trunc( cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ), 
+                    array_map( "2->1", trunc( cbind(locsout[,1]-p$plons[1], locsout[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) )
 
       # Ploc_id = paste( Ploc[,1], Ploc[,2], sep="~" )
       # locsout_id = paste( locsout$plon, locsout$plat, sep="~" )

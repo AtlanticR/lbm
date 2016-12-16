@@ -62,9 +62,8 @@ hivemod_interpolate = function( ip=NULL, p ) {
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
     Si = p$runs[ iip, "locs" ]
-    if ( is.infinite( Sflag[Si] ) ) next() 
-    if ( !is.nan( Sflag[Si] ) ) next() 
-    Sflag[Si] = Inf   # over-written below if successful else if a run fails it does not get revisited 
+    if ( Sflag[Si] != 0L ) ) next() 
+    Sflag[Si] = 9L   # mark as problematic here. if not it is over-written below 
     print( iip )
 
     # find data nearest S[Si,] and with sufficient data
@@ -170,8 +169,8 @@ hivemod_interpolate = function( ip=NULL, p ) {
     pa_w = -windowsize.half : windowsize.half
     pa_w_n = length(pa_w)
     
-    iwplon = (Sloc[Si,1]-p$plons[1])/p$pres + 1 + pa_w
-    iwplat = (Sloc[Si,2]-p$plats[1])/p$pres + 1 + pa_w
+    iwplon = trunc( (Sloc[Si,1]-p$plons[1])/p$pres + 1 + pa_w )
+    iwplat = trunc( (Sloc[Si,2]-p$plats[1])/p$pres + 1 + pa_w )
     
     pa = NULL
     pa = data.frame( iplon = rep.int(iwplon, pa_w_n) , 
@@ -701,7 +700,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
     # ----------------------
     # do last. it is an indicator of completion of all tasks 
     # restarts would be broken otherwise
-    Sflag[Si] = 1  # done .. any finite value would do
+    Sflag[Si] = 1L  # mark as done 
 
   }  # end for loop
   

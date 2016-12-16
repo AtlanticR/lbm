@@ -1,5 +1,5 @@
 
-hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE, do.secondstage=FALSE ) {
+hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
@@ -19,7 +19,6 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE, d
     p$storage.backend="bigmemory.ram"
     p = bio.temperature::temperature.parameters( DS="hivemod", p=p )
     continue=FALSE
-    do.secondstage=FALSE
     DATA='hydro.db( p=p, DS="hivemod.input" )'
 
 
@@ -28,8 +27,17 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE, d
     p$storage.backend="bigmemory.ram"
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="hivemod" )
     continue=FALSE
-    do.secondstage=FALSE
     DATA='bathymetry.db( p=p, DS="bathymetry.hivemod.data" )'
+  
+
+    p = bio.substrate::substrate.parameters() # reset to defaults
+    p$hivemod_local_modelengine = "kernel.density" 
+    p$storage.backend="bigmemory.ram"  # filebacked metods are still too slow ..
+    p = bio.bathymetry::bathymetry.parameters( p=p, DS="hivemod" )
+    continue=FALSE
+    p$clusters = rep("localhost",  detectCores() )
+    DATA = 'substrate.db( p=p, DS="substrate.hivemod" )'
+  
   }
 
 
@@ -170,10 +178,10 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE, d
         }
 
 
-      Sflag = matrix( NaN, nrow=nrow(Sloc), ncol=1 )
+      Sflag = matrix( 0L, nrow=nrow(Sloc), ncol=1 )  # 0L is the todo flag
         if (p$storage.backend == "bigmemory.ram" ) {
           p$bm$Sflag = big.matrix(nrow=nrow(Sloc), ncol=1, type="double" )
-          p$bm$Sflag[] = NaN
+          p$bm$Sflag[] = 0L # TODO flag
           p$ptr$Sflag  = bigmemory::describe( p$bm$Sflag )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
@@ -589,7 +597,6 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE, d
 
   # 2. same interpolation method but relax the spatial extent
   # this would make sense but it can be costly in terms of time .. use only for research purposes
-  if ( do.secondstage ) {
     p$timei2 =  Sys.time()
     hivemod_db( p=p, DS="statistics.reset.problem.locations" )
     o = hivemod_db( p=p, DS="statistics.status" )
@@ -602,7 +609,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE, d
     }
     p$timei3 =  Sys.time()
     message( paste( "Time taken to stage 2 interpolations (mins):", round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
-  }
+
 
   message( "Doing a fast interpolation to fill in large data gaps.")
   p = make.list( list( time_index=1:p$nt), Y=p ) # random order helps use all cpus

@@ -175,7 +175,7 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
     nr2 = 2 * nr
     nc2 = 2 * nc
     
-    Z2P = as.matrix( cbind( (x-datagrid$x[1])/dx + 1 , (y-datagrid$y[1] )/dy+1) ) # row, col indices in matrix form Z
+    Z2P = as.matrix( trunc( cbind( (x-datagrid$x[1])/dx + 1 , (y-datagrid$y[1] )/dy+1)) ) # row, col indices in matrix form Z
     zp = hivemod::array_map( "2->1", Z2P, c(nr2, nc2) ) # map to larger grid
 
     dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
