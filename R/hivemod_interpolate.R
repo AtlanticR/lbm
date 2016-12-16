@@ -62,7 +62,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
     Si = p$runs[ iip, "locs" ]
-    if ( Sflag[Si] != 0L ) ) next() 
+    if ( Sflag[Si] != 0L ) next() 
     Sflag[Si] = 9L   # mark as problematic here. if not it is over-written below 
     print( iip )
 
