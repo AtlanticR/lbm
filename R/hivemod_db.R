@@ -111,6 +111,18 @@
       message( paste("Proportion to do:", round(out$prop_incomp,5), "\n" )) 
       return( out )
   
+
+      if (0) {
+        Yloc = hivemod_attach( p$storage.backend, p$ptr$Yloc )
+        Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )
+      
+        plot( Yloc[], pch=".", col="grey" ) # data locations
+        points( Sloc[which(bnds$inside.polygon==1),], pch=".", col="orange" )
+        points( Sloc[which( Sflag[]== 0L),], pch=".", col="blue" )
+        
+        bnds = try( hivemod_db( p=p, DS="boundary" ) )
+        lines( bnds$polygon[] , col="green", pch=2 )
+      }
     }
 
 
@@ -140,30 +152,37 @@
         # additionaldepth-based filter:
         # assuming that there is depth information in Pcov, match Sloc's and filter out locations that fall on land
         if ( "z" %in% p$variables$COV ){
-          Pland = which( hivemod_attach( p$storage.backend, p$ptr$Pcov[["z"]] )[] < p$depth.filter )
+          z = hivemod_attach( p$storage.backend, p$ptr$Pcov[["z"]] )[]
+          Pabove = which( z < p$depth.filter ) # negative = above land
+          Pbelow = which( z >= p$depth.filter )
+
           Ploc = hivemod_attach( p$storage.backend, p$ptr$Ploc )
           Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )
-          Swater = match( array_map( "2->1", trunc( cbind(Ploc[-Pland,1]-p$plons[1], Ploc[-Pland,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ), 
-                          array_map( "2->1", trunc( cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) )
-          Swater = unique( Swater )
-          Swater = Swater[ is.finite(Swater)]
-          Sland = setdiff( 1:nrow(Sloc), Swater )
-          Sflag = hivemod_attach( p$storage.backend, p$ptr$Sflag )
-          if (length(Sland)>0) Sflag[Sland] = 2L
-          if (length(Sland)>0) Sflag[Swater] = 0L
 
-          Yloc = hivemod_attach( p$storage.backend, p$ptr$Yloc )
-          plot( Yloc[], pch=".", col="grey" ) # data locations
-          bnds = try( hivemod_db( p=p, DS="boundary" ) )
-          if (!is.null(bnds)) {
-            if ( !("try-error" %in% class(bnds) ) ) {
-              points( Sloc[which(bnds$inside.polygon==1),], pch=".", col="orange" )
-              lines( bnds$polygon[] , col="green", pch=2 )
+          pidA = array_map( "2->1", trunc( cbind(Ploc[Pabove,1]-p$plons[1], Ploc[Pabove,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) 
+          pidB = array_map( "2->1", trunc( cbind(Ploc[Pbelow,1]-p$plons[1], Ploc[Pbelow,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) )
+
+          sid  = array_map( "2->1", trunc( cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) 
+          
+          below = which( is.finite( match( sid, pidB ) )) 
+          above = which( is.finite( match( sid, pidA ) ))
+          
+          Sflag = hivemod_attach( p$storage.backend, p$ptr$Sflag )
+          if (length(below) > 0 ) Sflag[below] = 0L
+          if (length(above) > 0 ) Sflag[above] = 3L
+
+          if (0) {
+            Yloc = hivemod_attach( p$storage.backend, p$ptr$Yloc )
+            plot( Yloc[], pch=".", col="grey" ) # data locations
+            bnds = try( hivemod_db( p=p, DS="boundary" ) )
+            if (!is.null(bnds)) {
+              if ( !("try-error" %in% class(bnds) ) ) {
+                points( Sloc[which(bnds$inside.polygon==1),], pch=".", col="orange" )
+                lines( bnds$polygon[] , col="green", pch=2 )
+              }
             }
+            points( Sloc[which( Sflag[]== 0L),], pch=".", col="blue" )
           }
-          points( Sloc[which( Sflag[]== 0L),], pch=".", col="blue" )
-              
-          rm(land, S_index); gc()
         }
       }
 

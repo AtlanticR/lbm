@@ -48,7 +48,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     message( "bigmemory.ram method loses the pointers upon a restart. But, if you resend p, it just might work if p was not modified ...")
     if (exists("storage.backend", p) && p$storage.backend !="bigmemory.ram" ) p = hivemod_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
     RLibrary( p$libs )
-    hivemod_db(p=p, DS="statistics.reset.problem.locations" )
+    hivemod_db(p=p, DS="statistics.status.reset" )
 
   } else {
 
@@ -571,8 +571,8 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   # localized space-time modelling/interpolation/prediction
   p$timei0 =  Sys.time()
   o = hivemod_db( p=p, DS="statistics.status" )
+  # o = hivemod_db(p=p, DS="statistics.status.reset" )
   p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
-  # hivemod_db(p=p, DS="statistics.reset.problem.locations" )
   # hivemod_interpolate (p=p )
   parallel.run( hivemod_interpolate, p=p )
   p$timei1 =  Sys.time()
@@ -598,7 +598,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   # 2. same interpolation method but relax the spatial extent
   # this would make sense but it can be costly in terms of time .. use only for research purposes
     p$timei2 =  Sys.time()
-    hivemod_db( p=p, DS="statistics.reset.problem.locations" )
+    hivemod_db( p=p, DS="statistics.status.reset" )
     o = hivemod_db( p=p, DS="statistics.status" )
     if (length(o$todo) > 0) {
       p$hivemod_distance_prediction = p$hivemod_distance_prediction * 2
