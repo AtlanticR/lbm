@@ -64,11 +64,11 @@ if (using.random) {
   xy = ss[,c("x","y")]
   z =  ss[,"z"]
 
-  vgs = lstfilter_variogram( xy, z, methods="gstat" )
-  vgr = lstfilter_variogram( xy, z, methods="geoR" )
-  vsp = lstfilter_variogram( xy, z, methods="spBayes" )
-  vrf = lstfilter_variogram( xy, z, methods="RandomFields" )
-  vin = lstfilter_variogram( xy, z, methods="inla" )
+  vgs = hivemod_variogram( xy, z, methods="gstat" )
+  vgr = hivemod_variogram( xy, z, methods="geoR" )
+  vsp = hivemod_variogram( xy, z, methods="spBayes" )
+  vrf = hivemod_variogram( xy, z, methods="RandomFields" )
+  vin = hivemod_variogram( xy, z, methods="inla" )
 
 }
 
