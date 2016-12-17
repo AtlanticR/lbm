@@ -105,7 +105,7 @@
 
       if ( DS=="statistics.reset.problem.locations" ) {
         # to reset all rejected locations 
-        if (length(which(is.finite(out$problematic))) > 0) Sflag[out$problematic] = 0  # to reset all the problem flags to todo
+        if (length(which(is.finite(out$problematic))) > 0) Sflag[out$problematic] = 0L  # to reset all the problem flags to todo
       }
 
       message( paste("Proportion to do:", round(out$prop_incomp,5), "\n" )) 
@@ -117,11 +117,17 @@
         Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )
       
         plot( Yloc[], pch=".", col="grey" ) # data locations
-        points( Sloc[which(bnds$inside.polygon==1),], pch=".", col="orange" )
-        points( Sloc[which( Sflag[]== 0L),], pch=".", col="blue" )
-        
         bnds = try( hivemod_db( p=p, DS="boundary" ) )
-        lines( bnds$polygon[] , col="green", pch=2 )
+        if ( !is.null(bnds)) {
+          lines( bnds$polygon[] , col="green", pch=2 )
+          points( Sloc[which(bnds$inside.polygon==1),], pch=".", col="orange", cex=5 )
+        }
+        points( Sloc[which( Sflag[]== 0L),], pch=".", col="blue", cex=5 )
+        points( Sloc[which( Sflag[]== 1L),], pch=".", col="purple", cex=5 )
+        points( Sloc[which( Sflag[]== 2L),], pch=".", col="red", cex=5 )
+        points( Sloc[which( Sflag[]== 3L),], pch=".", col="yellow", cex=5 )
+        points( Sloc[which( Sflag[]== 9L),], pch=".", col="magenta", cex=5 )
+
       }
     }
 

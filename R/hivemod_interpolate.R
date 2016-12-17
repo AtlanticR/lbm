@@ -62,6 +62,11 @@ hivemod_interpolate = function( ip=NULL, p ) {
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
     Si = p$runs[ iip, "locs" ]
+    # Si=28692
+    # Si=28692 64345 18658 34023 15308 67943  # a few problems
+
+
+    # Sflag: 0=TODO, 1=complete, 9=problem, 2=oustide bounds(if any), 3=land(if z is a covariate) 
     if ( Sflag[Si] != 0L ) next() 
     Sflag[Si] = 9L   # mark as problematic here. if not it is over-written below 
     print( iip )
@@ -69,10 +74,18 @@ hivemod_interpolate = function( ip=NULL, p ) {
     # find data nearest S[Si,] and with sufficient data
     dlon = abs( Sloc[Si,1] - Yloc[Yi,1] ) 
     dlat = abs( Sloc[Si,2] - Yloc[Yi,2] ) 
-    U =  which( dlon  <= p$hivemod_distance_scale  & dlat <= p$hivemod_distance_scale )
+    U =  which( (dlon  <= p$hivemod_distance_scale)  & (dlat <= p$hivemod_distance_scale) )
     hivemod_distance_cur = p$hivemod_distance_scale
     ndata = length(U)
     nu = nu0
+
+    if (0) {
+      plot( Sloc[,], pch=20, cex=0.5, col="gray")
+      points( Yloc[,], pch=20, cex=0.2, col="green")
+      points( Sloc[Si,2] ~ Sloc[Si,1], pch=20, cex=5, col="red" )
+      points( Yloc[U,], pch=20, cex=1, col="yellow" )
+       
+    }
 
     o = ores = NULL
 
@@ -201,13 +214,15 @@ hivemod_interpolate = function( ip=NULL, p ) {
         # check that position indices are working properly
         Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )
         Yloc = hivemod_attach( p$storage.backend, p$ptr$Yloc )
-        plot( Yloc[U,1]~ Yloc[U,2], col="red", pch=".") # all data
-        points( Yloc[YiU,1] ~ Yloc[YiU,2], col="green" )  # with covars and no other data issues
-        points( Sloc[Si,1] ~ Sloc[Si,2], col="blue" ) # statistical locations
+        plot( Yloc[U,2]~ Yloc[U,1], col="red", pch=".", 
+          ylim=range(c(Yloc[U,2], Sloc[Si,2], Ploc[pa$i,2]) ), 
+          xlim=range(c(Yloc[U,1], Sloc[Si,1], Ploc[pa$i,1]) ) ) # all data
+        points( Yloc[YiU,2] ~ Yloc[YiU,1], col="green" )  # with covars and no other data issues
+        points( Sloc[Si,2] ~ Sloc[Si,1], col="blue" ) # statistical locations
         # statistical output locations
-        points( p$plons[(Sloc[Si,1]-p$plons[1])/p$pres + 1] ~ p$plats[(Sloc[Si,2]-p$plats[1])/p$pres + 1] , col="purple", pch=25, cex=2 ) 
-        points( p$plons[pa$iplon] ~ p$plats[ pa$iplat] , col="cyan", pch=".", cex=0.01 ) # check on Proc iplat indexing
-        points( Ploc[pa$i,1] ~ Ploc[ pa$i, 2] , col="black", pch=20, cex=0.7 ) # check on pa$i indexing -- prediction locations
+        points( p$plats[trunc((Sloc[Si,1]-p$plats[1])/p$pres) + 1] ~ p$plons[trunc( (Sloc[Si,2]-p$plons[1])/p$pres) + 1] , col="purple", pch=25, cex=2 ) 
+        points( p$plats[ pa$iplat] ~ p$plons[pa$iplon]  , col="cyan", pch=".", cex=0.01 ) # check on Proc iplat indexing
+        points( Ploc[pa$i,2] ~ Ploc[ pa$i, 1] , col="black", pch=20, cex=0.7 ) # check on pa$i indexing -- prediction locations
       }
    
     pa$plon = Ploc[ pa$i, 1]
