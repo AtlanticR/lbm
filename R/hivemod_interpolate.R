@@ -445,7 +445,6 @@ hivemod_interpolate = function( ip=NULL, p ) {
       hivemod_local_modelengine_userdefined = p$hivemod_local_modelengine_userdefined( p, dat, pa)
     ) )
 
-
     
     # px = NULL
 
