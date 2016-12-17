@@ -82,8 +82,8 @@ hivemod_interpolate = function( ip=NULL, p ) {
     if (0) {
       plot( Sloc[,], pch=20, cex=0.5, col="gray")
       points( Yloc[,], pch=20, cex=0.2, col="green")
-      points( Sloc[Si,2] ~ Sloc[Si,1], pch=20, cex=5, col="red" )
       points( Yloc[U,], pch=20, cex=1, col="yellow" )
+      points( Sloc[Si,2] ~ Sloc[Si,1], pch=20, cex=5, col="blue" )
        
     }
 

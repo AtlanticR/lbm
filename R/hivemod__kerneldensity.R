@@ -13,8 +13,8 @@ hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
   x_r = range(x[,p$variables$LOCS[1]])
   x_c = range(x[,p$variables$LOCS[2]])
 
-  nr = diff(x_r)/p$pres + 1
-  nc = diff(x_c)/p$pres + 1
+  nr = trunc( diff(x_r)/p$pres ) + 1
+  nc = trunc( diff(x_c)/p$pres ) + 1
 
   x_plons = seq( x_r[1], x_r[2], length.out=nr )
   x_plats = seq( x_c[1], x_c[2], length.out=nc )

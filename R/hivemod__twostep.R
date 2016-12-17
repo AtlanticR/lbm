@@ -44,8 +44,8 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   px_r = range(px[,p$variables$LOCS[1]], na.rm=TRUE)
   px_c = range(px[,p$variables$LOCS[2]], na.rm=TRUE)
   
-  nr = diff(px_r)/p$pres + 1
-  nc = diff(px_c)/p$pres + 1
+  nr = trunc( diff(px_r)/p$pres) + 1
+  nc = trunc( diff(px_c)/p$pres) + 1
 
   # step 2 :: spatial modelling
   Z_all = cbind( ( pa[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
