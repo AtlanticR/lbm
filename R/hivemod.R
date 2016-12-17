@@ -41,11 +41,10 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   }
 
 
-  if (continue) {
-
+  if (continue | exists( "ptr", p) ) {
   
-    message( "Restart only works reliably with bigmemory.filebacked and ff methods. " )
-    message( "bigmemory.ram method loses the pointers upon a restart. But, if you resend p, it just might work if p was not modified ...")
+    message( "Continuing from an interrupted start. This only works if your data objects still exist in RAM or on disk. " )
+    message( "There is no guarantee that this is the case and so your mileage will vary ... ")
     if (exists("storage.backend", p) && p$storage.backend !="bigmemory.ram" ) p = hivemod_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
     RLibrary( p$libs )
     hivemod_db(p=p, DS="statistics.status.reset" )
