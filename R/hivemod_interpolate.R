@@ -321,7 +321,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
 
       # ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
       # test which is faster ... remove non-unique?
-      ids = array_map( "2->1", trunc(cbind(px$plon, px$plat)/p$pres+1), c(p$nplons, p$nplats) ) # 100X faster than paste 
+      ids = array_map( "2->1", trunc(cbind(px$plon, px$plat)/p$pres+1), c(p$nplons, p$nplats) ) # 100X faster than paste / merge
       todrop = which(duplicated( ids) )
       if (length(todrop>0)) px = px[-todrop,]
       rm(ids, todrop)

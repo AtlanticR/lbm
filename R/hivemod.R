@@ -19,7 +19,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     p$storage.backend="bigmemory.ram"
     p = bio.temperature::temperature.parameters( DS="hivemod", p=p )
     continue=FALSE
-    DATA='hydro.db( p=p, DS="hivemod.input" )'
+    DATA='hydro.db( p=p, DS="temperature.hivemod" )'
 
 
     p = bio.bathymetry::bathymetry.parameters( )
@@ -27,7 +27,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     p$storage.backend="bigmemory.ram"
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="hivemod" )
     continue=FALSE
-    DATA='bathymetry.db( p=p, DS="bathymetry.hivemod.data" )'
+    DATA='bathymetry.db( p=p, DS="bathymetry.hivemod" )'
   
 
     p = bio.substrate::substrate.parameters() # reset to defaults

@@ -15,6 +15,8 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   
   Z2P = as.matrix( trunc( cbind( Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1] ) /p$pres + 1) ) # row, col indices in matrix form Z
 
+  rY = p$p$qs
+
   dx = dy = p$pres
   nr = p$nplons
   nc = p$nplats
