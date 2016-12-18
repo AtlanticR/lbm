@@ -8,7 +8,7 @@ hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
   if (is.null(phi)) phi=p$hivemod_phi
   if (is.null(nu)) nu=p$hivemod_nu # nu=0.5 an exponential covariance
 
-  rY = quantile( x[,p$variables$Y], probs=p$hivemod_quantile_bounds, na.rm=TRUE)
+  rY = range( x[,p$variables$Y], na.rm=TRUE)
 
   x_r = range(x[,p$variables$LOCS[1]])
   x_c = range(x[,p$variables$LOCS[2]])

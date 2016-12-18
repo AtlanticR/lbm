@@ -105,13 +105,18 @@
 
       if ( DS=="statistics.reset.problem.locations" ) {
         # to reset all rejected locations 
-        if (length(which(is.finite(out$problematic))) > 0) Sflag[out$problematic] = 0L  # to reset all the problem flags to todo
+        if (length(which(is.finite(out$problematic))) > 0) {
+          Sflag[out$problematic] = 0L  # to reset all the problem flags to todo
+          out$problematic=which( Sflag[] == 9L )
+          out$n.problematic = 0
+          out$todo = which( Sflag[]==0L )
+          out$n.todo = length(which( Sflag[]==0L ))
+        }
       }
 
       message( paste("Proportion to do:", round(out$prop_incomp,5), "\n" )) 
       return( out )
   
-
       if (0) {
         Yloc = hivemod_attach( p$storage.backend, p$ptr$Yloc )
         Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )

@@ -36,7 +36,7 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
   if (interp.method == "fft") {
     require(fields)
 
-    rY = quantile( x[,p$variables$Y], probs=p$hivemod_quantile_bounds, na.rm=TRUE)
+    rY = range( x[,p$variables$Y], na.rm=TRUE)
 
     im = as.image(data, x=locsout, nx=nr, ny=nc, na.rm=TRUE)
     grid <- list(x = im$x, y = im$y)

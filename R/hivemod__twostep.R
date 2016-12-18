@@ -11,7 +11,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   if (is.null(phi)) phi=p$hivemod_phi # range parameter
   if (is.null(nu)) nu=p$hivemod_nu  # this is an exponential covariance
 
-  rY = quantile( x[,p$variables$Y], probs=p$hivemod_quantile_bounds, na.rm=TRUE)
+  rY = range( x[,p$variables$Y], na.rm=TRUE)
 
   if ( exists("hivemod_local_model_distanceweighted", p) ) {
     if (p$hivemod_local_model_distanceweighted) {

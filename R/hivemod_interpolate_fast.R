@@ -15,7 +15,6 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   
   Z2P = as.matrix( trunc( cbind( Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1] ) /p$pres + 1) ) # row, col indices in matrix form Z
 
-  rY = p$p$qs
 
   dx = dy = p$pres
   nr = p$nplons
@@ -50,6 +49,8 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
     tofill = which( ! is.finite( P[,ww] ) )
     if (length( tofill) > 0 ) {
       # counts
+      rY = range( P[,ww], na.rm=TRUE )
+
       mN = matrix(0, nrow = nr2, ncol = nc2)
       mN[zp] = tapply( rep(1, length(zp)), INDEX=zp, FUN=sum, na.rm=TRUE )
       mN[!is.finite(mN)] = 0
