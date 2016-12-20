@@ -71,16 +71,11 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   mC[nr, nc] = 1
 
   # first pass with the global params to get closest fit to data 
-  AC_global = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
-  mAC_global = as.surface(dgrid, c(AC_global))$z
-  fW_global = fft(mAC_global)/(fft(mC) * nr2 * nc2)
+  AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
+  mAC = as.surface(dgrid, c(AC))$z
+  fW = fft(mAC)/(fft(mC) * nr2 * nc2)
 
-  # second pass with local fits to data to smooth what can be smoothed
-  AC_local  = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-  mAC_local = as.surface(dgrid, c(AC_local))$z
-  fW_local = fft(mAC_local)/(fft(mC) * nr2 * nc2)
-
-  rm(dgrid, AC_global, AC_local, mAC_global, mAC_local, mC); gc()
+  rm(dgrid, AC, mAC, mC); gc()
 
   for ( ti in 1:p$nt ) {
   
@@ -93,18 +88,17 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     if ( any( M_all[ px_i,1] > nr) ) next()
     if ( any( M_all[ px_i,2] > nc) ) next()
 
-    
     # matrix representation of the output surface
     # Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
     
     xi = cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
                   (px[px_i,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 )
     xxii = array_map( "2->1", trunc(xi), c(nr2, nc2) )
-    
 
     # counts
     mN = matrix(0, nrow = nr2, ncol = nc2)
-    mN[xxii] = tapply( rep(1, length(px_i)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    # mN[xxii] = tapply( rep(1, length(px_i)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    mN[xxii] = 1  # counts cause numerical under/over flow
     mN[!is.finite(mN)] = 0
     
     # density
@@ -113,8 +107,8 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     mY[!is.finite(mY)] = 0
     
     # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-    fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
+    fN = Re(fft(fft(mN) * fW, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
@@ -124,21 +118,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     if (length(ub) > 0) Z[ub] = NA
     # image(Z)
 
-    # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
-    # to fill in areas with no data (e.g., far away from data locations)
-    fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
-    Z_local = fY/fN
-    iZ = which( !is.finite( Z_local))
-    if (length(iZ) > 0) Z_local[iZ] = NA
-    lb = which( Z_local < rY[1] )
-    if (length(lb) > 0) Z_local[lb] = NA
-    ub = which( Z_local > rY[2] )
-    if (length(ub) > 0) Z_local[ub] = NA
-
-    toreplace = which(!is.finite(Z)) 
-    if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
-    pa$mean[pa_i] = Z[Z_all[ pa_i, ]]
+     pa$mean[pa_i] = Z[Z_all[ pa_i, ]]
     
     # Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
     
@@ -148,8 +128,8 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     mY[!is.finite(mY)] = 0
     
     # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-    fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
+    fN = Re(fft(fft(mN) * fW, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
@@ -158,22 +138,6 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     ub = which( Z > rY[2] )
     if (length(ub) > 0) Z[ub] = NA
     # image(Z)
-
-    # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
-    # to fill in areas with no data (e.g., far away from data locations)
-    fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
-    Z_local = fY/fN
-    iZ = which( !is.finite( Z_local))
-    if (length(iZ) > 0) Z_local[iZ] = NA
-    lb = which( Z_local < 0 )
-    if (length(lb) > 0) Z_local[lb] = NA
-    ub = which( Z_local > rY[2] )
-    if (length(ub) > 0) Z_local[ub] = NA
-
-    toreplace = which(!is.finite(Z)) 
-    if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
-    pa$sd[pa_i] = Z[Z_all[ pa_i, ]]
   }
   
   rm (px); gc()

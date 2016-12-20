@@ -7,13 +7,15 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   #\\ it can be costly in terms of time in production runs .. use only for research purposes
 
   # TODO: splancs::kernel3d as a method ? .. for count data?
-  # TODO: direct FFT-based kernel convolutions? 
   # TODO: habitat methods
-  # TODO: gaussian process
+  # TODO: gaussian process // see hivemod_interpolate_xy_simple
+  #       .. the convoSPAT seems almost fast enough
   # TODO: LaplacesDemon method
-
+  # TODO: look at bayesX a little more carefully.
+  # TODO: MBA mba.surf method? ... seems very fast
 
   if(0) {
+
     p = bio.temperature::temperature.parameters( current.year=2016 )
     p$hivemod_local_modelengine="twostep"
     p$storage.backend="bigmemory.ram"

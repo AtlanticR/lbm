@@ -40,17 +40,11 @@ hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
   mC[nr, nc] = 1
 
   # first pass with the global params to get closest fit to data 
-  AC_global = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
-  mAC_global = as.surface(dgrid, c(AC_global))$z
-  fW_global = fft(mAC_global)/(fft(mC) * nr2 * nc2)
+  AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
+  mAC = as.surface(dgrid, c(AC))$z
+  fW = fft(mAC)/(fft(mC) * nr2 * nc2)
 
-  # second pass with local fits to data to smooth what can be smoothed
-  AC_local  = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-  mAC_local = as.surface(dgrid, c(AC_local))$z
-  fW_local = fft(mAC_local)/(fft(mC) * nr2 * nc2)
-
-  rm(dgrid, AC_global, AC_local, mAC_local, mAC_global, mC); gc()
-
+  rm(dgrid, AC,  mAC, mC); gc()
 
   for ( ti in 1:p$nt ) {
 
@@ -67,7 +61,8 @@ hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     
     # counts
     mN = matrix(0, nrow = nr2, ncol = nc2)
-    mN[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    # mN[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    mN[xxii] = 1 # uniform weights .. more stable .. weights cause floating point over/underflow issues ..
     mN[!is.finite(mN)] = 0
     
     # density
@@ -76,8 +71,8 @@ hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     mY[!is.finite(mY)] = 0
     
     # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-    fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
+    fN = Re(fft(fft(mN) * fW, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
@@ -87,29 +82,9 @@ hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     if (length(ub) > 0) Z[ub] = NA
     # image(Z)
 
-    # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
-    # to fill in areas with no data (e.g., far away from data locations)
-    fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
-    Z_local = fY/fN
-    iZ = which( !is.finite( Z_local))
-    if (length(iZ) > 0) Z_local[iZ] = NA
-    lb = which( Z_local < rY[1] )
-    if (length(lb) > 0) Z_local[lb] = NA
-    ub = which( Z_local > rY[2] )
-    if (length(ub) > 0) Z_local[ub] = NA
-
-    toreplace = which(!is.finite(Z)) 
-    if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
-    
-    # image(Z)
-    # image(Z_local)
-
-
-    if ( inherits(Z, "try-error") ) next()
     # match prediction to input data 
     x$mean[xi] = Z[xxii]
-    ss = lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit)
+    ss = try( lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit) )
     if ( "try-error" %in% class( ss ) ) next()
     rsquared = summary(ss)$r.squared
     if (rsquared < p$hivemod_rsquared_threshold ) next()

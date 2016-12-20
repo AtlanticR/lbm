@@ -6,6 +6,54 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
   #\\ reshape after interpolating to fit the output resolution 
   #\\ designed for interpolating statistics  ...
 
+  if(0) {
+    data = RMelevation
+    image( data )
+    datagrid = data[c("x", "y")] 
+    locsout = expand.grid( x=datagrid$x, y=datagrid$y)
+    x = locsout[,1]
+    y = locsout[,2]
+    z = c(data$z)
+    nr = length( datagrid$x)
+    nc = length( datagrid$y)
+    dx = min(diff(datagrid$x))
+    dy = min(diff(datagrid$y))
+    nu = 0.5
+    phi = min(dx, dy) / 10
+
+    o = hivemod::hivemod_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
+    # suggest: nu=0.3; phi =1.723903
+
+    keep = sample.int( nrow(locsout), 1000 ) 
+    x = x[keep]
+    y = y[keep]
+    z = z[keep]
+    
+    o = hivemod::hivemod_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
+    o = hivemod::hivemod_variogram( xy=cbind(x,y), z=z, methods="fast" ) 
+
+  }
+
+
+  if (0) {
+     require(fields)
+     data(LIDAR)
+     data = LIDAR
+     x11(); lattice::levelplot( z~as.numeric(cut(x,50))+as.numeric(cut(y,50)), data=data, aspect="iso")
+
+     require(MBA)
+     im2 <- mba.surf(LIDAR, 300, 300, extend=TRUE)$xyz.est
+     image(im2, xaxs="r", yaxs="r")
+
+     locsout = expand.grid( im2$x, im2$y )
+     nr = length(im2$y)
+     nc = length(im2$x)
+     pres = min(c(diff( im2$x), diff(im2$y )) )
+     nu = 0.5
+     phi = (3*pres) / sqrt(8*nu)
+  }
+
+
   # trim quaniles in case of extreme values
   if (trimquants) {
     vq = quantile( data$z, probs=trimprobs, na.rm=TRUE )
@@ -36,14 +84,16 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
   if (interp.method == "fft") {
     require(fields)
 
-    rY = range( x[,p$variables$Y], na.rm=TRUE)
+    rY = range( data$z, na.rm=TRUE)
 
-    im = as.image(data, x=locsout, nx=nr, ny=nc, na.rm=TRUE)
+    im = as.image(data$z, ind=data[,c("x", "y")],  nx=nr, ny=nc, na.rm=TRUE)
+    image(im)
+
     grid <- list(x = im$x, y = im$y)
     dx <- grid$x[2] - grid$x[1]
     dy <- grid$y[2] - grid$y[1]
-    nr2 = 2 * nr
-    nc2 = 2 * nc
+    nr2 = trunc( nr*2)
+    nc2 = trunc( nc*2)
 
     dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
     center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
@@ -54,35 +104,33 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
 
     
     # first pass with the global params to get closest fit to data 
-    AC_global = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
-    mAC_global = as.surface(dgrid, c(AC_global))$z
-    fW_global = fft(mAC_global)/(fft(mC) * nr2 * nc2)
+    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+    mAC = as.surface(dgrid, c(AC))$z
+    fW = fft(mAC)/(fft(mC) * nr2 * nc2)
 
-    # second pass with local fits to data to smooth what can be smoothed
-    AC_local  = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-    mAC_local = as.surface(dgrid, c(AC_local))$z
-    fW_local = fft(mAC_local)/(fft(mC) * nr2 * nc2)
-
-    rm(dgrid, AC_global, AC_local, mC, mAC_local, mAC_global); gc()
-
+ 
+    rm(dgrid, AC, mC, mAC); gc()
     
-    # not finished, see hivemod__kerneldensity
-    x_id = cbind( (x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
-                  (x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
+    x_co = trunc( cbind( 
+      ( (data$x-min(data$x) )/ pres + 1) , 
+      ( (data$y-min(data$y) )/ pres + 1) ) )
+    x_id = hivemod::array_map( "2->1", x_co, c(nr2, nc2))
         
     # counts
     mN = matrix(0, nrow = nr2, ncol = nc2)
-    mN[x_id] = tapply( rep(1, length(xi)), INDEX=x_id, FUN=sum, na.rm=TRUE )
+    mN[x_id] = 1
+#    u = tapply( rep(1, nrow(data)), INDEX=x_id, FUN=sum, na.rm=TRUE )
+#    mN[ as.numeric( rownames(u) )] = u 
     mN[!is.finite(mN)] = 0
     
     # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
-    mY[x_id] = x[xi,p$variables$Y] # fill with data in correct locations
+    mY[x_id] = data$z # fill with data in correct locations
     mY[!is.finite(mY)] = 0
     
     # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-    fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
+    fN = Re(fft(fft(mN) * fW , inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fW , inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
@@ -92,23 +140,7 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
     if (length(ub) > 0) Z[ub] = NA
     # image(Z)
 
-    # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
-    # to fill in areas with no data (e.g., far away from data locations)
-    fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
-    Z_local = fY/fN
-    iZ = which( !is.finite( Z_local))
-    if (length(iZ) > 0) Z_local[iZ] = NA
-    lb = which( Z_local < rY[1] )
-    if (length(lb) > 0) Z_local[lb] = NA
-    ub = which( Z_local > rY[2] )
-    if (length(ub) > 0) Z_local[ub] = NA
-
-    toreplace = which(!is.finite(Z)) 
-    if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
-
-    # image(Z)
-    return (Z)
+     return (Z)
   }
 
   # ------
@@ -139,74 +171,26 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
 
   # ------------------------
 
-  if (interp.method == "fft") {
-    # default :: create a "surface" and reshape to a grid using (gaussian) kernel-based smooth via FFT
-    require(fields)
+  if (interp.method == "convoSPAT") {
+    require(convoSPAT)
 
-    if(0) {
-      data = RMelevation
-      image( data )
-      datagrid = data[c("x", "y")] 
-      locsout = expand.grid( x=datagrid$x, y=datagrid$y)
-      x = locsout[,1]
-      y = locsout[,2]
-      z = c(data$z)
-      nr = length( datagrid$x)
-      nc = length( datagrid$y)
-      dx = min(diff(datagrid$x))
-      dy = min(diff(datagrid$y))
-      nu = 0.5
-      phi = min(dx, dy) / 10
+    ## interesting approach similar to hivemod but too slow to use 
+    # .. seems to get stuck in optimization .. perhaps use LBFGS?
 
-      o = hivemod::hivemod_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
-      # suggest: nu=0.3; phi =1.723903
-
-      keep = sample.int( nrow(locsout), 1000 ) 
-      x = x[keep]
-      y = y[keep]
-      z = z[keep]
-      
-      o = hivemod::hivemod_variogram( xy=cbind(x,y), z=z, methods="gstat" ) 
-      o = hivemod::hivemod_variogram( xy=cbind(x,y), z=z, methods="fast" ) 
- 
-    }
-    qz = range(z, na.rm=TRUE)
-
-    nr2 = 2 * nr
-    nc2 = 2 * nc
-    
-    Z2P = as.matrix( trunc( cbind( (x-datagrid$x[1])/dx + 1 , (y-datagrid$y[1] )/dy+1)) ) # row, col indices in matrix form Z
-    zp = hivemod::array_map( "2->1", Z2P, c(nr2, nc2) ) # map to larger grid
-
-    dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
-    center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
-    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-    mAC = matrix(c(AC), nrow = nr2, ncol = nc2) # or .. mAC = as.surface(dgrid, c(AC))$z
-    mC = matrix(0, nrow = nr2, ncol = nc2)
-    mC[nr, nc] = 1
-    fW = fft(mAC)/(fft(mC) * nr2 * nc2)
-    rm(dgrid, AC, mAC, mC); gc()
-
-    # counts
-    mW = matrix(0, nrow = nr2, ncol = nc2)
-    mW[zp] = tapply( ifelse( is.finite(z), 1, 0 ), INDEX=zp, FUN=sum, na.rm=TRUE )
-    mY[!is.finite(mW)] = 0
-    fN = Re(fft(fft(mW) * fW, inverse = TRUE))[1:nr,1:nc]
-
-    # data
-    mY = matrix(0, nrow = nr2, ncol = nc2)
-    mY[zp] = tapply( z, INDEX=zp, FUN=mean, na.rm=TRUE ) # fill with data in correct locations
-    mY[!is.finite(mY)] = 0
-    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
-    Z = fY/fN
-    Z[ Z>qz[2] ]=NA
-    Z[ Z<qz[1] ]=NA
-    x11(); image(Z)
-
-
+    m <- NSconvo_fit(
+      coords = data[ , c("x", "y") ],
+      data = ( data[,"z"] ),
+      fit.radius = 100, lambda.w = 2,
+      # mc.locations = simdata$mc.locations, # key node locations
+      # mean.model = z ~  # linear models only? 
+      cov.model = "exponential",
+      N.mc = 16
+    )
+    print (summary( m ))
+    out = predict( m, locsout )
     return (out)
   }
-
+ 
   # ------
 
   if (interp.method == "inla.spde" ) {

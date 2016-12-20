@@ -31,16 +31,11 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   mC[nr, nc] = 1
 
   # first pass with the global params to get closest fit to data 
-  AC_global = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
-  mAC_global = as.surface(dgrid, c(AC_global))$z
-  fW_global = fft(mAC_global)/(fft(mC) * nr2 * nc2)
+  AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
+  mAC = as.surface(dgrid, c(AC))$z
+  fW = fft(mAC)/(fft(mC) * nr2 * nc2)
 
-  # second pass with local fits to data to smooth what can be smoothed
-  AC_local  = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-  mAC_local = as.surface(dgrid, c(AC_local))$z
-  fW_local = fft(mAC_local)/(fft(mC) * nr2 * nc2)
-
-  rm(dgrid, AC_global, AC_local, mC, mAC_local, mAC_global); gc()
+  rm(dgrid, AC, mC, mAC); gc()
 
   for ( iip in ip ) {
 
@@ -61,8 +56,8 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
       mY[!is.finite(mY)] = 0
       
       # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-      fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
-      fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
+      fN = Re(fft(fft(mN) * fW, inverse = TRUE))[1:nr,1:nc]
+      fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
       Z = fY/fN
       iZ = which( !is.finite( Z))
       if (length(iZ) > 0) Z[iZ] = NA
@@ -70,22 +65,6 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
       if (length(lb) > 0) Z[lb] = NA
       ub = which( Z > rY[2] )
       if (length(ub) > 0) Z[ub] = NA
-      # image(Z)
-
-      # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
-      # to fill in areas with no data (e.g., far away from data locations)
-      fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
-      fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
-      Z_local = fY/fN
-      iZ = which( !is.finite( Z_local))
-      if (length(iZ) > 0) Z_local[iZ] = NA
-      lb = which( Z_local < rY[1] )
-      if (length(lb) > 0) Z_local[lb] = NA
-      ub = which( Z_local > rY[2] )
-      if (length(ub) > 0) Z_local[ub] = NA
-
-      toreplace = which(!is.finite(Z)) 
-      if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
 
       # image(Z)
       Z[ Z>p$qs[2] ]=NA
@@ -109,8 +88,8 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
       mY[!is.finite(mY)] = 0
       
       # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-      fN = Re(fft(fft(mN) * fW_global, inverse = TRUE))[1:nr,1:nc]
-      fY = Re(fft(fft(mY) * fW_global, inverse = TRUE))[1:nr,1:nc]
+      fN = Re(fft(fft(mN) * fW, inverse = TRUE))[1:nr,1:nc]
+      fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
       Z = fY/fN
       iZ = which( !is.finite( Z))
       if (length(iZ) > 0) Z[iZ] = NA
@@ -118,23 +97,6 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
       if (length(lb) > 0) Z[lb] = NA
       ub = which( Z > rY[2] )
       if (length(ub) > 0) Z[ub] = NA
-      # image(Z)
-
-      # estimates based upon local nu, phi .. this will over-smooth so if comes as a second pass 
-      # to fill in areas with no data (e.g., far away from data locations)
-      fN = Re(fft(fft(mN) * fW_local, inverse = TRUE))[1:nr,1:nc]
-      fY = Re(fft(fft(mY) * fW_local, inverse = TRUE))[1:nr,1:nc]
-      Z_local = fY/fN
-      iZ = which( !is.finite( Z_local))
-      if (length(iZ) > 0) Z_local[iZ] = NA
-      lb = which( Z_local < 0 )
-      if (length(lb) > 0) Z_local[lb] = NA
-      ub = which( Z_local > rY[2] )
-      if (length(ub) > 0) Z_local[ub] = NA
-
-      toreplace = which(!is.finite(Z)) 
-      if (length(toreplace) > 0 )  Z[toreplace] = Z_local[toreplace]
-
       # image(Z)
 
       Z[ Z>p$qs[2] ]=NA
