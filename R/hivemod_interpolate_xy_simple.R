@@ -88,6 +88,7 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
 
   if (interp.method == "fft") {
     require(fields)
+    # no low pass .. just straight spatial filter ..
 
     rY = range( data$z, na.rm=TRUE)
 
@@ -143,7 +144,7 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
 
   # ------
 
-  if (interp.method == "fft") {
+  if (interp.method == "kernel.density") {
     # default :: create a "surface" and reshape to a grid using (gaussian) kernel-based smooth via FFT
     require(fields)
 

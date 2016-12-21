@@ -15,7 +15,6 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   
   Z2P = as.matrix( trunc( cbind( Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1] ) /p$pres + 1) ) # row, col indices in matrix form Z
 
-
   dx = dy = p$pres
   nr = p$nplons
   nc = p$nplats
@@ -30,8 +29,13 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   mC = matrix(0, nrow = nr2, ncol = nc2)
   mC[nr, nc] = 1
 
-  # first pass with the global params to get closest fit to data 
+  # first a low pass filter 
   AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
+  mAC = as.surface(dgrid, c(AC))$z
+  fW = fft(mAC)/(fft(mC) * nr2 * nc2)
+
+  # spatial autocorrelation filter 
+  AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
   mAC = as.surface(dgrid, c(AC))$z
   fW = fft(mAC)/(fft(mC) * nr2 * nc2)
 
