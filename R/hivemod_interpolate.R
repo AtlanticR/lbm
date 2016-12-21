@@ -446,9 +446,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
       hivemod_local_modelengine_userdefined = p$hivemod_local_modelengine_userdefined( p, dat, pa)
     ) )
      
-      lattice::levelplot( mean ~ plon + plat, data=res$predictions, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
- 
-    
+   
     # px = NULL
 
     if (0) {
