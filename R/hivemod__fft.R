@@ -100,7 +100,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
       ub = which( Z > rY[2] )
       if (length(ub) > 0) Z[ub] = NA
       # image(Z)
-      rm( flpf, fN, fY )
+      rm( fN, fY )
     }
 
     zz = which(!is.finite(Z))
@@ -112,7 +112,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
         Zsp = fY/fN
        # image(Zsp)
         Z[zz] = Zsp[zz]
-        rm ( fAC, fN, fY, Zsp )
+        rm ( fN, fY, Zsp )
       }
     }
 

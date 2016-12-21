@@ -8,9 +8,6 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   # use all available data in 'x' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
   # currently only a GAM is enable for the TS component
 
-  if (is.null(phi)) phi=p$hivemod_lowpass_phi # range parameter
-  if (is.null(nu)) nu=p$hivemod_lowpass_nu  # this is an exponential covariance
-
   rY = range( x[,p$variables$Y], na.rm=TRUE)
 
   if ( exists("hivemod_local_model_distanceweighted", p) ) {
@@ -117,13 +114,13 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     mN = matrix(0, nrow = nr2, ncol = nc2)
     # mN[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
     mN[xxii] = 1 # uniform weights .. more stable .. weights cause floating point over/underflow issues ..
-    mN[!is.finite(mN)] = 0
+    # mN[!is.finite(mN)] = 0
     fmN = fft(mN)
 
     # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
     mY[xxii] = px[px_i, "mean"]  # fill with data in correct locations
-    mY[!is.finite(mY)] = 0
+    # mY[!is.finite(mY)] = 0
     fmY = fft(mY)
 
     Z = matrix(0, nrow=nr, ncol=nc)
@@ -137,19 +134,19 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
       ub = which( Z > rY[2] )
       if (length(ub) > 0) Z[ub] = NA
       # image(Z)
-      rm( flpf, fN, fY )
+      rm( fN, fY )
     }
 
     zz = which(!is.finite(Z))
     if (length(zz) > 0 ) {
-      # spatial autocorrelation filter
+      # spatial autocorrelation filter to fill data locations where no predictions yet
       if (!is.null(fAC)) {    
         fN = Re(fft(fmN * fAC, inverse = TRUE))[1:nr,1:nc]
         fY = Re(fft(fmY * fAC, inverse = TRUE))[1:nr,1:nc]
         Zsp = fY/fN
         # image(Zsp)
         Z[zz] = Zsp[zz]
-        rm ( fAC, fN, fY, Zsp )
+        rm ( fN, fY, Zsp )
       }
     }
 
