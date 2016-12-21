@@ -6,8 +6,8 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   if (exists( "libs", p)) RLibrary( p$libs )
   if (is.null(ip)) if( exists( "nruns", p ) ) ip = 1:p$nruns
 
-  phi = p$hivemod_phi # want phi to be small to retain local structure
-  nu = p$hivemod_nu
+  phi = p$hivemod_lowpass_phi # want phi to be small to retain local structure
+  nu = p$hivemod_lowpass_nu
 
   P = hivemod_attach( p$storage.backend, p$ptr$P )
   Psd = hivemod_attach( p$storage.backend, p$ptr$Psd )
@@ -31,7 +31,7 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   mC[nr, nc] = 1
 
   # first pass with the global params to get closest fit to data 
-  AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
+  AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
   mAC = as.surface(dgrid, c(AC))$z
   fW = fft(mAC)/(fft(mC) * nr2 * nc2)
 

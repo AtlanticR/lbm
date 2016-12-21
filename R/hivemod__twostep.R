@@ -8,8 +8,8 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   # use all available data in 'x' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
   # currently only a GAM is enable for the TS component
 
-  if (is.null(phi)) phi=p$hivemod_phi # range parameter
-  if (is.null(nu)) nu=p$hivemod_nu  # this is an exponential covariance
+  if (is.null(phi)) phi=p$hivemod_lowpass_phi # range parameter
+  if (is.null(nu)) nu=p$hivemod_lowpass_nu  # this is an exponential covariance
 
   rY = range( x[,p$variables$Y], na.rm=TRUE)
 
@@ -71,7 +71,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   mC[nr, nc] = 1
 
   # first pass with the global params to get closest fit to data 
-  AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
+  AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
   mAC = as.surface(dgrid, c(AC))$z
   fW = fft(mAC)/(fft(mC) * nr2 * nc2)
 

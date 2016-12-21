@@ -431,7 +431,10 @@
       for ( i in 1:length( p$statsvars ) ) {
         M = M[] * NA  # init
         M[l2M] = S[,i] # fill with data in correct locations
-        Z = smooth.2d( Y=S[,i], x=Sloc[], ncol=p$nplats, nrow=p$nplons, cov.function=stationary.cov, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu ) 
+        
+## TODO :: replace with fft method
+
+        Z = smooth.2d( Y=S[,i], x=Sloc[], ncol=p$nplats, nrow=p$nplons, cov.function=stationary.cov, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu ) 
         stats[,i] = Z$z
       }
      # lattice::levelplot( stats[,1] ~ locsout[,1]+locsout[,2])

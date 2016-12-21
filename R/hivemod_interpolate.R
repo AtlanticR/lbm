@@ -421,7 +421,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
       if ( exists("phi", ores) ) phi = ores$phi 
     }
 
-    if (is.null(nu)) nu = p$hivemod_nu
+    if (is.null(nu)) nu = p$hivemod_lowpass_nu
     if (is.null(phi)) phi = hivemod_distance_cur/sqrt( 8*nu) # crude estimate of phi based upon current scaling  distance approximates the range at 90% autocorrelation(e.g., see Lindgren et al. 2011)
     
     # model and prediction 

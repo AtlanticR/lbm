@@ -53,11 +53,11 @@ hivemod__splancs = function( p, x, pa, phi=NULL, nu=NULL ) {
     # matrix representation of the output surface
     M = matrix( NA, nrow=x_nr, ncol=x_nc) 
     M[x_id] = x[xi,p$variables$Y] # fill with data in correct locations
-    Z = try( fields::image.smooth( M, dx=p$pres, dy=p$pres, theta=p$hivemod_phi)$z )
+    Z = try( fields::image.smooth( M, dx=p$pres, dy=p$pres, theta=p$hivemod_lowpass_phi)$z )
   
     if (0) {
       # more control of covariance function .. but not behaving very well and slow .. better to copy internal and strip it down .. TODO
-      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, range=p$hivemod_phi,
+      Z = try( smooth.2d( Y=x[xi,p$variables$Y], x=x[xi,p$variables$LOCS], ncol=x_nc, nrow=x_nr, range=p$hivemod_lowpass_phi,
         cov.function=stationary.cov, Covariance="Exponential", nu=p$nu ) )
       iZ = which( !is.finite( Z$z))
       if (length(iZ) > 0) Z$z[iZ] = NA
