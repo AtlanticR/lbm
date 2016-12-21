@@ -260,7 +260,7 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
       vFitgs =  try( fit.variogram( vEm, vMod0, fit.kappa =TRUE, fit.sills=TRUE, fit.ranges=TRUE ) ) ## gstat's kappa is the Bessel function's "nu" smoothness parameter
       if (inherits(vFitgs, "try-error") )  return(NULL)
       # vrange = max(1, geoR::practicalRange("matern", phi=vFitgs$range[2], kappa=vFitgs$kappa[2]  ) )
-      vrange = max(1, distance_matern(phi=vFitgs$range[2], nu=vFitgs$kappa[2])
+      vrange = max(1, distance_matern(phi=vFitgs$range[2], nu=vFitgs$kappa[2] ) )
 
       if (nc > nc_max ) break()
     }
