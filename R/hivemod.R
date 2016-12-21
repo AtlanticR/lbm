@@ -609,6 +609,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
       p$hivemod_distance_prediction = p$hivemod_distance_prediction * 2
       p$hivemod_distance_max = p$hivemod_distance_max * 2
       p$hivemod_distance_scale = p$hivemod_distance_scale*2 # km ... approx guess of 95% AC range 
+      if (exists("hivemod_lowpass_phi", p)) p$hivemod_lowpass_phi = p$hivemod_lowpass_phi * 2
       p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
       parallel.run( hivemod_interpolate, p=p )
     }

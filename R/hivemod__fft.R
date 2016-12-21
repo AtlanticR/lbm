@@ -11,6 +11,9 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   x_r = range(x[,p$variables$LOCS[1]])
   x_c = range(x[,p$variables$LOCS[2]])
 
+  pa_r = range(pa[,p$variables$LOCS[1]])
+  pa_c = range(pa[,p$variables$LOCS[2]])
+  
   nr = trunc( diff(x_r)/p$pres ) + 1
   nc = trunc( diff(x_c)/p$pres ) + 1
 
@@ -126,10 +129,10 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
       pa_i = 1:nrow(pa)
     }
 
-    Z_i = cbind( ( pa[pa_i,p$variables$LOCS[1]]-x_r[1])/p$pres + 1, 
-                  (pa[pa_i,p$variables$LOCS[2]]-x_c[1])/p$pres + 1 )
+    Z_i = trunc( cbind( ( pa[pa_i,p$variables$LOCS[1]]-pa_r[1])/p$pres + 1, 
+                        ( pa[pa_i,p$variables$LOCS[2]]-pa_c[1])/p$pres + 1 ) )
 
-    # make sure predictions exist .. kernel density can stop prediction beyond a given range if the xwidth/ywidth options are not used and/or the kernel distance (theta) is small 
+    # make sure predictions exist
     if ( any( Z_i<1) ) next()  
     if ( any( Z_i[,1] > nr) ) next()
     if ( any( Z_i[,2] > nc) ) next()

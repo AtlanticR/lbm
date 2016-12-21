@@ -45,11 +45,11 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   nc = trunc( diff(px_c)/p$pres) + 1
 
   # step 2 :: spatial modelling
-  Z_all = cbind( ( pa[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
-                (pa[,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 )
+  Z_all = trunc( cbind( ( pa[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+                (pa[,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 ) )
 
-  M_all = cbind( ( px[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
-                (px[,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 )
+  M_all = trunc( cbind( ( px[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+                (px[,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 ) )
 
   # default in case there is no time (a single time slice)
   pa_i = 1:nrow(pa)
@@ -71,7 +71,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
 
   # low pass filter 
   flpf = NULL
-  if (exists("nu", p) & exists("phi", p) ) {
+  if (exists("hivemod_lowpass_nu", p) & exists("hivemod_lowpass_phi", p) ) {
     lpf = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
     mlpf = as.surface(dgrid, c(lpf))$z
     flpf = fft(mlpf) / fmC 
@@ -105,8 +105,8 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     # matrix representation of the output surface
     # Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
     
-    xi = cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
-                  (px[px_i,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 )
+    xi = trunc( cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+                  (px[px_i,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 ) )
     xxii = array_map( "2->1", trunc(xi), c(nr2, nc2) )
 
 
