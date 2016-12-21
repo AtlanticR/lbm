@@ -170,10 +170,10 @@
           Ploc = hivemod_attach( p$storage.backend, p$ptr$Ploc )
           Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )
 
-          pidA = array_map( "2->1", trunc( cbind(Ploc[Pabove,1]-p$plons[1], Ploc[Pabove,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) 
-          pidB = array_map( "2->1", trunc( cbind(Ploc[Pbelow,1]-p$plons[1], Ploc[Pbelow,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) )
+          pidA = array_map( "2->1", round( cbind(Ploc[Pabove,1]-p$plons[1], Ploc[Pabove,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) 
+          pidB = array_map( "2->1", round( cbind(Ploc[Pbelow,1]-p$plons[1], Ploc[Pbelow,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) )
 
-          sid  = array_map( "2->1", trunc( cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) 
+          sid  = array_map( "2->1", round( cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) 
           
           below = which( is.finite( match( sid, pidB ) )) 
           above = which( is.finite( match( sid, pidA ) ))
@@ -229,8 +229,8 @@
 
       ii = na.omit(hasdata)
       Yloc = hivemod_attach(  p$storage.backend, p$ptr$Yloc )
-      yplon = trunc( ( Yloc[ii,1] - p$plons[1] )/p$pres) + 1
-      yplat = trunc( ( Yloc[ii,2] - p$plats[1] )/p$pres) + 1
+      yplon = round( ( Yloc[ii,1] - p$plons[1] )/p$pres) + 1
+      yplat = round( ( Yloc[ii,2] - p$plats[1] )/p$pres) + 1
       uu = unique( array_map( "2->1", cbind(yplon, yplat), c(p$nplons, p$nplats) ) )
       vv = array_map( "1->2", uu, c(p$nplons, p$nplats) )
       
@@ -302,7 +302,7 @@
           if ( ncpu== 1 ) {
             pa = cbind( pa, pu[] ) # ie. a static variable
           } else if( ncpu == p$ny )  {
-            iy = trunc( (it-1) / p$nw ) + 1
+            iy = round( (it-1) / p$nw ) + 1
             pa = cbind( pa, pu[,iy] ) # ie., annual data 
           } else if ( ncpu == p$nt) {
             pa = cbind( pa, pu[,it] ) # ie. same time dimension as predictive data
@@ -449,8 +449,8 @@
       }}
 
       # subset to match to Ploc
-      good = match( array_map( "2->1", trunc( cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ), 
-                    array_map( "2->1", trunc( cbind(locsout[,1]-p$plons[1], locsout[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) )
+      good = match( array_map( "2->1", round( cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ), 
+                    array_map( "2->1", round( cbind(locsout[,1]-p$plons[1], locsout[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) )
 
       # Ploc_id = paste( Ploc[,1], Ploc[,2], sep="~" )
       # locsout_id = paste( locsout$plon, locsout$plat, sep="~" )

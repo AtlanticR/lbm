@@ -41,14 +41,14 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   px_r = range(px[,p$variables$LOCS[1]], na.rm=TRUE)
   px_c = range(px[,p$variables$LOCS[2]], na.rm=TRUE)
   
-  nr = trunc( diff(px_r)/p$pres) + 1
-  nc = trunc( diff(px_c)/p$pres) + 1
+  nr = round( diff(px_r)/p$pres) + 1
+  nc = round( diff(px_c)/p$pres) + 1
 
   # step 2 :: spatial modelling
-  Z_all = trunc( cbind( ( pa[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+  Z_all = round( cbind( ( pa[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
                 (pa[,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 ) )
 
-  M_all = trunc( cbind( ( px[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+  M_all = round( cbind( ( px[,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
                 (px[,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 ) )
 
   # default in case there is no time (a single time slice)
@@ -105,9 +105,9 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     # matrix representation of the output surface
     # Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
     
-    xi = trunc( cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+    xi = round( cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
                   (px[px_i,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 ) )
-    xxii = array_map( "2->1", trunc(xi), c(nr2, nc2) )
+    xxii = array_map( "2->1", round(xi), c(nr2, nc2) )
 
 
     # counts

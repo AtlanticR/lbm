@@ -59,6 +59,8 @@ hivemod_interpolate = function( ip=NULL, p ) {
   am = c(p$nplons, p$nplats)
   nu0 = 0.5
 
+  ploc_ids = array_map( "2->1", round(cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1), am )
+
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
     Si = p$runs[ iip, "locs" ]
@@ -182,8 +184,8 @@ hivemod_interpolate = function( ip=NULL, p ) {
     pa_w = -windowsize.half : windowsize.half
     pa_w_n = length(pa_w)
     
-    iwplon = trunc( (Sloc[Si,1]-p$plons[1])/p$pres + 1 + pa_w )
-    iwplat = trunc( (Sloc[Si,2]-p$plats[1])/p$pres + 1 + pa_w )
+    iwplon = round( (Sloc[Si,1]-p$plons[1])/p$pres + 1 + pa_w )
+    iwplat = round( (Sloc[Si,2]-p$plats[1])/p$pres + 1 + pa_w )
     
     pa = NULL
     pa = data.frame( iplon = rep.int(iwplon, pa_w_n) , 
@@ -197,10 +199,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
       next()
     }
 
-    pa$i = match( 
-      array_map( "2->1", cbind(pa$iplon, pa$iplat), am ), 
-      array_map( "2->1", cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1, am ) 
-    )
+    pa$i = match( array_map( "2->1", cbind(pa$iplon, pa$iplat), am ), ploc_ids )
         
     bad = which( !is.finite(pa$i))
     if (length(bad) > 0 ) pa = pa[-bad,]
@@ -220,8 +219,10 @@ hivemod_interpolate = function( ip=NULL, p ) {
         points( Yloc[YiU,2] ~ Yloc[YiU,1], col="green" )  # with covars and no other data issues
         points( Sloc[Si,2] ~ Sloc[Si,1], col="blue" ) # statistical locations
         # statistical output locations
-        points( p$plats[trunc((Sloc[Si,1]-p$plats[1])/p$pres) + 1] ~ p$plons[trunc( (Sloc[Si,2]-p$plons[1])/p$pres) + 1] , col="purple", pch=25, cex=2 ) 
-        points( p$plats[ pa$iplat] ~ p$plons[pa$iplon]  , col="cyan", pch=".", cex=0.01 ) # check on Proc iplat indexing
+        
+        points( p$plats[round( (Sloc[Si,2]-p$plats[1])/p$pres) + 1] ~ p$plons[round((Sloc[Si,1]-p$plons[1])/p$pres) + 1] , col="purple", pch=25, cex=5 ) 
+
+        points( p$plats[pa$iplat] ~ p$plons[ pa$iplon] , col="cyan", pch=20, cex=0.01 ) # check on Proc iplat indexing
         points( Ploc[pa$i,2] ~ Ploc[ pa$i, 1] , col="black", pch=20, cex=0.7 ) # check on pa$i indexing -- prediction locations
       }
    
@@ -336,7 +337,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
 
       # ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
       # test which is faster ... remove non-unique?
-      ids = array_map( "2->1", trunc(cbind(px$plon, px$plat)/p$pres+1), c(p$nplons, p$nplats) ) # 100X faster than paste / merge
+      ids = array_map( "2->1", round(cbind(px$plon, px$plat)/p$pres+1), c(p$nplons, p$nplats) ) # 100X faster than paste / merge
       todrop = which(duplicated( ids) )
       if (length(todrop>0)) px = px[-todrop,]
       rm(ids, todrop)

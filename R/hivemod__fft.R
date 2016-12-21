@@ -14,8 +14,8 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   pa_r = range(pa[,p$variables$LOCS[1]])
   pa_c = range(pa[,p$variables$LOCS[2]])
   
-  nr = trunc( diff(x_r)/p$pres ) + 1
-  nc = trunc( diff(x_c)/p$pres ) + 1
+  nr = round( diff(x_r)/p$pres ) + 1
+  nc = round( diff(x_c)/p$pres ) + 1
 
   x_plons = seq( x_r[1], x_r[2], length.out=nr )
   x_plats = seq( x_c[1], x_c[2], length.out=nc )
@@ -72,8 +72,8 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     } 
     
     # map of row, col indices of input data in the new (output) coordinate system
-    x_id = cbind( trunc(( x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres) + 1, 
-                  trunc(( x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres) + 1 )
+    x_id = cbind( round(( x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres) + 1, 
+                  round(( x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres) + 1 )
     xxii = array_map( "2->1", x_id, c(nr2, nc2) )
     
     # counts
@@ -129,7 +129,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
       pa_i = 1:nrow(pa)
     }
 
-    Z_i = trunc( cbind( ( pa[pa_i,p$variables$LOCS[1]]-pa_r[1])/p$pres + 1, 
+    Z_i = round( cbind( ( pa[pa_i,p$variables$LOCS[1]]-pa_r[1])/p$pres + 1, 
                         ( pa[pa_i,p$variables$LOCS[2]]-pa_c[1])/p$pres + 1 ) )
 
     # make sure predictions exist

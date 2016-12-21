@@ -98,8 +98,8 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
     grid <- list(x = im$x, y = im$y)
     dx <- grid$x[2] - grid$x[1]
     dy <- grid$y[2] - grid$y[1]
-    nr2 = trunc( nr*2)
-    nc2 = trunc( nc*2)
+    nr2 = round( nr*2)
+    nc2 = round( nc*2)
 
     dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
     center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
@@ -114,7 +114,7 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
  
   #  rm(dgrid, covar, mC, mcovar); gc()
     
-    x_co = trunc( cbind( 
+    x_co = round( cbind( 
       ( (data$x-min(data$x) )/ pres + 1) , 
       ( (data$y-min(data$y) )/ pres + 1) ) )
     x_id = hivemod::array_map( "2->1", x_co, c(nr2, nc2))

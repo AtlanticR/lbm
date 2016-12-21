@@ -8,7 +8,7 @@ hivemod__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
   # use all available data in 'x' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
   # currently only a GAM is enable for the TS component
 
-  #  ws= trunc( hivemod_distance_cur / p$pres )
+  #  ws= round( hivemod_distance_cur / p$pres )
   #  sloc=Sloc[Si,]
 
   if ( exists("hivemod_local_model_distanceweighted", p) ) {
@@ -27,7 +27,7 @@ hivemod__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
   if (ss$r.sq < p$hivemod_rsquared_threshold ) return(NULL)
 
   if (is.null(px)) px = pa
-  if (is.null(ws)) ws = trunc( p$hivemod_distance_prediction / p$pres)  
+  if (is.null(ws)) ws = round( p$hivemod_distance_prediction / p$pres)  
 
   preds = try( predict( hmod, newdata=px, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
 
@@ -45,7 +45,7 @@ hivemod__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
 
   xM = array( NA, dim=adims )
   px_id = cbind( 
-    trunc( ( px[,p$variables$TIME ] - p$ts[1] ) / p$tres) + 1,
+    round( ( px[,p$variables$TIME ] - p$ts[1] ) / p$tres) + 1,
     ( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
     ( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1 
   )
@@ -59,7 +59,7 @@ hivemod__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
   px_id = array_map( "3->1", m=cbind( 
     ( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
     ( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1, 
-    trunc( ( px[,p$variables$TIME ] - p$ts[1] ) / p$tres) + 1 ),
+    round( ( px[,p$variables$TIME ] - p$ts[1] ) / p$tres) + 1 ),
     n=adims )
   
   xM = array( NA, dim=adims )
