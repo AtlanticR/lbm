@@ -95,8 +95,6 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
       fN = Re(fft(fmN * flpf, inverse = TRUE))[1:nr,1:nc]
       fY = Re(fft(fmY * flpf, inverse = TRUE))[1:nr,1:nc]
       Z = fY/fN
-      iZ = which( !is.finite( Z))
-      if (length(iZ) > 0) Z[iZ] = NA
       lb = which( Z < rY[1] )
       if (length(lb) > 0) Z[lb] = NA
       ub = which( Z > rY[2] )
@@ -105,20 +103,14 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
       rm( flpf, fN, fY )
     }
 
-    zz = which(is.finite(Z))
+    zz = which(!is.finite(Z))
     if (length(zz) > 0 ) {
       # spatial autocorrelation filter
       if (!is.null(fAC)) {    
         fN = Re(fft(fmN * fAC, inverse = TRUE))[1:nr,1:nc]
         fY = Re(fft(fmY * fAC, inverse = TRUE))[1:nr,1:nc]
         Zsp = fY/fN
-        iZ = which( !is.finite( Zsp))
-        if (length(iZ) > 0) Zsp[iZ] = NA
-        lb = which( Zsp < rY[1] )
-        if (length(lb) > 0) Zsp[lb] = NA
-        ub = which( Zsp > rY[2] )
-        if (length(ub) > 0) Zsp[ub] = NA
-        # image(Zsp)
+       # image(Zsp)
         Z[zz] = Zsp[zz]
         rm ( fAC, fN, fY, Zsp )
       }
@@ -145,7 +137,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     if ( any( Z_i[,1] > nr) ) next()
     if ( any( Z_i[,2] > nc) ) next()
     pa$mean[pa_i] = Z[Z_i]
-    pa$sd[pa_i] = 1
+    pa$sd[pa_i] = 1  ## TODO obtain prediction error from FFT methods
 
   }
 

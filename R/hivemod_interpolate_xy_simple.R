@@ -131,8 +131,6 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
     fN = Re(fft(fft(mN) * fcovar , inverse = TRUE))[1:nr,1:nc]
     fY = Re(fft(fft(mY) * fcovar , inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
-    iZ = which( !is.finite( Z))
-    if (length(iZ) > 0) Z[iZ] = NA
     lb = which( Z < rY[1] )
     if (length(lb) > 0) Z[lb] = NA
     ub = which( Z > rY[2] )

@@ -63,8 +63,6 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
       fN = Re(fft(fft(mN) * fW, inverse = TRUE))[1:nr,1:nc]
       fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
       Z = fY/fN
-      iZ = which( !is.finite( Z))
-      if (length(iZ) > 0) Z[iZ] = NA
       lb = which( Z < rY[1] )
       if (length(lb) > 0) Z[lb] = NA
       ub = which( Z > rY[2] )
