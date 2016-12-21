@@ -37,11 +37,12 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
 
   if (0) {
      require(fields)
+     require(MBA)
+
      data(LIDAR)
      data = LIDAR
      x11(); lattice::levelplot( z~as.numeric(cut(x,50))+as.numeric(cut(y,50)), data=data, aspect="iso")
 
-     require(MBA)
      im2 <- mba.surf(LIDAR, 300, 300, extend=TRUE)$xyz.est
      image(im2, xaxs="r", yaxs="r")
 
@@ -49,8 +50,11 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
      nr = length(im2$y)
      nc = length(im2$x)
      pres = min(c(diff( im2$x), diff(im2$y )) )
-     nu = 0.5
-     phi = (3*pres) / sqrt(8*nu)
+     
+     a = hivemod::hivemod_variogram( data[,c("x","y")], data[,"z"] )
+
+     nu = a$fast$nu
+     phi = a$fast$phi / 3 
   }
 
 
@@ -99,38 +103,31 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
     center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
         ncol = 2)
 
+    # define covariance function 
     mC = matrix(0, nrow = nr2, ncol = nc2)
     mC[nr, nc] = 1
-
-    
-    # first pass with the global params to get closest fit to data 
-    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-    mAC = as.surface(dgrid, c(AC))$z
-    fW = fft(mAC)/(fft(mC) * nr2 * nc2)
-
+    covar = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+    mcovar = as.surface(dgrid, c(covar))$z
+    fcovar = fft(mcovar)/(fft(mC) * nr2 * nc2)
  
-    rm(dgrid, AC, mC, mAC); gc()
+    rm(dgrid, covar, mC, mcovar); gc()
     
     x_co = trunc( cbind( 
       ( (data$x-min(data$x) )/ pres + 1) , 
       ( (data$y-min(data$y) )/ pres + 1) ) )
     x_id = hivemod::array_map( "2->1", x_co, c(nr2, nc2))
         
-    # counts
+    # data
     mN = matrix(0, nrow = nr2, ncol = nc2)
     mN[x_id] = 1
-#    u = tapply( rep(1, nrow(data)), INDEX=x_id, FUN=sum, na.rm=TRUE )
-#    mN[ as.numeric( rownames(u) )] = u 
     mN[!is.finite(mN)] = 0
-    
-    # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
     mY[x_id] = data$z # fill with data in correct locations
     mY[!is.finite(mY)] = 0
     
     # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-    fN = Re(fft(fft(mN) * fW , inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW , inverse = TRUE))[1:nr,1:nc]
+    fN = Re(fft(fft(mN) * fcovar , inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * fcovar , inverse = TRUE))[1:nr,1:nc]
     Z = fY/fN
     iZ = which( !is.finite( Z))
     if (length(iZ) > 0) Z[iZ] = NA
