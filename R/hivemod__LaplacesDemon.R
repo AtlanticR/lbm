@@ -135,7 +135,8 @@ hivemod__LaplacesDemon = function( p, x, pa ) {
           phi = out$maxdist * ( f$Summary2["phi", "Mean"]  / sqrt(2*f$Summary2["nu", "Mean"] ) )
         )   ## need to check parameterization...
 
-        out$LaplacesDemon$range = geoR::practicalRange("matern", phi=out$LaplacesDemon$phi, kappa=out$LaplacesDemon$nu)
+        #out$LaplacesDemon$range = geoR::practicalRange("matern", phi=out$LaplacesDemon$phi, kappa=out$LaplacesDemon$nu)
+        out$LaplacesDemon$range = distance_matern(phi=out$LaplacesDemon$phi, nu=out$LaplacesDemon$nu)
 
        # print( out$LaplacesDemon )
 

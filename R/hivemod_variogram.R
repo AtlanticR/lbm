@@ -37,6 +37,8 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
     nd = nrow(out$spBayes$recover$p.theta.samples)
     rr = rep(NA, nd )
     for (i in 1:nd) rr[i] = geoR::practicalRange("matern", phi=1/out$spBayes$recover$p.theta.samples[i,3], kappa=out$spBayes$recover$p.theta.samples[i,4] )
+#  range = distance_matern(phi=phi, nu=nu)
+
     hist(rr)  # range estimate
 
     hist( out$spBayes$recover$p.theta.samples[,1] ) #"sigma.sq"
@@ -146,7 +148,9 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
         par = o$par 
         out$fast = list( fit=o, vgm=vario, range=NA, nu=par["nu"], phi=par["phi"],
           varSpatial=par["sigma.sq"], varObs=par["tau.sq"] ) 
-        rg = try(geoR::practicalRange("matern", phi=out$fast$phi, kappa=out$fast$nu ))
+        #rg = try(geoR::practicalRange("matern", phi=out$fast$phi, kappa=out$fast$nu ))
+         rg=  distance_matern(phi=out$fast$phi, nu=out$fast$nu)
+
         if (! inherits(rg, "try-error") ) {
           out$fast$range = rg
         } else {
@@ -206,8 +210,9 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
     cvg = data.frame( cbind( x=vg$centers, cvgm= (nugget + sill * (1-vgm)) ))
     out$fields = list( fit=fsp, vgm=cvg, range=NA, nu=nu, phi=res["theta"] ,
         varSpatial=sill, varObs=nugget  )  # fields::"range" == range parameter == phi
-    
-    out$fields$range = geoR::practicalRange("matern", phi=out$fields$phi, kappa=out$fields$nu  )
+
+    out$fields$range = distance_matern(phi=out$fields$phi, nu=out$fields$nu)
+#    out$fields$range = geoR::practicalRange("matern", phi=out$fields$phi, kappa=out$fields$nu  )
 
     if( 0){
       x11()
@@ -254,7 +259,9 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
       #vMod0 = vgm("Mat")
       vFitgs =  try( fit.variogram( vEm, vMod0, fit.kappa =TRUE, fit.sills=TRUE, fit.ranges=TRUE ) ) ## gstat's kappa is the Bessel function's "nu" smoothness parameter
       if (inherits(vFitgs, "try-error") )  return(NULL)
-      vrange = max(1, geoR::practicalRange("matern", phi=vFitgs$range[2], kappa=vFitgs$kappa[2]  ) )
+      # vrange = max(1, geoR::practicalRange("matern", phi=vFitgs$range[2], kappa=vFitgs$kappa[2]  ) )
+      vrange = max(1, distance_matern(phi=vFitgs$range[2], nu=vFitgs$kappa[2])
+
       if (nc > nc_max ) break()
     }
     if (inherits(vFitgs, "try-error") )  return(NULL)
@@ -262,7 +269,8 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
     out$gstat = list( fit=vFitgs, vgm=vEm, range=NA, nu=vFitgs$kappa[2], phi=vFitgs$range[2],
         varSpatial=vFitgs$psill[2], varObs=vFitgs$psill[1]  )  # gstat::"range" == range parameter == phi
     
-    out$gstat$range = geoR::practicalRange("matern", phi=out$gstat$phi, kappa=out$gstat$nu  )
+    # out$gstat$range = geoR::practicalRange("matern", phi=out$gstat$phi, kappa=out$gstat$nu  )
+    out$gstat$range = distance_matern( phi=out$gstat$phi, nu=out$gstat$nu  )
 
     if (plotdata) {
       x11()
@@ -398,7 +406,8 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
               nu=oo$param["value", "matern.nu"], # RF::nu == geoR:: kappa (bessel smoothness param)
               error=NA )
 
-    out$RandomFields$range = geoR::practicalRange("matern", phi=out$RandomFields$phi, kappa=out$RandomFields$nu  )
+    # out$RandomFields$range = geoR::practicalRange("matern", phi=out$RandomFields$phi, kappa=out$RandomFields$nu  )
+    out$RandomFields$range = distance_matern( phi=out$RandomFields$phi, nu=out$RandomFields$nu  )
 
     if (plotdata) {
       x11()
@@ -463,8 +472,8 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
     u = apply(m.1$p.theta.recover.samples, 2, mean)
     u["phi"] = 1/u["phi"]
 
-    vrange = geoR::practicalRange("matern", phi=u["phi"], kappa=u["nu"]  )
-
+    #vrange = geoR::practicalRange("matern", phi=u["phi"], kappa=u["nu"]  )
+    vrange = distance_matern( phi=u["phi"], nu=u["nu"]  )
     out$spBayes = list( model=model, recover=m.1,
       range=vrange, varSpatial=u["sigma.sq"], varObs=u["tau.sq"], 
       phi=u["phi"], nu=u["nu"] )  # output using geoR nomenclature
@@ -591,8 +600,8 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
       phi = 1/inla.summary[["kappa","mean"]] , nu=alpha-1, error=NA )
 
     # kappa{geoR} = lambda{INLA} == alpha-1 {INLA} and alpha=2 by default in INLA
-    out$inla$range = geoR::practicalRange("matern", phi=out$inla$phi, kappa=out$inla$nu  )
-
+    #out$inla$range = geoR::practicalRange("matern", phi=out$inla$phi, kappa=out$inla$nu  )
+    out$inla$range = distance_matern( phi=out$inla$phi, nu=out$inla$nu  )
 
     if (plotdata) {
       require( geoR )
@@ -626,8 +635,9 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
         varObs = fm$fixed.effects[1,"Std. Error"] , 
         nu =nu, phi=1/fm$smooth.hyp[,"Smooth Par."] )
 
-    out$bayesx$range = geoR::practicalRange("matern", phi=out$bayesx$phi, kappa=out$bayesx$nu  )
-    out
+    # out$bayesx$range = geoR::practicalRange("matern", phi=out$bayesx$phi, kappa=out$bayesx$nu  )
+    out$bayesx$range = distance_matern( phi=out$bayesx$phi, nu=out$bayesx$nu  )
+    
 
     if(0){
       plot( fm, term = "sx(plon,plat)", image=TRUE, contour=TRUE )
@@ -736,7 +746,8 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
       sigmasq = fit$summary["sigmasq", "mean"] ,
       tausq = fit$summary["tausq", "mean"] 
     )
-    out$jags$range = geoR::practicalRange("matern", phi=out$jags$phi, kappa=1  )
+    #out$jags$range = geoR::practicalRange("matern", phi=out$jags$phi, kappa=1  )
+     out$jags$range = distance_matern( phi=out$jags$phi, nu=1  )
     return(out)
   }
 
@@ -854,8 +865,9 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
       phi = ( f$Summary2["phi", "Mean"]  / sqrt(2*f$Summary2["nu", "Mean"] ) ) 
     )   ## need to check parameterization...
  
-    out$LaplacesDemon$range = geoR::practicalRange("matern", phi=out$LaplacesDemon$phi, kappa=out$LaplacesDemon$nu)
- 
+    # out$LaplacesDemon$range = geoR::practicalRange("matern", phi=out$LaplacesDemon$phi, kappa=out$LaplacesDemon$nu)
+      out$LaplacesDemon$range = distance_matern( phi=out$LaplacesDemon$phi, nu=out$LaplacesDemon$nu)
+
    # print( out$LaplacesDemon )
 
 

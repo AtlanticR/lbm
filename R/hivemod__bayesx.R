@@ -32,9 +32,10 @@ hivemod__bayesx = function( p, x, pa ) {
   pa$sd = 1 # no option right now to estim posterior prediction errors .. may be possible with type="terms" but would be slow to simulate  and do not know how to do it yet .. please fix this ..
   varSpatial = hmod$smooth.hyp[,"Variance"]
   varObs = hmod$fixed.effects[1,"Std. Error"]  
-  nu = nu
+  nu = 1.5
   phi=1/hmod$smooth.hyp[,"Smooth Par."] 
-  range = geoR::practicalRange("matern", phi=phi, kappa=nu  )
+  # range = geoR::practicalRange("matern", phi=phi, kappa=nu  )
+  range = distance_matern(phi=phi, nu=nu  )
 
   hivemod_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=ss$r.squared, ndata=nrow(x),
     sdSpatial=sqrt(varSpatial), sdObs=sqrt(varObs), phi=phi, nu=nu, range=range ) 

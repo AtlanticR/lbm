@@ -53,8 +53,9 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
      
      a = hivemod::hivemod_variogram( data[,c("x","y")], data[,"z"] )
 
-     nu = a$fast$nu
-     phi = a$fast$phi / 3 
+     distance_matern( phi=a$fast$phi, nu=a$fast$nu, cor=0.95)
+
+
   }
 
 
@@ -110,7 +111,7 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
     mcovar = as.surface(dgrid, c(covar))$z
     fcovar = fft(mcovar)/(fft(mC) * nr2 * nc2)
  
-    rm(dgrid, covar, mC, mcovar); gc()
+  #  rm(dgrid, covar, mC, mcovar); gc()
     
     x_co = trunc( cbind( 
       ( (data$x-min(data$x) )/ pres + 1) , 
@@ -331,7 +332,8 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
     res = apply(mm.pred[["p.y.predictive.samples"]], 2, mean)
 
     u = apply(mm$p.theta.recover.samples, 2, mean)
-    vrange = geoR::practicalRange("matern", phi=1/u["phi"], kappa=u["nu"]  )
+    # vrange = geoR::practicalRange("matern", phi=1/u["phi"], kappa=u["nu"]  )
+    vrange = distance_matern(phi=1/u["phi"], nu=u["nu"])
 
     spb = list( model=model, recover=mm,
       range=vrange, varSpatial=u["sigma.sq"], varObs=u["tau.sq"],  phi=1/u["phi"], kappa=u["nu"] )  # output using geoR nomenclature

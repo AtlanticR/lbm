@@ -188,8 +188,8 @@ hivemod__inla = function( p, x, pa ) {
   stats$sdObs = sqrt(inla.summary[["observation error", "mode"]])
   stats$nu = p$inla.alpha - 1
   stats$phi = 1/inla.summary[["kappa","mean"]]
-  stats$range = geoR::practicalRange("matern", phi=stats$phi, kappa=stats$nu  )
-
+  stats$range = distance_matern(phi=stats$phi, nu=stats$nu) #95%
+  # stats$range = geoR::practicalRange("matern", phi=stats$phi, kappa=stats$nu  )
   return (list(predictions=pa, hivemod_stats=stats))
 }
 

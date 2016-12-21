@@ -22,6 +22,7 @@ if (using.meuse) {
   phi = 100 # range parameter
   # range = geoR::practicalRange("matern", phi=100, kappa=0.5)  # 300 km
 
+  # range = distance_matern( phi=100, nu=0.5, cor=0.95)
 }
 
 if (using.random) {
@@ -40,6 +41,8 @@ if (using.random) {
   phi = 100 # range parameter
   # range = geoR::practicalRange("matern", phi=100, kappa=0.5)  # 300 km
 
+  # range = distance_matern( phi=100, nu=0.5, cor=0.95)
+}
 
   #----------------
   # using gstat
@@ -48,7 +51,7 @@ if (using.random) {
       model = gstat::vgm(psill=psill, nugget=nugget, model="Mat", range=1/phi, kappa=nu), nmax = 20)
   rfG <- predict(modG, newdata=Data.pred, nsim = 1)
   names( rfG ) = c("x", "y", "z" )
-  
+
   # -------------------
   # using geoR
   require(geoR)
@@ -58,7 +61,7 @@ if (using.random) {
   plot(variog(rfGeoR, max.dist=100))
   lines.variomodel(rfGeoR)
   image(rfGeoR)
-  
+
   # re-estimate params
   ss = data.frame( rfG[ si, ] )
   xy = ss[,c("x","y")]
@@ -105,11 +108,11 @@ ex.bayes <- krige.bayes(rfGeoR, loc=ex.grid,
      par(mfrow=c(3,1))
      hist(ex.bayes)
      par(mfrow=c(1,1))
-     
+
      # Plotting empirical variograms and some Bayesian estimates:
      # Empirical variogram
      plot(variog(rfGeoR, max.dist = 1), ylim=c(0, 15))
-     # Since rfGeoR is a simulated data we can plot the line with the "true" model 
+     # Since rfGeoR is a simulated data we can plot the line with the "true" model
      lines.variomodel(rfGeoR, lwd=2)
      # adding lines with summaries of the posterior of the binned variogram
      lines(ex.bayes, summ = mean, lwd=1, lty=2)
@@ -121,7 +124,7 @@ ex.bayes <- krige.bayes(rfGeoR, loc=ex.grid,
      # and adding lines with median and quantiles estimates
      my.summary <- function(x){quantile(x, prob = c(0.05, 0.5, 0.95))}
      lines(ex.bayes, summ = my.summary, ty="l", lty=c(2,1,2), col=1)
-     
+
      # Plotting some prediction results
      op <- par(no.readonly = TRUE)
      par(mfrow=c(2,2), mar=c(4,4,2.5,0.5), mgp = c(2,1,0))
@@ -134,7 +137,7 @@ ex.bayes <- krige.bayes(rfGeoR, loc=ex.grid,
      #
      par(op)
      ## End(Not run)
-   
+
 
 
 # -------------------
