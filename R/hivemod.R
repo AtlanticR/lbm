@@ -591,7 +591,11 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
       }
     }
 
-
+  # do this here as the Stats are from the most reliable estimates
+  S = hivemod_attach( p$storage.backend, p$ptr$S )
+  nu_global = median(  S[,which( p$statsvars=="nu" )], na.rm=TRUE )
+  phi_global = median(  S[,which( p$statsvars=="phi" )], na.rm=TRUE )
+  
   # save solutions to disk before continuuing
   hivemod_db( p=p, DS="hivemod.prediction.redo" ) # save to disk for use outside hivemod*
   hivemod_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside hivemod*
@@ -611,10 +615,9 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     p$timei3 =  Sys.time()
     message( paste( "Time taken to stage 2 interpolations (mins):", round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
 
-
   message( "Doing a fast interpolation to fill in large data gaps.")
   p = make.list( list( time_index=1:p$nt), Y=p ) # random order helps use all cpus
-  parallel.run( hivemod_interpolate_fast, p=p ) # fast fft smooth
+  parallel.run( hivemod_interpolate_fast, p=p, nu=nu_global, phi=phi_global ) # fast fft smooth
 
   # save solutions to disk (again .. overwrite)
   message( "Saving results to disk" )
