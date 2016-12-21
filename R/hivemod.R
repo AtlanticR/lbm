@@ -16,14 +16,6 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
 
   if(0) {
 
-    p = bio.temperature::temperature.parameters( current.year=2016 )
-    p$hivemod_local_modelengine="twostep"
-    p$storage.backend="bigmemory.ram"
-    p = bio.temperature::temperature.parameters( DS="hivemod", p=p )
-    continue=FALSE
-    DATA='hydro.db( p=p, DS="temperature.hivemod" )'
-
-
     p = bio.bathymetry::bathymetry.parameters( )
     p$hivemod_local_modelengine = "fft"  # about 5 X faster than bayesx-mcmc method
     p$storage.backend="bigmemory.ram"
@@ -40,6 +32,14 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     p$clusters = rep("localhost",  detectCores() )
     DATA = 'substrate.db( p=p, DS="substrate.hivemod" )'
   
+    p = bio.temperature::temperature.parameters( current.year=2016 )
+    p$hivemod_local_modelengine="twostep"
+    p$storage.backend="bigmemory.ram"
+    p = bio.temperature::temperature.parameters( DS="hivemod", p=p )
+    continue=FALSE
+    DATA='hydro.db( p=p, DS="temperature.hivemod" )'
+
+
   }
 
 
