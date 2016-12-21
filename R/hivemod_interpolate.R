@@ -327,7 +327,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
     }
 
   # use a larger data grid to interpolate.. right now too slow to use so skip this step
-    if (p$hivemod_local_modelengine %in% c( "spate", "twostep", "hivemod_local_modelengine_userdefined", "kernel.density" ) ) {
+    if (p$hivemod_local_modelengine %in% c( "spate", "twostep", "hivemod_local_modelengine_userdefined", "fft" ) ) {
       # some methods require a uniform prediction grid based upon all dat locations (and time) 
       # begin with "dat"    
       px = dat # only the static parts .. time has to be a uniform grid so reconstruct below
@@ -440,7 +440,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
       LaplacesDemon = hivemod__LaplacesDemon( p, dat, pa ),
       splancs = hivemod__spate( p, dat, pa ), # TODO
       spate = hivemod__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 
-      kernel.density = hivemod__kerneldensity( p, dat, pa, nu=nu, phi=phi ), 
+      fft = hivemod__fft( p, dat, pa, nu=nu, phi=phi ), 
       twostep = hivemod__twostep( p, dat, pa, px=px, nu=nu, phi=phi  ), # slow ...!
       hivemod_local_modelengine_userdefined = p$hivemod_local_modelengine_userdefined( p, dat, pa)
     ) )

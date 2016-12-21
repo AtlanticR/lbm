@@ -1,9 +1,10 @@
 
-hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
+hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
 
   #\\ this is the core engine of hivemod .. localised space (no-time) modelling interpolation 
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice
+  #\\ first a low-pass filter as defined by p$hivemod_nu, p$hivemod_phi, then a simple covariance filter determined by nu,phi
 
   if (is.null(phi)) phi=p$hivemod_phi
   if (is.null(nu)) nu=p$hivemod_nu # nu=0.5 an exponential covariance
@@ -32,20 +33,36 @@ hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
   nr2 = 2 * nr
   nc2 = 2 * nc
 
+  # constainer for spatial filters
   dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
-  center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
-      ncol = 2)
-
+  center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
+  
   mC = matrix(0, nrow = nr2, ncol = nc2)
   mC[nr, nc] = 1
+  fmC = fft(mC) * nr2 * nc2
+  mC = NULL
 
-  # first pass with the global params to get closest fit to data 
-  AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
-  mAC = as.surface(dgrid, c(AC))$z
-  fW = fft(mAC)/(fft(mC) * nr2 * nc2)
+  # low pass filter 
+  flpf = NULL
+  if (exists("nu", p) & exists("phi", p) ) {
+    lpf = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_phi, nu=p$hivemod_nu )
+    mlpf = as.surface(dgrid, c(lpf))$z
+    flpf = fft(mlpf) / fmC 
+    rm(lpf,  mlpf)
+  }
 
-  rm(dgrid, AC,  mAC, mC); gc()
+  # spatial autocorrelation filter 
+  fAC = NULL
+  if ( !is.null(nu) & !is.null(phi)) {
+    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+    mAC = as.surface(dgrid, c(AC))$z
+    fAC = fft(mAC) / fmC
+    rm(AC,  mAC)
+  }
 
+  dgrid = center = fmC = NULL
+  gc()
+ 
   for ( ti in 1:p$nt ) {
 
     if ( exists("TIME", p$variables)) {
@@ -64,23 +81,48 @@ hivemod__kerneldensity = function( p, x, pa, nu=NULL, phi=NULL ) {
     # mN[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
     mN[xxii] = 1 # uniform weights .. more stable .. weights cause floating point over/underflow issues ..
     mN[!is.finite(mN)] = 0
-    
+    fmN = fft(mN)
+
     # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
     mY[xxii] = x[xi,p$variables$Y] # fill with data in correct locations
     mY[!is.finite(mY)] = 0
-    
-    # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-    fN = Re(fft(fft(mN) * fW, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
-    Z = fY/fN
-    iZ = which( !is.finite( Z))
-    if (length(iZ) > 0) Z[iZ] = NA
-    lb = which( Z < rY[1] )
-    if (length(lb) > 0) Z[lb] = NA
-    ub = which( Z > rY[2] )
-    if (length(ub) > 0) Z[ub] = NA
-    # image(Z)
+    fmY = fft(mY)
+
+    Z = matrix(0, nrow=nr, ncol=nc)
+    # low pass filter based upon a global nu,phi .. remove high freq variation
+    if (!is.null(flpf)) {    
+      fN = Re(fft(fmN * flpf, inverse = TRUE))[1:nr,1:nc]
+      fY = Re(fft(fmY * flpf, inverse = TRUE))[1:nr,1:nc]
+      Z = fY/fN
+      iZ = which( !is.finite( Z))
+      if (length(iZ) > 0) Z[iZ] = NA
+      lb = which( Z < rY[1] )
+      if (length(lb) > 0) Z[lb] = NA
+      ub = which( Z > rY[2] )
+      if (length(ub) > 0) Z[ub] = NA
+      # image(Z)
+      rm( flpf, fN, fY )
+    }
+
+    zz = which(is.finite(Z))
+    if (length(zz) > 0 ) {
+      # spatial autocorrelation filter
+      if (!is.null(fAC)) {    
+        fN = Re(fft(fmN * fAC, inverse = TRUE))[1:nr,1:nc]
+        fY = Re(fft(fmY * fAC, inverse = TRUE))[1:nr,1:nc]
+        Zsp = fY/fN
+        iZ = which( !is.finite( Zsp))
+        if (length(iZ) > 0) Zsp[iZ] = NA
+        lb = which( Zsp < rY[1] )
+        if (length(lb) > 0) Zsp[lb] = NA
+        ub = which( Zsp > rY[2] )
+        if (length(ub) > 0) Zsp[ub] = NA
+        # image(Zsp)
+        Z[zz] = Zsp[zz]
+        rm ( fAC, fN, fY, Zsp )
+      }
+    }
 
     # match prediction to input data 
     x$mean[xi] = Z[xxii]

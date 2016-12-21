@@ -25,7 +25,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
 
 
     p = bio.bathymetry::bathymetry.parameters( )
-    p$hivemod_local_modelengine = "kernel.density"  # about 5 X faster than bayesx-mcmc method
+    p$hivemod_local_modelengine = "fft"  # about 5 X faster than bayesx-mcmc method
     p$storage.backend="bigmemory.ram"
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="hivemod" )
     continue=FALSE
@@ -33,7 +33,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   
 
     p = bio.substrate::substrate.parameters() # reset to defaults
-    p$hivemod_local_modelengine = "kernel.density" 
+    p$hivemod_local_modelengine = "fft" 
     p$storage.backend="bigmemory.ram"  # filebacked metods are still too slow ..
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="hivemod" )
     continue=FALSE
@@ -74,7 +74,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     if (p$hivemod_local_modelengine %in% c("gam", "mgcv", "habitat") )  p$libs = c( p$libs, "mgcv" )
     if (p$hivemod_local_modelengine %in% c("LaplacesDemon") )  p$libs = c( p$libs, "LaplacesDemonCpp" )
     if (p$hivemod_local_modelengine %in% c("inla") )  p$libs = c( p$libs, "INLA" )
-    if (p$hivemod_local_modelengine %in% c("kernel.density", "gaussianprocess2Dt") )  p$libs = c( p$libs, "fields" )
+    if (p$hivemod_local_modelengine %in% c("fft", "gaussianprocess2Dt") )  p$libs = c( p$libs, "fields" )
     if (p$hivemod_local_modelengine %in% c("spate") )  p$libs = c( p$libs, "spate" )
     if (p$hivemod_local_modelengine %in% c("splancs") )  p$libs = c( p$libs, "splancs" )
     if (p$hivemod_local_modelengine %in% c("twostep") )  p$libs = c( p$libs, "mgcv", "fields" )

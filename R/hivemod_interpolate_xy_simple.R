@@ -143,7 +143,7 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
 
   # ------
 
-  if (interp.method == "kernel.density") {
+  if (interp.method == "fft") {
     # default :: create a "surface" and reshape to a grid using (gaussian) kernel-based smooth via FFT
     require(fields)
 
