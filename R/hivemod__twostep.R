@@ -150,7 +150,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
       }
     }
 
-    pa$mean[pa_i] = Z[ pa_i, ]
+    pa$mean[pa_i] = Z[Z_all[ pa_i, ]]
     
     
     # sd
@@ -186,7 +186,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
       }
     }
 
-    pa$sd[pa_i] = Z[ pa_i, ]
+    pa$sd[pa_i] = Z[Z_all[ pa_i, ]]
     
 
   }
