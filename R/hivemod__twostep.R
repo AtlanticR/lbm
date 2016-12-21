@@ -63,19 +63,36 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   nr2 = 2 * nr
   nc2 = 2 * nc
 
+  # constainer for spatial filters
   dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
-  center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 
-      ncol = 2)
-
+  center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
+  
   mC = matrix(0, nrow = nr2, ncol = nc2)
   mC[nr, nc] = 1
+  fmC = fft(mC) * nr2 * nc2
+  mC = NULL
 
-  # first pass with the global params to get closest fit to data 
-  AC = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
-  mAC = as.surface(dgrid, c(AC))$z
-  fW = fft(mAC)/(fft(mC) * nr2 * nc2)
+  # low pass filter 
+  flpf = NULL
+  if (exists("nu", p) & exists("phi", p) ) {
+    lpf = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
+    mlpf = as.surface(dgrid, c(lpf))$z
+    flpf = fft(mlpf) / fmC 
+    rm(lpf,  mlpf)
+  }
 
-  rm(dgrid, AC, mAC, mC); gc()
+  # spatial autocorrelation filter 
+  fAC = NULL
+  if ( !is.null(nu) & !is.null(phi)) {
+    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+    mAC = as.surface(dgrid, c(AC))$z
+    fAC = fft(mAC) / fmC
+    rm(AC,  mAC)
+  }
+
+  dgrid = center = fmC = NULL
+  gc()
+
 
   for ( ti in 1:p$nt ) {
   
@@ -95,49 +112,102 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
                   (px[px_i,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 )
     xxii = array_map( "2->1", trunc(xi), c(nr2, nc2) )
 
+
     # counts
     mN = matrix(0, nrow = nr2, ncol = nc2)
-    # mN[xxii] = tapply( rep(1, length(px_i)), INDEX=xxii, FUN=sum, na.rm=TRUE )
-    mN[xxii] = 1  # counts cause numerical under/over flow
+    # mN[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
+    mN[xxii] = 1 # uniform weights .. more stable .. weights cause floating point over/underflow issues ..
     mN[!is.finite(mN)] = 0
-    
+    fmN = fft(mN)
+
     # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
-    mY[xxii] = px[px_i, "mean"] # fill with data in correct locations
+    mY[xxii] = px[px_i, "mean"]  # fill with data in correct locations
     mY[!is.finite(mY)] = 0
-    
-    # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-    fN = Re(fft(fft(mN) * fW, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
-    Z = fY/fN
-    iZ = which( !is.finite( Z))
-    if (length(iZ) > 0) Z[iZ] = NA
-    lb = which( Z < rY[1] )
-    if (length(lb) > 0) Z[lb] = NA
-    ub = which( Z > rY[2] )
-    if (length(ub) > 0) Z[ub] = NA
-    # image(Z)
+    fmY = fft(mY)
 
-     pa$mean[pa_i] = Z[Z_all[ pa_i, ]]
+    Z = matrix(0, nrow=nr, ncol=nc)
+    # low pass filter based upon a global nu,phi .. remove high freq variation
+    if (!is.null(flpf)) {    
+      fN = Re(fft(fmN * flpf, inverse = TRUE))[1:nr,1:nc]
+      fY = Re(fft(fmY * flpf, inverse = TRUE))[1:nr,1:nc]
+      Z = fY/fN
+      iZ = which( !is.finite( Z))
+      if (length(iZ) > 0) Z[iZ] = NA
+      lb = which( Z < rY[1] )
+      if (length(lb) > 0) Z[lb] = NA
+      ub = which( Z > rY[2] )
+      if (length(ub) > 0) Z[ub] = NA
+      # image(Z)
+      rm( flpf, fN, fY )
+    }
+
+    zz = which(is.finite(Z))
+    if (length(zz) > 0 ) {
+      # spatial autocorrelation filter
+      if (!is.null(fAC)) {    
+        fN = Re(fft(fmN * fAC, inverse = TRUE))[1:nr,1:nc]
+        fY = Re(fft(fmY * fAC, inverse = TRUE))[1:nr,1:nc]
+        Zsp = fY/fN
+        iZ = which( !is.finite( Zsp))
+        if (length(iZ) > 0) Zsp[iZ] = NA
+        lb = which( Zsp < rY[1] )
+        if (length(lb) > 0) Zsp[lb] = NA
+        ub = which( Zsp > rY[2] )
+        if (length(ub) > 0) Zsp[ub] = NA
+        # image(Zsp)
+        Z[zz] = Zsp[zz]
+        rm ( fAC, fN, fY, Zsp )
+      }
+    }
+
+    pa$mean[pa_i] = Z[ pa_i, ]
     
-    # Zsd = try( smooth.2d( Y=px[px_i,"sd"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
     
     # sd
     mY = matrix(0, nrow = nr2, ncol = nc2)
     mY[xxii] = px[px_i,"sd"] # fill with data in correct locations
     mY[!is.finite(mY)] = 0
+    fmY = fft(mY)
+
+    Z = matrix(0, nrow=nr, ncol=nc)
+    # low pass filter based upon a global nu,phi .. remove high freq variation
+    if (!is.null(flpf)) {    
+      fN = Re(fft(fmN * flpf, inverse = TRUE))[1:nr,1:nc]
+      fY = Re(fft(fmY * flpf, inverse = TRUE))[1:nr,1:nc]
+      Z = fY/fN
+      iZ = which( !is.finite( Z))
+      if (length(iZ) > 0) Z[iZ] = NA
+      lb = which( Z < rY[1] )
+      if (length(lb) > 0) Z[lb] = NA
+      ub = which( Z > rY[2] )
+      if (length(ub) > 0) Z[ub] = NA
+      # image(Z)
+      rm( flpf, fN, fY )
+    }
+
+    zz = which(is.finite(Z))
+    if (length(zz) > 0 ) {
+      # spatial autocorrelation filter
+      if (!is.null(fAC)) {    
+        fN = Re(fft(fmN * fAC, inverse = TRUE))[1:nr,1:nc]
+        fY = Re(fft(fmY * fAC, inverse = TRUE))[1:nr,1:nc]
+        Zsp = fY/fN
+        iZ = which( !is.finite( Zsp))
+        if (length(iZ) > 0) Zsp[iZ] = NA
+        lb = which( Zsp < rY[1] )
+        if (length(lb) > 0) Zsp[lb] = NA
+        ub = which( Zsp > rY[2] )
+        if (length(ub) > 0) Zsp[ub] = NA
+        # image(Zsp)
+        Z[zz] = Zsp[zz]
+        rm ( fAC, fN, fY, Zsp )
+      }
+    }
+
+    pa$sd[pa_i] = Z[ pa_i, ]
     
-    # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
-    fN = Re(fft(fft(mN) * fW, inverse = TRUE))[1:nr,1:nc]
-    fY = Re(fft(fft(mY) * fW, inverse = TRUE))[1:nr,1:nc]
-    Z = fY/fN
-    iZ = which( !is.finite( Z))
-    if (length(iZ) > 0) Z[iZ] = NA
-    lb = which( Z < 0 )
-    if (length(lb) > 0) Z[lb] = NA
-    ub = which( Z > rY[2] )
-    if (length(ub) > 0) Z[ub] = NA
-    # image(Z)
+
   }
   
   rm (px); gc()
