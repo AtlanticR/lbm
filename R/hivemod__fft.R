@@ -6,9 +6,6 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   #\\      .. you had better have enough data in each time slice
   #\\ first a low-pass filter as defined by p$hivemod_lowpass_nu, p$hivemod_lowpass_phi, then a simple covariance filter determined by nu,phi
 
-  if (is.null(phi)) phi=p$hivemod_lowpass_phi
-  if (is.null(nu)) nu=p$hivemod_lowpass_nu # nu=0.5 an exponential covariance
-
   rY = range( x[,p$variables$Y], na.rm=TRUE)
 
   x_r = range(x[,p$variables$LOCS[1]])
@@ -44,7 +41,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
 
   # low pass filter 
   flpf = NULL
-  if (exists("nu", p) & exists("phi", p) ) {
+  if (exists("hivemod_lowpass_nu", p) & exists("hivemod_lowpass_phi", p) ) {
     lpf = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
     mlpf = as.surface(dgrid, c(lpf))$z
     flpf = fft(mlpf) / fmC 
