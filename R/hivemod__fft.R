@@ -74,22 +74,22 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     # map of row, col indices of input data in the new (output) coordinate system
     x_id = cbind( round(( x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres) + 1, 
                   round(( x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres) + 1 )
-    xxii = array_map( "2->1", x_id, c(nr2, nc2) )
+    # xxii = array_map( "2->1", x_id, c(nr2, nc2) )
     
     # counts
     mN = matrix(0, nrow = nr2, ncol = nc2)
     # mN[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
-    mN[xxii] = 1 # uniform weights .. more stable .. weights cause floating point over/underflow issues ..
+    mN[x_id] = 1 # uniform weights .. more stable .. weights cause floating point over/underflow issues ..
     mN[!is.finite(mN)] = 0
     fmN = fft(mN)
 
     # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
-    mY[xxii] = x[xi,p$variables$Y] # fill with data in correct locations
+    mY[x_id] = x[xi,p$variables$Y] # fill with data in correct locations
     mY[!is.finite(mY)] = 0
     fmY = fft(mY)
 
-    Z = matrix(NA nrow=nr, ncol=nc)
+    Z = matrix(NA, nrow=nr, ncol=nc)
     # low pass filter based upon a global nu,phi .. remove high freq variation
     if (!is.null(flpf)) {    
       fN = Re(fft(fmN * flpf, inverse = TRUE))[1:nr,1:nc]
@@ -117,7 +117,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     }
 
     # match prediction to input data 
-    x$mean[xi] = Z[xxii]
+    x$mean[xi] = Z[x_id]
     ss = try( lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit) )
     if ( "try-error" %in% class( ss ) ) next()
     rsquared = summary(ss)$r.squared
