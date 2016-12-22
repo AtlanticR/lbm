@@ -29,9 +29,10 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
 
   preds = try( predict( hmod, newdata=px, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
 
-  reject = which( preds$se.fit > quantile( preds$se.fit, probs= p$hivemod_quantile_bounds[2], na.rm=TRUE ) 
-                | preds$fit > rY[2] 
-                | preds$fit < rY[1] )
+  toosmall = which( preds$fit < rY[1] )
+  toolarge = which( preds$fit > rY[2] )
+  if (length(toosmall) > 0) preds$fit[toosmall] = rY[1]   
+  if (length(toolarge) > 0) preds$fit[toolarge] = rY[2]   
 
   if (length(reject) > 0) preds$fit[reject] = NA
 
@@ -120,7 +121,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     # density
     mY = matrix(0, nrow = nr2, ncol = nc2)
     mY[xxii] = px[px_i, "mean"]  # fill with data in correct locations
-    # mY[!is.finite(mY)] = 0
+    mY[!is.finite(mY)] = 0
     fmY = fft(mY)
 
     Z = matrix(0, nrow=nr, ncol=nc)
@@ -170,7 +171,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
       ub = which( Z > rY[2] )
       if (length(ub) > 0) Z[ub] = NA
       # image(Z)
-      rm( flpf, fN, fY )
+      rm( fN, fY )
     }
 
     zz = which(!is.finite(Z))
@@ -182,7 +183,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
         Zsp = fY/fN
         # image(Zsp)
         Z[zz] = Zsp[zz]
-        rm ( fAC, fN, fY, Zsp )
+        rm ( fN, fY, Zsp )
       }
     }
 

@@ -42,7 +42,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   fmC = fft(mC) * nr2 * nc2
   mC = NULL
 
-  # low pass filter 
+  # low pass filter kernel
   flpf = NULL
   if (exists("hivemod_lowpass_nu", p) & exists("hivemod_lowpass_phi", p) ) {
     lpf = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
@@ -51,7 +51,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     rm(lpf,  mlpf)
   }
 
-  # spatial autocorrelation filter 
+  # spatial autocorrelation kernel 
   fAC = NULL
   if ( !is.null(nu) & !is.null(phi)) {
     AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
@@ -66,7 +66,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   for ( ti in 1:p$nt ) {
 
     if ( exists("TIME", p$variables)) {
-      xi = which( x[, p$variables$TIME]==p$ts[ti]) 
+      xi = which( x[, p$variables$TIME]==p$ts[ti] ) 
     } else {
       xi =1:nrow(x) 
     } 
@@ -89,7 +89,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     mY[!is.finite(mY)] = 0
     fmY = fft(mY)
 
-    Z = matrix(0, nrow=nr, ncol=nc)
+    Z = matrix(NA nrow=nr, ncol=nc)
     # low pass filter based upon a global nu,phi .. remove high freq variation
     if (!is.null(flpf)) {    
       fN = Re(fft(fmN * flpf, inverse = TRUE))[1:nr,1:nc]

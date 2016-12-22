@@ -10,6 +10,10 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
   #\\ matern covariogram (||x||) = sigma^2 * (2^{nu-1} * Gamma(nu) )^{-1} * (phi*||x||)^{nu} * K_{nu}(phi*||x||)
   #\\   where K_{nu} is the Bessel function with smooth nu and phi is the range parameter  
   # -------------------------
+
+  # TODO --- directly via FFT
+  
+
   if ( 0 ) {
    # just for debugging / testing ... and example of access method:
    bioLibrary("bio.utilities", "bio.spacetime", "hivemod")
@@ -99,7 +103,7 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
 
   # if max dist not given, make a sensible choice
   if ( is.na(maxdist)) {
-    maxdist = drange * 0.1  # default
+    maxdist = sqrt(drange)   # default
   } else if ( maxdist=="all") {
     maxdist = drange
   }
@@ -112,29 +116,22 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
   xy$plat = xy$plat + runif(xy_n, -derr, derr)
 
 
+
   if ( "fast" %in% methods)  {
     # gives a fast stable empirical variogram
 
-    require( RandomFields ) ## max likilihood
-    RFoptions( allowdistanceZero=TRUE ) #, modus_operandi="easygoing" )
-
-    rownames( xy) = 1:nrow(xy)  # seems to require rownames ...
-    Yyy <- RFspatialPointsDataFrame( coords=xy, data=z, RFparams=list(vdim=1, n=1) )
-    vario = RFempiricalvariogram( data=Yyy )
+    require( fields ) 
     
-    # remove the (0,0) point -- force intercept
-    todrop = which( !is.finite(vario@emp.vario )) # occasionally NaN's are created!
-    todrop = unique( c(1, todrop) )
-    vg = vario@emp.vario[-todrop]
-    vx = vario@centers[-todrop]
-    
+    vario = vgram( xy, z, dmax=out$maxdist, N=nbreaks)
+    vg = vario$stats["mean",]
+    vx = vario$centers
     mvg = max(vg, na.rm=TRUE)
     mvx = max(vx, na.rm=TRUE)
     eps = 1e-6
     lower =c(eps,eps,eps, eps)
     upper =c(mvg, mvg, mvx, 2)
     #nonlinear est
-    par = c(tau.sq=mvg*0.05, sigma.sq=mvg*0.95, phi=mvx/5, nu=0.5) 
+    par = c(tau.sq=mvg*0.05, sigma.sq=mvg*0.95, phi=mvx/50, nu=0.5) 
     o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", lower=lower, upper=upper,
       control=list(maxit=100),
       fn=function(par, vg, vx){ 
@@ -157,9 +154,75 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
           out$fast$range = 0
         }
       } else {
+        out = try( hivemod_variogram( xy=xy, z=z, methods="fast.rf") )
+        if (!inherits(out, "try-error") )
+        out$fast =out$fast.rf
+        out$fast.rf =NULL
+        return(out)
+      }
+    }
+ 
+  
+    if( 0) {
+      plot( vario$stats["mean",] ~ vario$centers )
+      ds = seq( 0, mvx, length.out=100 )
+      ac = out$fast$varObs + out$fast$varSpatial*(1 - Matern( ds, range=out$fast$phi,  nu=out$fast$nu ) )
+      lines( ds, ac )
+    }
+  
+    return(out)
+  }
+
+
+
+  if ( "fast.rf" %in% methods)  {
+    # gives a fast stable empirical variogram .. problem is it extends too far out and there is no control of this distance except after the fact`
+
+    require( RandomFields ) ## max likilihood
+    RFoptions( allowdistanceZero=TRUE ) #, modus_operandi="easygoing" )
+
+    rownames( xy) = 1:nrow(xy)  # seems to require rownames ...
+    Yyy <- RFspatialPointsDataFrame( coords=xy, data=z, RFparams=list(vdim=1, n=1) )
+    vario = RFempiricalvariogram( data=Yyy )
+    
+    # remove the (0,0) point -- force intercept
+    todrop = which( !is.finite(vario@emp.vario )) # occasionally NaN's are created!
+    todrop = unique( c(1, todrop) )
+    vg = vario@emp.vario[-todrop]
+    vx = vario@centers[-todrop]
+    
+    mvg = max(vg, na.rm=TRUE)
+    mvx = max(vx, na.rm=TRUE)
+    eps = 1e-6
+    lower =c(eps,eps,eps, eps)
+    upper =c(mvg, mvg, mvx, 2)
+    #nonlinear est
+    par = c(tau.sq=mvg*0.05, sigma.sq=mvg*0.95, phi=mvx/50, nu=0.5) 
+    o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", lower=lower, upper=upper,
+      control=list(maxit=100),
+      fn=function(par, vg, vx){ 
+        vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
+        dy = sum( (vg - vgm)^2) # vario normal errors, no weights , etc.. just the line
+      } ) 
+    )
+    
+    if ( !inherits(o, "try-error")) { 
+      if ( o$convergence==0 ) {
+        par = o$par 
+        out$fast.rf = list( fit=o, vgm=vario, range=NA, nu=par["nu"], phi=par["phi"],
+          varSpatial=par["sigma.sq"], varObs=par["tau.sq"] ) 
+        #rg = try(geoR::practicalRange("matern", phi=out$fast$phi, kappa=out$fast$nu ))
+         rg=  distance_matern(phi=out$fast.rf$phi, nu=out$fast.rf$nu)
+
+        if (! inherits(rg, "try-error") ) {
+          out$fast.rf$range = rg
+        } else {
+          out$fast.rf$range = 0
+        }
+      } else {
         out = try( hivemod_variogram( xy=xy, z=z, methods="gstat") )
         if (!inherits(out, "try-error") )
-        out$fast =out$gstat
+        out$fast.rf =out$gstat
         out$gstat =NULL
         return(out)
       }
@@ -168,7 +231,7 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
   
     if( 0) {
       scale = out$fast$phi * (sqrt(out$fast$nu*2) )  
-      plot(vario, model=RMmatern( nu=out$fast$nu, var=out$fast$varSpatial, scale=scale) + RMnugget(var=out$fast$varObs) )
+      plot(out$fast$vgm, model=RMmatern( nu=out$fast$nu, var=out$fast$varSpatial, scale=scale) + RMnugget(var=out$fast$varObs) )
 
       RFoptions(seed=0, modus='easygoing' ) 
       rmod = ~ RMmatern( nu=NA, var=NA, scale=NA) + RMnugget(var=NA, scale=NA)
@@ -253,7 +316,7 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
     while ( distx < vrange ) {
       nc = nc  + 1
       distx = distx * 1.25 # gradually increase distx until solution found
-      vEm = try( variogram( z~1, locations=~plon+plat, data=xy, cutoff=distx, width=distx/nbreaks, cressie=TRUE ) ) # empirical variogram
+      vEm = try( variogram( z~1, locations=~plon+plat, data=xy, cutoff=distx, width=distx/nbreaks, cressie=FALSE ) ) # empirical variogram
       if (inherits(vEm, "try-error") ) return(NULL)
       vMod0 = vgm(psill=0.75, model="Mat", range=distx, nugget=0.25, kappa=1 ) # starting model parameters
       #vMod0 = vgm("Mat")

@@ -7,6 +7,118 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
   #\\ designed for interpolating statistics  ...
 
   if(0) {
+      require(fields)
+      nr = nc = 100
+      data = as.image( RMprecip$y, x=RMprecip$x, nx=nr, ny=nc, na.rm=TRUE)
+      rY = range( data$z, na.rm=TRUE)
+
+      image(data)
+      image.plot(data)
+      image.plot(image.smooth(data))
+     
+      dx <- data$x[2] - data$x[1]
+      dy <- data$y[2] - data$y[1]
+      nr2 = round( nr*2)
+      nc2 = round( nc*2)
+      
+
+
+  (o=hivemod::hivemod_variogram( xy=RMprecip$x, z=RMprecip$y, methods="gstat" ) )
+  (o=uhivemod_variogram( xy=RMprecip$x, z=RMprecip$y, methods="fast" ) )
+
+# $fast$range
+# [1] 6.293319
+
+# $fast$nu
+#        nu 
+# 0.2338106 
+
+# $fast$phi
+#      phi 
+# 2.924584 
+
+# $fast$varSpatial
+# sigma.sq 
+# 1320.195 
+
+# $fast$varObs
+#   tau.sq 
+# 247.8756 
+
+  
+      phi = 2.92
+      nu= 0.2338
+      pres= min(dx,dy)
+
+  # constainer for spatial filters
+  dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
+  center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
+
+  mC = matrix(0, nrow = nr2, ncol = nc2)
+  mC[nr, nc] = 1
+  fmC = fft(mC) * nr2 * nc2
+  mC = NULL
+ 
+  
+  # low pass filter kernel
+  flpf = NULL
+    lpf = stationary.cov( dgrid, center, Covariance="Matern", range=pres*2, nu=nu )
+    mlpf = as.surface(dgrid, c(lpf))$z
+    flpf = fft(mlpf) / fmC 
+
+ 
+  # spatial autocorrelation kernel 
+  fAC = NULL
+    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+    mAC = as.surface(dgrid, c(AC))$z
+    fAC = fft(mAC) / fmC
+
+      # data
+      mY = mN = matrix(NA,  nrow = nr2, ncol = nc2)
+      mY[1:nr,1:nc] = data$z # fill with data in correct locations
+      v = which(!is.finite(mY))
+      if (length(v)>0 ) mY[v] = 0 
+      fmY = fft(mY)
+
+      mN[1:nr,1:nc] = data$weights
+      v = which(!is.finite(mN))
+      if (length(v)>0 )  mN[v] = 0 
+      fmN = fft(mN)
+
+
+      # estimates based upon a global nu,phi .. they will fit to the immediate area near data and so retain their structure
+   
+    Z = matrix(NA, nrow=nr, ncol=nc)
+    # low pass filter based upon a global nu,phi .. remove high freq variation
+ 
+      fN = Re(fft(fmN * flpf , inverse = TRUE))[1:nr,1:nc]
+      fY = Re(fft(fmY * flpf , inverse = TRUE))[1:nr,1:nc]
+      Z = fY/fN
+      lb = which( Z < rY[1] )
+      if (length(lb) > 0) Z[lb] = NA
+      ub = which( Z > rY[2] )
+      if (length(ub) > 0) Z[ub] = NA
+      # image.plot(Z)
+      rm( fN, fY )
+ 
+ 
+      # data
+      mY = matrix(NA,  nrow = nr2, ncol = nc2)
+      mY[1:nr,1:nc] = Z # fill with data in correct locations
+      v = which(!is.finite(mY))
+      if (length(v)>0 ) mY[v] = 0 
+      fmY = fft(mY)
+
+    # spatial autocorrelation filter
+      fN = Re(fft(fmN * fAC, inverse = TRUE))[1:nr,1:nc]
+      fY = Re(fft(fmY * fAC, inverse = TRUE))[1:nr,1:nc]
+      Zsp = fY/fN
+     # image.plot(Zsp)
+ 
+
+  }
+
+  if(0) {
     data = RMelevation
     image( data )
     datagrid = data[c("x", "y")] 
@@ -53,7 +165,7 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
      
      a = hivemod::hivemod_variogram( data[,c("x","y")], data[,"z"] )
 
-     distance_matern( phi=a$fast$phi, nu=a$fast$nu, cor=0.95)
+     hivemod::distance_matern( phi=a$fast$phi, nu=a$fast$nu, cor=0.95)
 
 
   }

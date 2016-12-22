@@ -15,6 +15,8 @@ hivemod_parameters = function( p=NULL  ) {
   if (!exists( "boundary", p)) p$boundary = FALSE
   if (!exists( "depth.filter", p)) p$depth.filter = FALSE # depth is given as log(depth) so, choose andy stats locations with elevation > 1 m as being on land
   if (!exists( "hivemod_kernelmethods_use_all_data", p)) p$hivemod_kernelmethods_use_all_data =TRUE ## speed and RAM usage improvement is minimal (if any) when off, leave on or remove option and fix as on
+  
+  if (!exists("hivemod_fft_missingvalue", p) ) p$hivemod_fft_missingvalue = function(x) median(x, na.rm=TRUE) # function to determine value to use to fill missing data
 
   return(p)
 }
