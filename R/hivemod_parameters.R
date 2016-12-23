@@ -16,7 +16,11 @@ hivemod_parameters = function( p=NULL  ) {
   if (!exists( "depth.filter", p)) p$depth.filter = FALSE # depth is given as log(depth) so, choose andy stats locations with elevation > 1 m as being on land
   if (!exists( "hivemod_kernelmethods_use_all_data", p)) p$hivemod_kernelmethods_use_all_data =TRUE ## speed and RAM usage improvement is minimal (if any) when off, leave on or remove option and fix as on
   
-  if (!exists("hivemod_fft_missingvalue", p) ) p$hivemod_fft_missingvalue = function(x) median(x, na.rm=TRUE) # function to determine value to use to fill missing data
+  # used by "fields" GRMF functions
+  if ( p$hivemod_local_modelengine %in% c("gaussianprocess2Dt", "gaussianprocess" ) {
+    if (!exists("phi.grid", p) ) p$phi.grid = 10^seq( -6, 6, by=0.5) * p$hivemod_distance_scale # maxdist is aprox magnitude of the phi parameter
+    if (!exists("lambda.grid", p) ) p$lambda.grid = 10^seq( -9, 3, by=0.5) # ratio of tau sq to sigma sq
+  }
 
   return(p)
 }

@@ -67,28 +67,29 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   
   mC = matrix(0, nrow = nr2, ncol = nc2)
   mC[nr, nc] = 1
-  fmC = fft(mC) * nr2 * nc2
-  mC = NULL
+  
 
-  # low pass filter 
-  flpf = NULL
-  if (exists("hivemod_lowpass_nu", p) & exists("hivemod_lowpass_phi", p) ) {
-    lpf = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
-    mlpf = as.surface(dgrid, c(lpf))$z
-    flpf = fft(mlpf) / fmC 
-    rm(lpf,  mlpf)
+  if (p$hivemod_fft_filter == "lowpass") {
+    sp.covar = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
+    sp.covar.surf = as.surface(dgrid, c(sp.covar))$z
+    sp.covar.kernel = fft(sp.covar.surf) / ( fft(mC) * nr2 * nc2 )
   }
 
-  # spatial autocorrelation filter 
-  fAC = NULL
-  if ( !is.null(nu) & !is.null(phi)) {
-    AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-    mAC = as.surface(dgrid, c(AC))$z
-    fAC = fft(mAC) / fmC
-    rm(AC,  mAC)
+  if (p$hivemod_fft_filter == "spatial.process") {
+    sp.covar = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+    sp.covar.surf = as.surface(dgrid, c(sp.covar))$z
+    sp.covar.kernel = fft(sp.covar.surf) / ( fft(mC) * nr2 * nc2 )
   }
 
-  dgrid = center = fmC = NULL
+  if (p$hivemod_fft_filter == "lowpass_spatial.process") {
+    sp.covar = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
+    sp.covar.surf = as.surface(dgrid, c(sp.covar))$z
+    sp.covar2 = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+    sp.covar.surf2 = as.surface(dgrid, c(sp.covar2))$z
+    sp.covar.kernel = {fft(sp.covar.surf)/ ( fft(mC) * nr2 * nc2 )} * {fft(sp.covar.surf2)/ ( fft(mC) * nr2 * nc2 )
+  }
+
+  sp.covar = sp.covar2 = sp.covar.surf = sp.covar.surf2 = dgrid = center = mC = NULL
   gc()
 
 
@@ -106,86 +107,67 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     # matrix representation of the output surface
     # Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
     
-    xi = round( cbind( (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
-                  (px[px_i,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 ) )
-    xxii = array_map( "2->1", round(xi), c(nr2, nc2) )
+    x_id = round( cbind( 
+      (px[px_i,p$variables$LOCS[1]]-px_r[1])/p$pres + 1, 
+      (px[px_i,p$variables$LOCS[2]]-px_c[1])/p$pres + 1 ) )
 
-
-    # counts
+    u = as.image( px[px_i, "mean"], ind=as.matrix( x_id), na.rm=TRUE, nx=nr, ny=nc )
+    
     mN = matrix(0, nrow = nr2, ncol = nc2)
-    # mN[xxii] = tapply( rep(1, length(xxii)), INDEX=xxii, FUN=sum, na.rm=TRUE )
-    mN[xxii] = 1 # uniform weights .. more stable .. weights cause floating point over/underflow issues ..
-    # mN[!is.finite(mN)] = 0
-    fmN = fft(mN)
-
-    # density
+    mN[1:nr,1:nc] = u$weights
+    mN[!is.finite(mN)] = 0
+    
     mY = matrix(0, nrow = nr2, ncol = nc2)
-    mY[xxii] = px[px_i, "mean"]  # fill with data in correct locations
+    mY[1:nr,1:nc] = u$z
     mY[!is.finite(mY)] = 0
-    fmY = fft(mY)
+  
+    u = NULL
 
-    Z = matrix(0, nrow=nr, ncol=nc)
     # low pass filter based upon a global nu,phi .. remove high freq variation
-    if (!is.null(flpf)) {    
-      fN = Re(fft(fmN * flpf, inverse = TRUE))[1:nr,1:nc]
-      fY = Re(fft(fmY * flpf, inverse = TRUE))[1:nr,1:nc]
-      Z = fY/fN
-      lb = which( Z < rY[1] )
-      if (length(lb) > 0) Z[lb] = NA
-      ub = which( Z > rY[2] )
-      if (length(ub) > 0) Z[ub] = NA
-      # image(Z)
-      rm( fN, fY )
-    }
+    fN = Re(fft(fft(mN) * sp.covar.kernel, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * sp.covar.kernel, inverse = TRUE))[1:nr,1:nc]
+    
+    mY = mN = NULL
 
-    zz = which(!is.finite(Z))
-    if (length(zz) > 0 ) {
-      # spatial autocorrelation filter to fill data locations where no predictions yet
-      if (!is.null(fAC)) {    
-        fN = Re(fft(fmN * fAC, inverse = TRUE))[1:nr,1:nc]
-        fY = Re(fft(fmY * fAC, inverse = TRUE))[1:nr,1:nc]
-        Zsp = fY/fN
-        # image(Zsp)
-        Z[zz] = Zsp[zz]
-        rm ( fN, fY, Zsp )
-      }
-    }
-
+    Z = fY/fN
+    fY = fN = NULL
+ 
+    # image.plot(Z)
+    # lb = which( Z < rY[1] )
+    # if (length(lb) > 0) Z[lb] = NA
+    # ub = which( Z > rY[2] )
+    # if (length(ub) > 0) Z[ub] = NA
+   
     pa$mean[pa_i] = Z[Z_all[ pa_i, ]]
     
     
     # sd
+    u = as.image( px[px_i, "sd"], ind=as.matrix( x_id), na.rm=TRUE, nx=nr, ny=nc )
+
+    mN = matrix(0, nrow = nr2, ncol = nc2)
+    mN[1:nr,1:nc] = u$weights
+    mN[!is.finite(mN)] = 0
+
     mY = matrix(0, nrow = nr2, ncol = nc2)
-    mY[xxii] = px[px_i,"sd"] # fill with data in correct locations
+    mY[1:nr,1:nc] = u$z #mean sd
     mY[!is.finite(mY)] = 0
-    fmY = fft(mY)
+    
+    u = NULL
 
-    Z = matrix(0, nrow=nr, ncol=nc)
     # low pass filter based upon a global nu,phi .. remove high freq variation
-    if (!is.null(flpf)) {    
-      fN = Re(fft(fmN * flpf, inverse = TRUE))[1:nr,1:nc]
-      fY = Re(fft(fmY * flpf, inverse = TRUE))[1:nr,1:nc]
-      Z = fY/fN
-      lb = which( Z < rY[1] )
-      if (length(lb) > 0) Z[lb] = NA
-      ub = which( Z > rY[2] )
-      if (length(ub) > 0) Z[ub] = NA
-      # image(Z)
-      rm( fN, fY )
-    }
+    fN = Re(fft(fft(mN) * sp.covar.kernel, inverse = TRUE))[1:nr,1:nc]
+    fY = Re(fft(fft(mY) * sp.covar.kernel, inverse = TRUE))[1:nr,1:nc]
+    
+    mY = mN = NULL
 
-    zz = which(!is.finite(Z))
-    if (length(zz) > 0 ) {
-      # spatial autocorrelation filter
-      if (!is.null(fAC)) {    
-        fN = Re(fft(fmN * fAC, inverse = TRUE))[1:nr,1:nc]
-        fY = Re(fft(fmY * fAC, inverse = TRUE))[1:nr,1:nc]
-        Zsp = fY/fN
-        # image(Zsp)
-        Z[zz] = Zsp[zz]
-        rm ( fN, fY, Zsp )
-      }
-    }
+    Z = fY/fN
+    fY = fN = NULL
+
+    # lb = which( Z < rY[1] )
+    # if (length(lb) > 0) Z[lb] = NA
+    # ub = which( Z > rY[2] )
+    # if (length(ub) > 0) Z[ub] = NA
+    # # image.plot(Z)
 
     pa$sd[pa_i] = Z[Z_all[ pa_i, ]]
     

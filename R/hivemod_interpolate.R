@@ -51,24 +51,15 @@ hivemod_interpolate = function( ip=NULL, p ) {
   downsampling = sort( p$sampling[ which( p$sampling < 1) ] , decreasing=TRUE )
   downsampling = downsampling[ which(downsampling*p$hivemod_distance_scale >= p$hivemod_distance_min )]
 
-
-  # used by "fields" GRMF functions
-  theta.grid = 10^seq( -6, 6, by=0.5) * p$hivemod_distance_scale # maxdist is aprox magnitude of the phi parameter
-  lambda.grid = 10^seq( -9, 3, by=0.5) 
-
   am = c(p$nplons, p$nplats)
-  nu0 = 0.5
-
   ploc_ids = array_map( "2->1", round(cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1), am )
 
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
     Si = p$runs[ iip, "locs" ]
-    # Si=28692
-    # Si=28692 64345 18658 34023 15308 67943  # a few problems
 
-
-    # Sflag: 0=TODO, 1=complete, 9=problem, 2=oustide bounds(if any), 3=land(if z is a covariate) 
+    # Sflag: 
+    #   0=TODO, 1=complete, 9=problem, 2=oustide bounds(if any), 3=land(if z is a covariate) 
     if ( Sflag[Si] != 0L ) next() 
     Sflag[Si] = 9L   # mark as problematic here. if not it is over-written below 
     print( iip )
@@ -79,7 +70,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
     U =  which( (dlon  <= p$hivemod_distance_scale)  & (dlat <= p$hivemod_distance_scale) )
     hivemod_distance_cur = p$hivemod_distance_scale
     ndata = length(U)
-    nu = nu0
+    nu = 0.5 # default for now
 
     if (0) {
       plot( Sloc[,], pch=20, cex=0.5, col="gray")

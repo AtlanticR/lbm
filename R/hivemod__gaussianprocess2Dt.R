@@ -16,9 +16,6 @@ hivemod__gaussianprocess2Dt = function( p, x, pa ) {
   pa$mean = NA
   pa$sd = NA
 
-  theta.grid = 10^seq( -6, 6, by=0.5) * p$hivemod_distance_scale # aprox magnitude of the phi parameter
-  lambda.grid = 10^seq( -9, 3, by=0.5) 
-
   for ( ti in 1:p$nt ) {
     
     if ( exists("TIME", p$variables) ) {
@@ -31,7 +28,7 @@ hivemod__gaussianprocess2Dt = function( p, x, pa ) {
     z = x[xi, p$variables$Y]
     
     fsp = try( MLESpatialProcess(xy, z, cov.function=p$fields.cov.function, cov.args=p$fields.cov.args ,
-      theta.grid=theta.grid, lambda.grid=lambda.grid, ngrid = 10, niter = 15, tol = 0.01, 
+      theta.grid=p$phi.grid, lambda.grid=p$lambda.grid, ngrid = 10, niter = 15, tol = 0.01, 
       Distance = "rdist", nstep.cv = 50 ) )
 
     if (inherits(fsp, "try-error") )  next()

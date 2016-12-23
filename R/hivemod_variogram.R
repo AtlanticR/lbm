@@ -251,18 +251,18 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
     require(fields)
     vg = vgram( xy, z, N=nbreaks, dmax=out$maxdist * 3 )
     smoothness =nu = 0.5 # 0.5 == exponential
-    # theta = range paramter
-    theta.grid = 10^seq( -6, 6, by=0.5) * out$maxdist
-    lambda.grid = 10^seq( -9, 1, by=0.5) * out$maxdist
+    # theta = range paramter (phi)
+    phi.grid = 10^seq( -6, 6, by=0.5) * out$maxdist  # phi searhc area
+    lambda.grid = 10^seq( -9, 1, by=0.5) * out$maxdist # ratio of tausq to sigma sq searhc area
     
     res =NULL  
-    fsp = try( MLESpatialProcess(xy, z, theta.grid=theta.grid, lambda.grid=lambda.grid,
+    fsp = try( MLESpatialProcess(xy, z, theta.grid=phi.grid, lambda.grid=lambda.grid,
       cov.function = "stationary.cov",  cov.args = list(Covariance = "Matern", smoothness = nu), 
       ngrid = 10, niter = 15, tol = 0.01, Distance = "rdist", nstep.cv = 50 ) )
     if (! inherits(fsp, "try-error") ) {
       res = fsp$pars 
     } else {
-      fsp = MLE.Matern(xy, z, smoothness=nu, theta.grid =theta.grid )
+      fsp = MLE.Matern(xy, z, smoothness=nu, theta.grid =phi.grid )
       if( is.finite(sum(fsp$pars))) res = fsp$pars 
     }
     if (is.null(res)) return(NULL)
