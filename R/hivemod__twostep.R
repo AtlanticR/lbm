@@ -34,8 +34,6 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   if (length(toosmall) > 0) preds$fit[toosmall] = rY[1]   
   if (length(toolarge) > 0) preds$fit[toolarge] = rY[2]   
 
-  if (length(reject) > 0) preds$fit[reject] = NA
-
   px$mean = as.vector( preds$fit )
   px$sd = as.vector( preds$se.fit )
 
