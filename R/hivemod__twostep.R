@@ -86,7 +86,7 @@ hivemod__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     sp.covar.surf = as.surface(dgrid, c(sp.covar))$z
     sp.covar2 = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
     sp.covar.surf2 = as.surface(dgrid, c(sp.covar2))$z
-    sp.covar.kernel = {fft(sp.covar.surf)/ ( fft(mC) * nr2 * nc2 )} * {fft(sp.covar.surf2)/ ( fft(mC) * nr2 * nc2 )
+    sp.covar.kernel = {fft(sp.covar.surf)/ ( fft(mC) * nr2 * nc2 )} * {fft(sp.covar.surf2)/ ( fft(mC) * nr2 * nc2 )}
   }
 
   sp.covar = sp.covar2 = sp.covar.surf = sp.covar.surf2 = dgrid = center = mC = NULL

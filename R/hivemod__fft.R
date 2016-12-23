@@ -58,7 +58,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     sp.covar2 = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
     sp.covar.surf2 = as.surface(dgrid, c(sp.covar2))$z
     sp.covar.kernel = {fft(sp.covar.surf)/ ( fft(mC) * nr2 * nc2 )} * {fft(sp.covar.surf2)/ ( fft(mC) * nr2 * nc2 )
-  }
+  } }
 
   sp.covar = sp.covar2 = sp.covar.surf = sp.covar.surf2 = dgrid = center = mC = NULL
   gc()
