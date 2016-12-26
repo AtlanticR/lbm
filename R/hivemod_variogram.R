@@ -318,7 +318,7 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
       distx = distx * 1.25 # gradually increase distx until solution found
       vEm = try( variogram( z~1, locations=~plon+plat, data=xy, cutoff=distx, width=distx/nbreaks, cressie=FALSE ) ) # empirical variogram
       if (inherits(vEm, "try-error") ) return(NULL)
-      vMod0 = vgm(psill=0.75, model="Mat", range=distx, nugget=0.25, kappa=1 ) # starting model parameters
+      vMod0 = vgm(psill=0.75, model="Mat", range=distx/10, nugget=0.25, kappa=1 ) # starting model parameters
       #vMod0 = vgm("Mat")
       vFitgs =  try( fit.variogram( vEm, vMod0, fit.kappa =TRUE, fit.sills=TRUE, fit.ranges=TRUE ) ) ## gstat's kappa is the Bessel function's "nu" smoothness parameter
       if (inherits(vFitgs, "try-error") )  return(NULL)

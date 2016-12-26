@@ -33,12 +33,13 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     DATA = 'substrate.db( p=p, DS="substrate.hivemod" )'
   
     p = bio.temperature::temperature.parameters( current.year=2016 )
-    p$hivemod_local_modelengine="twostep"
+    p$hivemod_local_modelengine="gam"  # smoothest
+    # p$hivemod_local_modelengine="twostep" 
+    # p$hivemod_local_modelengine="uked" # (universal) kriging with external drift
     p$storage.backend="bigmemory.ram"
     p = bio.temperature::temperature.parameters( DS="hivemod", p=p )
     continue=FALSE
     DATA='hydro.db( p=p, DS="temperature.hivemod" )'
-
 
   }
 

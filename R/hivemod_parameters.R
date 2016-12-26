@@ -3,6 +3,8 @@
 hivemod_parameters = function( p=NULL  ) {
   # some generic defaults
   if (is.null(p)) stop( "Parameter list is not structured properly" )
+  
+  if (!exists("hivemod_current_status", p))  p$hivemod_current_status = "/tmp/hivemod_current_status"
 
   if (!exists("clusters", p)) p$clusters = rep("localhost", detectCores() )  # default if not given
   if( !exists( "storage.backend", p))  p$storage.backend="bigmemory.ram"
@@ -20,6 +22,12 @@ hivemod_parameters = function( p=NULL  ) {
   if ( p$hivemod_local_modelengine %in% c("gaussianprocess2Dt", "gaussianprocess" )) {
     if (!exists("phi.grid", p) ) p$phi.grid = 10^seq( -6, 6, by=0.5) * p$hivemod_distance_scale # maxdist is aprox magnitude of the phi parameter
     if (!exists("lambda.grid", p) ) p$lambda.grid = 10^seq( -9, 3, by=0.5) # ratio of tau sq to sigma sq
+  }
+
+  if ( p$hivemod_local_modelengine %in% c("gam" )) { 
+    # p$hivemod_gam_optimizer=c("outer","optim")
+    # p$hivemod_gam_optimizer=c("outer","bfgs)
+    if (!exists("hivemod_gam_optimizer", p)) p$hivemod_gam_optimizer="perf"
   }
 
   return(p)

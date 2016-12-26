@@ -54,8 +54,20 @@ hivemod_interpolate = function( ip=NULL, p ) {
   am = c(p$nplons, p$nplats)
   ploc_ids = array_map( "2->1", round(cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1), am )
 
+  localcount = 0 
+
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
+    localcount = localcount + 1 
+    if (localcount %% 100) {
+      varstoout = c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete", "prop_incomp" )
+      currentstatus = hivemod_db( p=p, DS="statistics.status" )
+      currentstatus = currentstatus[ varstoout ]
+      cat( paste(varstoout), file=p$hivemod_current_status, append=FALSE)
+      cat( paste("\n"), file=p$hivemod_current_status, append=TRUE)
+      cat( currentstatus, file=p$hivemod_current_status, append=TRUE )
+    }
+
     Si = p$runs[ iip, "locs" ]
 
     # Sflag: 
@@ -401,7 +413,6 @@ hivemod_interpolate = function( ip=NULL, p ) {
                  (o[[p$hivemod_variogram_method]]$range < p$hivemod_distance_scale * 20) ) {
                   ores = o[[p$hivemod_variogram_method]]  # if a stable result is found for the smaller area, use it in preference     
             }
-
           }  
         }
       } 
@@ -424,11 +435,11 @@ hivemod_interpolate = function( ip=NULL, p ) {
       bayesx = hivemod__bayesx( p, dat, pa ),
       habitat = hivemod__habitat( p, dat, pa ), # TODO 
       inla = hivemod__inla( p, dat, pa ),
-      gam = hivemod_gam( p, dat, pa ), 
+      gam = hivemod__gam( p, dat, pa ), 
       gaussianprocess2Dt = hivemod__gaussianprocess2Dt( p, dat, pa ), 
       gaussianprocess = hivemod__gaussianprocess( p, dat, pa ),  # TODO
-      glm = hivemod_glm( p, dat, pa, nu=nu, phi=phi ), 
-      gstat = hivemod_gstat( p, dat, pa ), # TODO
+      glm = hivemod__glm( p, dat, pa, nu=nu, phi=phi ), 
+      krige = hivemod__krige( p, dat, pa, nu=nu, phi=phi ), # TODO
       LaplacesDemon = hivemod__LaplacesDemon( p, dat, pa ),
       splancs = hivemod__spate( p, dat, pa ), # TODO
       spate = hivemod__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 

@@ -53,6 +53,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   }
 
   if (p$hivemod_fft_filter == "lowpass_spatial.process") {
+    # both ..
     sp.covar = stationary.cov( dgrid, center, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
     sp.covar.surf = as.surface(dgrid, c(sp.covar))$z
     sp.covar2 = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
@@ -103,11 +104,11 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     # # image.plot(Z)
   
     # match prediction to input data 
-    x$mean[xi] = Z[x_id]
-    ss = try( lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit) )
-    if ( "try-error" %in% class( ss ) ) next()
-    rsquared = summary(ss)$r.squared
-    if (rsquared < p$hivemod_rsquared_threshold ) next()
+    # x$mean[xi] = Z[x_id]
+    # ss = try( lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit) )
+    # if ( "try-error" %in% class( ss ) ) next()
+    # rsquared = summary(ss)$r.squared
+    # if (rsquared < p$hivemod_rsquared_threshold ) next()
     
     if (exists("TIME", p$variables) ) {
       pa_i =  which( pa[, p$variables$TIME]==p$ts[ti])

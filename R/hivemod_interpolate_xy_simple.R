@@ -23,52 +23,52 @@ hivemod_interpolate_xy_simple = function( interp.method, data, locsout, datagrid
       
 
 
-  (o=hivemod::hivemod_variogram( xy=RMprecip$x, z=RMprecip$y, methods="gstat" ) )
-  (o=uhivemod_variogram( xy=RMprecip$x, z=RMprecip$y, methods="fast" ) )
+      (o=hivemod::hivemod_variogram( xy=RMprecip$x, z=RMprecip$y, methods="gstat" ) )
+      (o=uhivemod_variogram( xy=RMprecip$x, z=RMprecip$y, methods="fast" ) )
 
-# $fast$range
-# [1] 6.293319
+    # $fast$range
+    # [1] 6.293319
 
-# $fast$nu
-#        nu 
-# 0.2338106 
+    # $fast$nu
+    #        nu 
+    # 0.2338106 
 
-# $fast$phi
-#      phi 
-# 2.924584 
+    # $fast$phi
+    #      phi 
+    # 2.924584 
 
-# $fast$varSpatial
-# sigma.sq 
-# 1320.195 
+    # $fast$varSpatial
+    # sigma.sq 
+    # 1320.195 
 
-# $fast$varObs
-#   tau.sq 
-# 247.8756 
+    # $fast$varObs
+    #   tau.sq 
+    # 247.8756 
 
   
       phi = 2.92
       nu= 0.2338
       pres= min(dx,dy)
 
-  # constainer for spatial filters
-  dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
-  center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
+    # constainer for spatial filters
+    dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
+    center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
 
-  mC = matrix(0, nrow = nr2, ncol = nc2)
-  mC[nr, nc] = 1
-  fmC = fft(mC) * nr2 * nc2
-  mC = NULL
- 
-  
-  # low pass filter kernel
-  flpf = NULL
-    lpf = stationary.cov( dgrid, center, Covariance="Matern", range=pres*2, nu=nu )
-    mlpf = as.surface(dgrid, c(lpf))$z
-    flpf = fft(mlpf) / fmC 
+    mC = matrix(0, nrow = nr2, ncol = nc2)
+    mC[nr, nc] = 1
+    fmC = fft(mC) * nr2 * nc2
+    mC = NULL
+   
+    
+    # low pass filter kernel
+    flpf = NULL
+      lpf = stationary.cov( dgrid, center, Covariance="Matern", range=pres*2, nu=nu )
+      mlpf = as.surface(dgrid, c(lpf))$z
+      flpf = fft(mlpf) / fmC 
 
- 
-  # spatial autocorrelation kernel 
-  fAC = NULL
+   
+    # spatial autocorrelation kernel 
+    fAC = NULL
     AC = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
     mAC = as.surface(dgrid, c(AC))$z
     fAC = fft(mAC) / fmC

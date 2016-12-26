@@ -398,7 +398,14 @@
           save( V, file=fn2, compress=T )
       }
     }
-  
+    
+    if(0) {
+      i = 100
+      Z = smooth.2d( Y=P[,i], x=Ploc[], ncol=p$nplats, nrow=p$nplons, cov.function=stationary.cov, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu )
+      lattice::levelplot( P[,i] ~ Ploc[,1] + Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
+    }
+    # 
+
     # ----------------
 
     if (DS %in% c("stats.to.prediction.grid.redo", "stats.to.prediction.grid") ) {

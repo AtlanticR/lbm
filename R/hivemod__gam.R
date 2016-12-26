@@ -1,17 +1,18 @@
 
-hivemod_gam = function( p, x, pa ) {
+hivemod__gam = function( p, x, pa ) {
   #\\ this is the core engine of hivemod .. localised space-time modelling interpolation and prediction
   #\\ simple GAM with spatial weights (inverse distance squared) and ts harmonics 
-    
+  
   if ( exists("hivemod_local_model_distanceweighted", p) ) {
     if (p$hivemod_local_model_distanceweighted) {
-      hmod = try( gam( p$hivemod_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
+      hmod = try( gam( p$hivemod_local_modelformula, data=x, weights=weights, optimizer=p$hivemod_gam_optimizer) )
     } else {
-      hmod = try( gam( p$hivemod_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
+      hmod = try( gam( p$hivemod_local_modelformula, data=x, optimizer=p$hivemod_gam_optimizer  ) )
     }
   } else {
-      hmod = try( gam( p$hivemod_local_modelformula, data=x ) )
+      hmod = try( gam( p$hivemod_local_modelformula, data=x, optimizer=c("outer", "bfgs")  ) )
   } 
+
 
   if ( "try-error" %in% class(hmod) ) return( NULL )
 
