@@ -21,7 +21,7 @@ hivemod__krige = function( p, x, pa, nu, phi, method="default" ) {
     xy = x[xi, p$variables$LOCS]
     z = x[xi, p$variables$Y]
 
-    if (method %in% c("default", "gstat") {
+    if (method %in% c("default", "gstat") ) {
       xy$z = x[xi, p$variables$Y]
       names(xy) = c("plon", "plat", "z")
       vMod0 = vgm(psill=0.75, model="Mat", range=phi, nugget=0.25, kappa=nu ) # starting model parameters
