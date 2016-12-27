@@ -17,7 +17,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   if(0) {
 
     p = bio.bathymetry::bathymetry.parameters( )
-    p$hivemod_local_modelengine = "fft"  # about 5 X faster than bayesx-mcmc method
+    p$hivemod_local_modelengine = "krige"  # about 5 X faster than bayesx-mcmc method
     p$storage.backend="bigmemory.ram"
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="hivemod" )
     continue=FALSE

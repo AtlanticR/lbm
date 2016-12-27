@@ -1,11 +1,9 @@
 
-hivemod__krige = function( p, x, pa, nu, phi, method="default" ) {
+hivemod__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
   #\\ this is the core engine of hivemod .. localised space (no-time) modelling interpolation 
   # \ as a 2D gaussian process (basically, simple krigimg or TPS -- time is treated as being independent)
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice ..  essentially this is kriging 
-
-  require(gstat)
   
   x$mean = NA
   pa$mean = NA
@@ -25,7 +23,7 @@ hivemod__krige = function( p, x, pa, nu, phi, method="default" ) {
     z = x[xi, p$variables$Y]
 
 
-    if (method %in% c("default", "fields") ) {
+    if (p$hivemod_krige_engine %in% c("default", "fields") ) {
       fspmodel <- try( Krig( xy, z, sigma2=varObs, rho=varSpatial , cov.function="stationary.cov", Covariance="Matern", range=phi, smoothness=nu) )
       if (inherits(fspmodel, "try-error") )  next()
       x$mean[xi] = fspmodel$fitted.values 
@@ -45,7 +43,7 @@ hivemod__krige = function( p, x, pa, nu, phi, method="default" ) {
       }
     }
 
-    if (method %in% c("gstat") ) {
+    if (p$hivemod_krige_engine %in% c("gstat") ) {
       vMod0 = vgm(psill=0.75, model="Mat", range=phi, nugget=0.25, kappa=nu ) # starting model parameters
       gs = gstat(id = "hmk", formula = z~1, locations=~plon+plat, data=xy[xi,], maxdist=p$hivemod_distance_max, nmin=10, force=TRUE, model=vMod0 )
       # this step adds a lot of time .. 

@@ -418,14 +418,18 @@ hivemod_interpolate = function( ip=NULL, p ) {
       } 
     }
 
-    nu = phi = NULL
+    nu = phi = varSpatial = varObs = NULL
     if (!is.null(ores)) {
       if ( exists("nu", ores) ) nu = ores$nu
       if ( exists("phi", ores) ) phi = ores$phi 
+      if ( exists("varSpatial", ores) ) varSpatial = ores$varSpatial
+      if ( exists("varObs", ores) ) varObs = ores$varObs
     }
 
     if (is.null(nu)) nu = p$hivemod_lowpass_nu
     if (is.null(phi)) phi = hivemod_distance_cur/sqrt( 8*nu) # crude estimate of phi based upon current scaling  distance approximates the range at 90% autocorrelation(e.g., see Lindgren et al. 2011)
+    if (is.null(varSpatial)) varSpatial =0.5 * var(dat[, p$variables$Y], na.rm=TRUE)
+    if (is.null(varObs)) varObs = varSpatial
     
     # model and prediction 
     # the following permits user-defined models (might want to use compiler::cmpfun )
@@ -439,7 +443,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
       gaussianprocess2Dt = hivemod__gaussianprocess2Dt( p, dat, pa ), 
       gaussianprocess = hivemod__gaussianprocess( p, dat, pa ),  # TODO
       glm = hivemod__glm( p, dat, pa, nu=nu, phi=phi ), 
-      krige = hivemod__krige( p, dat, pa, nu=nu, phi=phi, method=p$hivemod_krige_engine ), # TODO
+      krige = hivemod__krige( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), # TODO
       LaplacesDemon = hivemod__LaplacesDemon( p, dat, pa ),
       splancs = hivemod__spate( p, dat, pa ), # TODO
       spate = hivemod__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 
