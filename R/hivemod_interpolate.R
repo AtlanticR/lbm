@@ -59,13 +59,13 @@ hivemod_interpolate = function( ip=NULL, p ) {
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
     localcount = localcount + 1 
-    if (localcount %% 100) {
+    if (( localcount %% 100 )== 0) {
       varstoout = c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete", "prop_incomp" )
       currentstatus = hivemod_db( p=p, DS="statistics.status" )
       currentstatus = currentstatus[ varstoout ]
       cat( paste(varstoout), file=p$hivemod_current_status, append=FALSE)
       cat( paste("\n"), file=p$hivemod_current_status, append=TRUE)
-      cat( currentstatus, file=p$hivemod_current_status, append=TRUE )
+      cat( unlist( currentstatus), file=p$hivemod_current_status, append=TRUE )
     }
 
     Si = p$runs[ iip, "locs" ]
