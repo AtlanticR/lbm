@@ -30,6 +30,10 @@ hivemod_parameters = function( p=NULL  ) {
     if (!exists("hivemod_gam_optimizer", p)) p$hivemod_gam_optimizer="perf"
   }
 
+  if ( p$hivemod_local_modelengine %in% c("krige" )) { 
+    if (!exists("hivemod_krige_engine", p)) p$hivemod_krige_engine="fields" # faster
+  }
+
   return(p)
 }
 

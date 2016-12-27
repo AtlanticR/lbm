@@ -599,7 +599,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   
   # save solutions to disk before continuuing
   hivemod_db( p=p, DS="hivemod.prediction.redo" ) # save to disk for use outside hivemod*
-  hivemod_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside hivemod*
+  hivemod_db( p=p, DS="stats.to.prediction.grid.redo", phi=phi_global, nu=nu_global) # save to disk for use outside hivemod*
 
   # 2. same interpolation method but relax the spatial extent
   # this would make sense but it can be costly in terms of time .. use only for research purposes

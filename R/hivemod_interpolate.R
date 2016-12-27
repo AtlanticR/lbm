@@ -439,7 +439,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
       gaussianprocess2Dt = hivemod__gaussianprocess2Dt( p, dat, pa ), 
       gaussianprocess = hivemod__gaussianprocess( p, dat, pa ),  # TODO
       glm = hivemod__glm( p, dat, pa, nu=nu, phi=phi ), 
-      krige = hivemod__krige( p, dat, pa, nu=nu, phi=phi ), # TODO
+      krige = hivemod__krige( p, dat, pa, nu=nu, phi=phi, method=p$hivemod_krige_engine ), # TODO
       LaplacesDemon = hivemod__LaplacesDemon( p, dat, pa ),
       splancs = hivemod__spate( p, dat, pa ), # TODO
       spate = hivemod__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 

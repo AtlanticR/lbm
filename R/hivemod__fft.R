@@ -26,7 +26,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
 
   x$mean = NA
   pa$mean = NA
-  pa$sd = NA
+  pa$sd = NA  # this is ignored with fft
 
   dx = dy = p$pres
 
@@ -124,7 +124,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     if ( any( Z_i[,1] > nr) ) next()
     if ( any( Z_i[,2] > nc) ) next()
     pa$mean[pa_i] = Z[Z_i]
-    pa$sd[pa_i] = 1  ## fix as 1
+    # pa$sd[pa_i] = NA  ## fix as NA
     Z = NULL
     
   }
