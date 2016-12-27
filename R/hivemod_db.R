@@ -345,6 +345,7 @@
     if (DS %in% c("hivemod.prediction.redo", "hivemod.prediction") )  {
 
       if (DS=="hivemod.prediction")  {
+        if (!exists("savedir", p)) p$savedir = file.path(p$project.root, "hivemod", p$spatial.domain )
         if (! exists("TIME", p$variables)) {
           fn = file.path( p$savedir, paste("hivemod.prediction", ret, "rdata", sep="." ) )
         } else {
