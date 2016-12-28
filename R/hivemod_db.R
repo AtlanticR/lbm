@@ -421,7 +421,10 @@
       Ploc = hivemod_attach( p$storage.backend, p$ptr$Ploc )
       S = hivemod_attach( p$storage.backend, p$ptr$S )
       Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )
-      
+
+#      nu = median(  S[,which( p$statsvars=="nu" )], na.rm=TRUE )
+      phi = median(  S[,which( p$statsvars=="phi" )], na.rm=TRUE )
+ 
       # locations of the new (output) coord system
       locsout = expand.grid( p$plons, p$plats ) # final output grid
       attr( locsout , "out.attrs") = NULL
@@ -430,15 +433,15 @@
       stats = matrix( NaN, ncol=length( p$statsvars ), nrow=nrow( locsout) )  # output data .. ff does not handle NA's .. using NaN for now
       colnames(stats)=p$statsvars
 
-      # matrix representation of the output surface
-      nr = p$nplons
-      nc = p$nplats
-
       for ( i in 1:length( p$statsvars ) ) {
-        u = as.image( S[i], ind=Sloc[], na.rm=TRUE, nx=nr, ny=nc )
-        Z = NULL
-        Z = fields::interp.surface( u, loc=locsout )
-        stats[,i] = c(Z)
+        if (0) {
+          # linear interpolation
+          u = as.image( S[i], ind=Sloc[], na.rm=TRUE, nx=p$nplons, ny=p$nplats )
+          Z = as.vector( fields::interp.surface( u, loc=locsout ) ) # linear interpolation
+        }
+        Z = fields::fastTps( S[i], Y=Sloc[], theta=phi, m=2, p=2 )  # compact Wendland exponentital covariance 
+        # TODO:: test this .. linear interpolation might be enough
+        stats[,i] = as.vector( predict( Z, xnew=locsout ) )
       }
 
      # lattice::levelplot( stats[,1] ~ locsout[,1]+locsout[,2])
@@ -453,8 +456,12 @@
       }}
 
       # subset to match to Ploc
-      good = match( array_map( "2->1", round( cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ), 
-                    array_map( "2->1", round( cbind(locsout[,1]-p$plons[1], locsout[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) )
+      good = match( 
+        array_map( "2->1", 
+          round( cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ), 
+        array_map( "2->1", 
+          round( cbind(locsout[,1]-p$plons[1], locsout[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) 
+      )
 
       # Ploc_id = paste( Ploc[,1], Ploc[,2], sep="~" )
       # locsout_id = paste( locsout$plon, locsout$plat, sep="~" )
