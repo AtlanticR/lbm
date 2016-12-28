@@ -6,8 +6,11 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   if (exists( "libs", p)) RLibrary( p$libs )
   if (is.null(ip)) if( exists( "nruns", p ) ) ip = 1:p$nruns
 
-  phi = p$hivemod_lowpass_phi # want phi to be small to retain local structure
-  nu = p$hivemod_lowpass_nu
+  S = hivemod_attach( p$storage.backend, p$ptr$S )
+  
+  # do this here as the Stats are from the most reliable estimates
+  nu = median(  S[,which( p$statsvars=="nu" )], na.rm=TRUE )
+  phi = median(  S[,which( p$statsvars=="phi" )], na.rm=TRUE )
 
   P = hivemod_attach( p$storage.backend, p$ptr$P )
   Psd = hivemod_attach( p$storage.backend, p$ptr$Psd )

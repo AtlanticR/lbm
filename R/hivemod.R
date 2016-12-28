@@ -592,34 +592,28 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
       }
     }
 
-  # do this here as the Stats are from the most reliable estimates
-  S = hivemod_attach( p$storage.backend, p$ptr$S )
-  nu_global = median(  S[,which( p$statsvars=="nu" )], na.rm=TRUE )
-  phi_global = median(  S[,which( p$statsvars=="phi" )], na.rm=TRUE )
-  
-  # save solutions to disk before continuuing
-  hivemod_db( p=p, DS="hivemod.prediction.redo" ) # save to disk for use outside hivemod*
-  hivemod_db( p=p, DS="stats.to.prediction.grid.redo", phi=phi_global, nu=nu_global) # save to disk for use outside hivemod*
 
-  # 2. same interpolation method but relax the spatial extent
-  # this would make sense but it can be costly in terms of time .. use only for research purposes
+  # 2. fft-based kriging-like interpolation method with relaxed spatial extent
     p$timei2 =  Sys.time()
-    hivemod_db( p=p, DS="statistics.status.reset" )
-    o = hivemod_db( p=p, DS="statistics.status" )
+    o = hivemod_db(p=p, DS="statistics.status.reset" ) 
     if (length(o$todo) > 0) {
+      S = hivemod_attach( p$storage.backend, p$ptr$S )
+      nu = median(  S[,which( p$statsvars=="nu" )], na.rm=TRUE )
+      phi = median(  S[,which( p$statsvars=="phi" )], na.rm=TRUE )
       p$hivemod_distance_prediction = p$hivemod_distance_prediction * 2
       p$hivemod_distance_max = p$hivemod_distance_max * 2
       p$hivemod_distance_scale = p$hivemod_distance_scale*2 # km ... approx guess of 95% AC range 
-      if (exists("hivemod_lowpass_phi", p)) p$hivemod_lowpass_phi = p$hivemod_lowpass_phi * 2
+      p$hivemod_fft_filter = "spatial.process" # kriging-like
       p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
       parallel.run( hivemod_interpolate, p=p )
     }
     p$timei3 =  Sys.time()
-    message( paste( "Time taken to stage 2 interpolations (mins):", round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
+    message( paste( "Time taken to stage 2 interpolations (mins):", 
+                   round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
 
   message( "Doing a fast interpolation to fill in large data gaps.")
   p = make.list( list( time_index=1:p$nt), Y=p ) # random order helps use all cpus
-  parallel.run( hivemod_interpolate_fast, p=p, nu=nu_global, phi=phi_global ) # fast fft smooth
+  parallel.run( hivemod_interpolate_fast, p=p ) # fast fft smooth
 
   # save solutions to disk (again .. overwrite)
   message( "Saving results to disk" )

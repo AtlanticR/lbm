@@ -379,8 +379,8 @@
           }
           if (exists("hivemod_global_modelengine", p) ) {
             ## maybe add via simulation ? ... 
-            P = P + P0[,r] 
-            V = sqrt( V^2 + P0sd[,r]^2) # simple additive independent errors assumed
+            P = P[] + P0[,r] 
+            V = sqrt( V[]^2 + P0sd[,r]^2) # simple additive independent errors assumed
           }
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
@@ -389,11 +389,11 @@
       } else {
           fn1 = file.path( p$savedir, paste("hivemod.prediction.mean",  "rdata", sep="." ) )
           fn2 = file.path( p$savedir, paste("hivemod.prediction.sd", "rdata", sep="." ) )
-          P = PP
-          V = PPsd
+          P = PP[]
+          V = PPsd[]
           if (exists("hivemod_global_modelengine", p) ) {
-            P = P + P0 
-            V = sqrt( V^2 + P0sd^2) # simple additive independent errors assumed
+            P = P[] + P0[] 
+            V = sqrt( V[]^2 + P0sd[]^2) # simple additive independent errors assumed
           }
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
@@ -422,6 +422,10 @@
       S = hivemod_attach( p$storage.backend, p$ptr$S )
       Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )
     
+      # do this here as the Stats are from the most reliable estimates
+      nu = median(  S[,which( p$statsvars=="nu" )], na.rm=TRUE )
+      phi = median(  S[,which( p$statsvars=="phi" )], na.rm=TRUE )
+      
       # locations of the new (output) coord system
       locsout = expand.grid( p$plons, p$plats ) # final output grid
       attr( locsout , "out.attrs") = NULL
@@ -430,21 +434,51 @@
       stats = matrix( NaN, ncol=length( p$statsvars ), nrow=nrow( locsout) )  # output data .. ff does not handle NA's .. using NaN for now
       colnames(stats)=p$statsvars
 
-      # map of row, col indices of input data in the new (output) coordinate system
-      l2M = cbind( ( Sloc[,1]-p$plons[1])/p$pres + 1, (Sloc[,2]-p$plats[1])/p$pres + 1)
-     
       # matrix representation of the output surface
-      M = matrix( NA, nrow=p$nplons, ncol=p$nplats) 
-      
-      for ( i in 1:length( p$statsvars ) ) {
-        M = M[] * NA  # init
-        M[l2M] = S[,i] # fill with data in correct locations
-        
-## TODO :: replace with fft method
+      nr = p$nplons
+      nc = p$nplats
+      nr2 = round( nr*2)
+      nc2 = round( nc*2)
+      dy = dx = p$pres
 
-        Z = smooth.2d( Y=S[,i], x=Sloc[], ncol=p$nplats, nrow=p$nplons, cov.function=stationary.cov, Covariance="Matern", range=p$hivemod_lowpass_phi, nu=p$hivemod_lowpass_nu ) 
-        stats[,i] = Z$z
+      # constainer for spatial filters
+      dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
+      center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
+      
+      mC = matrix(0, nrow = nr2, ncol = nc2)
+      mC[nr, nc] = 1
+     
+      sp.covar = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
+      sp.covar.surf = as.surface(dgrid, c(sp.covar))$z
+      sp.covar.kernel = fft(sp.covar.surf) / ( fft(mC) * nr2 * nc2 )
+      sp.covar = sp.covar.surf = dgrid = center = mC = NULL
+      gc()
+
+      for ( i in 1:length( p$statsvars ) ) {
+        rY = range( S[,i], na.rm=TRUE)
+        u = as.image( S[i], ind=Sloc[], na.rm=TRUE, nx=nr, ny=nc )
+        mN = matrix(0, nrow = nr2, ncol = nc2)
+        mN[1:nr,1:nc] = u$weights
+        mN[!is.finite(mN)] = 0
+        mY = matrix(0, nrow = nr2, ncol = nc2)
+        mY[1:nr,1:nc] = u$z
+        mY[!is.finite(mY)] = 0
+        u = NULL
+        # low pass filter based upon a global nu,phi .. remove high freq variation
+        fN = Re(fft(fft(mN) * sp.covar.kernel, inverse = TRUE))[1:nr,1:nc]
+        fY = Re(fft(fft(mY) * sp.covar.kernel, inverse = TRUE))[1:nr,1:nc]
+        mY = mN = NULL
+        Z = fY/fN
+        fY = fN = NULL
+        lb = which( Z < rY[1] )
+        if (length(lb) > 0) Z[lb] = rY[1]
+        ub = which( Z > rY[2] )
+        if (length(ub) > 0) Z[ub] = rY[2]
+        # image.plot(Z)
+        stats[,i] = c(Z)
+        Z = NULL
       }
+
      # lattice::levelplot( stats[,1] ~ locsout[,1]+locsout[,2])
  
       boundary = try( hivemod_db( p=p, DS="boundary" ) )
