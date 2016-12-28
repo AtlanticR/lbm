@@ -2,8 +2,7 @@
 hivemod__bayesx = function( p, x, pa ) {
   #\\ this is the core engine of hivemod .. localised space-time modelling interpolation and prediction .. using bayesx 
    
-  # EG: see: bayesx.term.options( bs="kr", method="REML" )
-  
+  # EG: see: bayesx.term.options( bs="kr", method="REML" )  
   #  logzinc ~  sx( x,y, nu=1.5, bs="kr")  # "kr" is perhaps overly smooth  ..  ie guassian process  .. kriging
   #  logzinc ~  sx( x,y, bs="te")  # more detail .. "te" is preferred
 
