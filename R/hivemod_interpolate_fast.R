@@ -1,7 +1,7 @@
 
 hivemod_interpolate_fast = function( ip=NULL, p ) {
   #// designed to be called from hivemod_interpolate
-  #// for the sake of speed and parallelization, the kernel density method is written out again .. it is taken from fields::smooth.2d 
+  #// for the sake of speed and parallelization, the kernel density method via fft is written out again .. it is taken from fields::smooth.2d 
 
   if (exists( "libs", p)) RLibrary( p$libs )
   if (is.null(ip)) if( exists( "nruns", p ) ) ip = 1:p$nruns
@@ -23,6 +23,9 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   nc = p$nplats
   nr2 = 2 * nr
   nc2 = 2 * nc
+
+
+  
   zp = array_map( "2->1", Z2P, c(nr2, nc2) )
 
   dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))

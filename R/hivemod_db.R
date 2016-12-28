@@ -421,10 +421,6 @@
       Ploc = hivemod_attach( p$storage.backend, p$ptr$Ploc )
       S = hivemod_attach( p$storage.backend, p$ptr$S )
       Sloc = hivemod_attach( p$storage.backend, p$ptr$Sloc )
-    
-      # do this here as the Stats are from the most reliable estimates
-      nu = median(  S[,which( p$statsvars=="nu" )], na.rm=TRUE )
-      phi = median(  S[,which( p$statsvars=="phi" )], na.rm=TRUE )
       
       # locations of the new (output) coord system
       locsout = expand.grid( p$plons, p$plats ) # final output grid
@@ -437,46 +433,12 @@
       # matrix representation of the output surface
       nr = p$nplons
       nc = p$nplats
-      nr2 = round( nr*2)
-      nc2 = round( nc*2)
-      dy = dx = p$pres
-
-      # constainer for spatial filters
-      dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
-      center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, ncol = 2)
-      
-      mC = matrix(0, nrow = nr2, ncol = nc2)
-      mC[nr, nc] = 1
-     
-      sp.covar = stationary.cov( dgrid, center, Covariance="Matern", range=phi, nu=nu )
-      sp.covar.surf = as.surface(dgrid, c(sp.covar))$z
-      sp.covar.kernel = fft(sp.covar.surf) / ( fft(mC) * nr2 * nc2 )
-      sp.covar = sp.covar.surf = dgrid = center = mC = NULL
-      gc()
 
       for ( i in 1:length( p$statsvars ) ) {
-        rY = range( S[,i], na.rm=TRUE)
         u = as.image( S[i], ind=Sloc[], na.rm=TRUE, nx=nr, ny=nc )
-        mN = matrix(0, nrow = nr2, ncol = nc2)
-        mN[1:nr,1:nc] = u$weights
-        mN[!is.finite(mN)] = 0
-        mY = matrix(0, nrow = nr2, ncol = nc2)
-        mY[1:nr,1:nc] = u$z
-        mY[!is.finite(mY)] = 0
-        u = NULL
-        # low pass filter based upon a global nu,phi .. remove high freq variation
-        fN = Re(fft(fft(mN) * sp.covar.kernel, inverse = TRUE))[1:nr,1:nc]
-        fY = Re(fft(fft(mY) * sp.covar.kernel, inverse = TRUE))[1:nr,1:nc]
-        mY = mN = NULL
-        Z = fY/fN
-        fY = fN = NULL
-        lb = which( Z < rY[1] )
-        if (length(lb) > 0) Z[lb] = rY[1]
-        ub = which( Z > rY[2] )
-        if (length(ub) > 0) Z[ub] = rY[2]
-        # image.plot(Z)
-        stats[,i] = c(Z)
         Z = NULL
+        Z = fields::interp.surface( u, loc=locsout )
+        stats[,i] = c(Z)
       }
 
      # lattice::levelplot( stats[,1] ~ locsout[,1]+locsout[,2])
