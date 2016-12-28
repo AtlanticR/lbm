@@ -496,7 +496,7 @@
       z = which( Y == 0) # assumed to be real zeros
       i = which( Y >  0)  # positive values
       
-      # determine quantiles
+      # determine quantiles .. 
       Yq = rep( 0, length(Y) )
       Yq[z] = 1
     
