@@ -20,12 +20,10 @@ hivemod__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
       pa_i = 1:nrow(pa)
     }
 
-    xy = x[xi, p$variables$LOCS]
-    z = x[xi, p$variables$Y]
-
-
     if (p$hivemod_krige_engine %in% c("default", "fields") ) {
-      fspmodel <- try( Krig( xy, z, sigma2=varObs, rho=varSpatial , cov.function="stationary.cov", Covariance="Matern", range=phi, smoothness=nu) )
+      fspmodel <- try( Krig( x[xi, p$variables$LOCS], x[xi, p$variables$Y], 
+        sigma2=varObs, rho=varSpatial , cov.function="stationary.cov", 
+        Covariance="Matern", range=phi, smoothness=nu) )
       if (inherits(fspmodel, "try-error") )  next()
       x$mean[xi] = fspmodel$fitted.values 
       ss = lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit)
@@ -45,6 +43,9 @@ hivemod__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
     }
 
     if (p$hivemod_krige_engine %in% c("gstat") ) {
+  .   xy = x[xi, p$variables$LOCS]
+      z = x[xi, p$variables$Y]
+
       vMod0 = vgm(psill=0.75, model="Mat", range=phi, nugget=0.25, kappa=nu ) # starting model parameters
       gs = gstat(id = "hmk", formula = z~1, locations=~plon+plat, data=xy[xi,], maxdist=p$hivemod_distance_max, nmin=10, force=TRUE, model=vMod0 )
       # this step adds a lot of time .. 

@@ -25,12 +25,13 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   
 
     p = bio.substrate::substrate.parameters() # reset to defaults
-    p$hivemod_local_modelengine = "fft" 
+    p$hivemod_local_modelengine = "krige" 
     p$storage.backend="bigmemory.ram"  # filebacked metods are still too slow ..
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="hivemod" )
     continue=FALSE
     p$clusters = rep("localhost",  detectCores() )
     DATA = 'substrate.db( p=p, DS="substrate.hivemod" )'
+  
   
     p = bio.temperature::temperature.parameters( current.year=2016 )
     p$hivemod_local_modelengine="gam"  # smoothest
@@ -76,9 +77,15 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     if (p$hivemod_local_modelengine %in% c("LaplacesDemon") )  p$libs = c( p$libs, "LaplacesDemonCpp" )
     if (p$hivemod_local_modelengine %in% c("inla") )  p$libs = c( p$libs, "INLA" )
     if (p$hivemod_local_modelengine %in% c("fft", "gaussianprocess2Dt") )  p$libs = c( p$libs, "fields" )
+    if (p$hivemod_local_modelengine %in% c("gaussianprocess") )  p$libs = c( p$libs  )
     if (p$hivemod_local_modelengine %in% c("spate") )  p$libs = c( p$libs, "spate" )
     if (p$hivemod_local_modelengine %in% c("splancs") )  p$libs = c( p$libs, "splancs" )
     if (p$hivemod_local_modelengine %in% c("twostep") )  p$libs = c( p$libs, "mgcv", "fields" )
+    if (p$hivemod_local_modelengine %in% c("krige") ) {
+      if (p$hivemod_krige_engine %in% c("default", "fields")) p$libs = c( p$libs, "fields" )
+      if (p$hivemod_krige_engine %in% c("gstat")) p$libs = c( p$libs, "gstat" )
+    }  
+
 
     p$libs = unique( p$libs )
     RLibrary( p$libs )
@@ -586,10 +593,9 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
 
 
     if (0) {
-      require(lattice)
       Ploc = hivemod_attach( p$storage.backend, p$ptr$Ploc )
       P = hivemod_attach( p$storage.backend, p$ptr$P )
-      lattice::levelplot( P[,1] ~ Ploc[,1] + Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
+      lattice::levelplot(P[,1]~Ploc[,1]+Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
       for (i in 1:p$nt) {
         print( lattice::levelplot( P[,i] ~ Ploc[,1] + Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
       }
@@ -614,7 +620,7 @@ hivemod = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
       message( "Doing a fast interpolation to fill in large data gaps.")
       p = make.list( list( time_index=1:p$nt), Y=p ) # random order helps use all cpus
       parallel.run( hivemod_interpolate_fast, p=p ) # fast fft smooth
-    } 
+    }
 
   # save solutions to disk (again .. overwrite)
   message( "Saving results to disk" )
