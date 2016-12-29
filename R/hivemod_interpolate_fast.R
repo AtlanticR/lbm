@@ -23,8 +23,6 @@ hivemod_interpolate_fast = function( ip=NULL, p ) {
   nc = p$nplats
   nr2 = 2 * nr
   nc2 = 2 * nc
-
-
   
   zp = array_map( "2->1", Z2P, c(nr2, nc2) )
 

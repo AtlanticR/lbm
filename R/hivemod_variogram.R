@@ -121,19 +121,19 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
     # gives a fast stable empirical variogram
 
     require( fields ) 
-    
+    varmax = var(z, na.rm=TRUE)
     vario = vgram( xy, z, dmax=out$maxdist, N=nbreaks)
     vg = vario$stats["mean",]
     vx = vario$centers
     mvg = max(vg, na.rm=TRUE)
     mvx = max(vx, na.rm=TRUE)
     eps = 1e-6
-    lower =c(eps,eps,eps, eps)
-    upper =c(mvg, mvg, mvx, 2)
+    lower =c(0, eps, mvx/20, 0.05 )
+    upper =c(varmax, varmax, mvx*2, 2.5 )
     #nonlinear est
-    par = c(tau.sq=mvg*0.05, sigma.sq=mvg*0.95, phi=mvx/50, nu=0.5) 
+    par = c(tau.sq=varmax*0.05, sigma.sq=varmax*0.95, phi=mvx/10, nu=0.5) 
     o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", lower=lower, upper=upper,
-      control=list(maxit=100),
+      control=list(maxit=200, factr=1e-9),
       fn=function(par, vg, vx){ 
         vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
         dy = sum( (vg - vgm)^2) # vario normal errors, no weights , etc.. just the line
@@ -164,7 +164,7 @@ hivemod_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("
  
   
     if( 0) {
-      plot( vario$stats["mean",] ~ vario$centers )
+      plot( vario$centers, vario$stats["mean",],  col="green" )
       ds = seq( 0, mvx, length.out=100 )
       ac = out$fast$varObs + out$fast$varSpatial*(1 - Matern( ds, range=out$fast$phi,  nu=out$fast$nu ) )
       lines( ds, ac )

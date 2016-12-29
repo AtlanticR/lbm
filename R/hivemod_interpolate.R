@@ -54,7 +54,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
   am = c(p$nplons, p$nplats)
   ploc_ids = array_map( "2->1", round(cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1), am )
 
-  localcount = 0 
+  localcount = -1 
 
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
@@ -82,7 +82,6 @@ hivemod_interpolate = function( ip=NULL, p ) {
     U =  which( (dlon  <= p$hivemod_distance_scale)  & (dlat <= p$hivemod_distance_scale) )
     hivemod_distance_cur = p$hivemod_distance_scale
     ndata = length(U)
-    nu = 0.5 # default for now
 
     if (0) {
       plot( Sloc[,], pch=20, cex=0.5, col="gray")
@@ -95,60 +94,15 @@ hivemod_interpolate = function( ip=NULL, p ) {
     o = ores = NULL
 
     if (ndata > p$n.min ) {
-      if (ndata > p$n.max ) {
-        Uj = U[ .Internal( sample( ndata, p$n.max, replace=FALSE, prob=NULL)) ]  
+      if (ndata < p$n.max ) {
+        # nothing to do
       } else {
-        Uj = U
-      }
-      o = try( hivemod_variogram( xy=Yloc[Uj,], z=p$hivemod_local_family$linkfun(Y[Uj]), methods=p$hivemod_variogram_method ) )
-      if ( !is.null(o)) {
-        if (!inherits(o, "try-error")) {
-          if (exists(p$hivemod_variogram_method, p)) {
-            if ( is.finite( o[[p$hivemod_variogram_method]]$range ) &&
-                 (o[[p$hivemod_variogram_method]]$range > p$hivemod_distance_scale / 20) && 
-                 (o[[p$hivemod_variogram_method]]$range < p$hivemod_distance_scale * 20) ) {
-       
-                hivemod_distance_cur = min( max(1, o[[p$hivemod_variogram_method]][["range"]] ), p$hivemod_distance_scale ) 
-                U = which( dlon  <= hivemod_distance_cur  & dlat <= hivemod_distance_cur )
-                ndata =length(U)
-                nu = o[[p$hivemod_variogram_method]][["nu"]]
-                ores = o[[p$hivemod_variogram_method]] # store current best estimate of variogram characteristics
-            }    
-                  
-            if (0) {
-              if (p$hivemod_variogram_method == "fast" ) { 
-                plot(o[[p$hivemod_variogram_method]][["vgm"]], 
-                  model=RMmatern( nu=o$fast$nu, var=o$fast$varSpatial, scale=o$fast$phi * 
-                  (sqrt(o$fast$nu*2) )) + RMnugget(var=o$fast$varObs) )
-              }
-            }
-          }
-        }   
-      }
-    }
-
-    # if insufficient data found within the "range" fall back to a brute force search until criteria are met
-    if (ndata < p$n.min | ndata > p$n.max | hivemod_distance_cur < p$hivemod_distance_min | hivemod_distance_cur > p$hivemod_distance_max ) { 
-      if ( ndata < p$n.min )  {
-        for ( usamp in upsampling )  {
-          hivemod_distance_cur = p$hivemod_distance_scale * usamp
-          U = which( dlon < hivemod_distance_cur & dlat < hivemod_distance_cur ) # faster to take a block 
-          ndata = length(U)
-          if ( ndata >= p$n.min ) {
-            if (ndata >= p$n.max) {
-              U = U[ .Internal( sample( length(U), p$n.max, replace=FALSE, prob=NULL)) ] 
-              ndata = p$n.max
-              break()
-            }
-          }
-        }
-      } else {
-        if ( ndata <= p$n.max * 1.5 ) { # if close to p$n.max, subsample quickly 
-          if ( ndata > p$n.max) { 
-            U = U[ .Internal( sample( length(U), p$n.max, replace=FALSE, prob=NULL)) ] 
-            ndata = p$n.max
-          } 
+        if ( ndata <= p$n.max * 1.5 ) { 
+          # if close to p$n.max, subsample quickly 
+          U = U[ .Internal( sample( length(U), p$n.max, replace=FALSE, prob=NULL)) ] 
+          ndata = p$n.max
         } else {
+          # need to downsample
           for ( dsamp in downsampling )  { # lots of data .. downsample
             hivemod_distance_cur = p$hivemod_distance_scale * dsamp
             U = which( dlon < hivemod_distance_cur & dlat < hivemod_distance_cur )# faster to take a block 
@@ -163,17 +117,52 @@ hivemod_interpolate = function( ip=NULL, p ) {
             }
           }
         }
-      } 
+      }
+    } else {
+      # need to upsample
+      for ( usamp in upsampling )  {
+        hivemod_distance_cur = p$hivemod_distance_scale * usamp
+        U = which( dlon < hivemod_distance_cur & dlat < hivemod_distance_cur ) # faster to take a block 
+        ndata = length(U)
+        if ( ndata >= p$n.min ) {
+          if (ndata >= p$n.max) {
+            U = U[ .Internal( sample( length(U), p$n.max, replace=FALSE, prob=NULL)) ] 
+            ndata = p$n.max
+            break()
+          }
+        }
+      }
     }
 
-    rm (dlon, dlat); gc()
+    o = try( hivemod_variogram( xy=Yloc[U,], z=p$hivemod_local_family$linkfun(Y[U]), 
+      methods=p$hivemod_variogram_method ) )
+      if ( !is.null(o)) {
+        if (!inherits(o, "try-error")) {
+          if (exists(p$hivemod_variogram_method, o)) {
+            ores = o[[p$hivemod_variogram_method]] # store current best estimate of variogram characteristics
+            if (!is.null(ores[["range"]] ) ) {
+              if ( (ores[["range"]] > p$pres) & (ores[["range"]] <= p$hivemod_distance_max) ) {
+                vario_U  = which( dlon  <= ores[["range"]]  & dlat <= ores[["range"]] )
+                vario_ndata =length(vario_U)                
+                if ((vario_ndata > p$n.min) & (vario_ndata < p$n.max) ) { 
+                  U  = vario_U
+                  ndata = vario_ndata
+                  hivemod_distance_cur = ores[["range"]]
+                }  
+              }
+            } 
+          }
+        }   
+      }
 
-    # final check
-    ndata = length(U)
-    if ((ndata < p$n.min) | (ndata > p$n.max) ) {
+    if (is.null(ores)) {
       ndata = U = o = ores = NULL
       next()
     }
+
+    if ((ndata < p$n.min) | (ndata > p$n.max) ) stop("Something went wrong") # check in case a fault in logic, above
+   
+    dlon=dlat=o=NULL; gc()
 
     YiU = Yi[U]  
     # So, YiU and dist_prediction determine the data entering into local model construction
@@ -399,33 +388,12 @@ hivemod_interpolate = function( ip=NULL, p ) {
       } # end if
     }
 
-    if (is.null(ores)) {
-      # try again with current data subset if no solution yet
-      o = NULL
-      o = try( hivemod_variogram( xy=dat[,p$variables$LOC], 
-        z = p$hivemod_local_family$linkfun(dat[, p$variables$Y ]), 
-        methods=p$hivemod_variogram_method) ) 
-      if (!inherits(o, "try-error")) {
-        if ( !is.null(o) ) {
-          if ( exists( p$hivemod_variogram_method, o )) {
-            if ( is.finite( o[[p$hivemod_variogram_method]]$range ) &&
-                 (o[[p$hivemod_variogram_method]]$range > p$hivemod_distance_scale / 20) && 
-                 (o[[p$hivemod_variogram_method]]$range < p$hivemod_distance_scale * 20) ) {
-                  ores = o[[p$hivemod_variogram_method]]  # if a stable result is found for the smaller area, use it in preference     
-            }
-          }  
-        }
-      } 
-    }
-
     nu = phi = varSpatial = varObs = NULL
-    if (!is.null(ores)) {
-      if ( exists("nu", ores) ) nu = ores$nu
-      if ( exists("phi", ores) ) phi = ores$phi 
-      if ( exists("varSpatial", ores) ) varSpatial = ores$varSpatial
-      if ( exists("varObs", ores) ) varObs = ores$varObs
-    }
-
+    if ( exists("nu", ores) ) nu = ores$nu
+    if ( exists("phi", ores) && ores$phi > (p$pres/2)) phi = ores$phi 
+    if ( exists("varSpatial", ores) ) varSpatial = ores$varSpatial
+    if ( exists("varObs", ores) ) varObs = ores$varObs
+  
     if (is.null(nu)) nu = p$hivemod_lowpass_nu
     if (is.null(phi)) phi = hivemod_distance_cur/sqrt( 8*nu) # crude estimate of phi based upon current scaling  distance approximates the range at 90% autocorrelation(e.g., see Lindgren et al. 2011)
     if (is.null(varSpatial)) varSpatial =0.5 * var(dat[, p$variables$Y], na.rm=TRUE)
