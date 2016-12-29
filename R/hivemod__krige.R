@@ -43,7 +43,7 @@ hivemod__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
     }
 
     if (p$hivemod_krige_engine %in% c("gstat") ) {
-  .   xy = x[xi, p$variables$LOCS]
+      xy = x[xi, p$variables$LOCS]
       z = x[xi, p$variables$Y]
 
       vMod0 = vgm(psill=0.75, model="Mat", range=phi, nugget=0.25, kappa=nu ) # starting model parameters
