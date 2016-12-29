@@ -444,6 +444,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
       next()
     }
 
+
     res$predictions$mean = p$hivemod_local_family$linkinv( res$predictions$mean )
     res$predictions$sd   = p$hivemod_local_family$linkinv( res$predictions$sd )
     if (p$hivemod_local_modelengine=="habitat") {
@@ -459,7 +460,7 @@ hivemod_interpolate = function( ip=NULL, p ) {
       if (length( toohigh) > 0) res$predictions$mean[ toohigh] = tq[2]
     }
     
-    ii = which( is.finite(res$predictions$mean+res$predictions$sd))
+    ii = which( is.finite(res$predictions$mean ))
     if (length(ii) < 5) {
       dat = pa = px = res = NULL
       next()  # looks to be a faulty solution

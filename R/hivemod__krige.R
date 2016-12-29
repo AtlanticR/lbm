@@ -4,10 +4,11 @@ hivemod__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
   # \ as a 2D gaussian process (basically, simple krigimg or TPS -- time is treated as being independent)
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice ..  essentially this is kriging 
-  
+  sdTotal = sd(x[,p$variable$Y], na.rm=T)
+
   x$mean = NA
   pa$mean = NA
-  pa$sd = NA  # leave as this as sd estimation is too expensive
+  pa$sd = sdTotal  # leave as this as sd estimation is too expensive
 
   for ( ti in 1:p$nt ) {
     
@@ -67,7 +68,7 @@ hivemod__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
   rsquared = summary(ss)$r.squared
   if (rsquared < p$hivemod_rsquared_threshold ) return(NULL)
 
-  hivemod_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
+  hivemod_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
   return( list( predictions=pa, hivemod_stats=hivemod_stats ) )  
 }
 

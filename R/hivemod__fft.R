@@ -24,9 +24,12 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   attr( x_locs , "out.attrs") = NULL
   names( x_locs ) = p$variables$LOCS
 
+
+  sdTotal = sd(x[,p$variable$Y], na.rm=T)
+
   x$mean = NA
   pa$mean = NA
-  pa$sd = NA  # this is ignored with fft
+  pa$sd = sdTotal  # this is ignored with fft
 
   dx = dy = p$pres
 
@@ -135,7 +138,7 @@ hivemod__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   rsquared = summary(ss)$r.squared
   if (rsquared < p$hivemod_rsquared_threshold ) return(NULL)
 
-  hivemod_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
+  hivemod_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 
