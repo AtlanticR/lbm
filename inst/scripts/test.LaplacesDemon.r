@@ -75,11 +75,11 @@ text(coords, label=paste("(",weights,")",sep=""))
 
 # ---------------------------------------------------
 # Universal Kriging with prediction via LaplacesDemon
-bioLibrary( "bio.spacetime", "hivemod")
+bioLibrary( "bio.spacetime", "lbm")
 
 require(LaplacesDemonCpp)
 
-Data = hivemod_LaplacesDemon_setup( DS="spatial.test", Data ) # spatial + intercept
+Data = lbm_LaplacesDemon_setup( DS="spatial.test", Data ) # spatial + intercept
 
 
 # maximum likelihood solution

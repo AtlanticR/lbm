@@ -8,7 +8,7 @@ log_gaussian_offset = function(offset=0) {
     class = "link-glm" )
 }
 # or to make your own
-  # hivemod_family_new = function(offset=0) {
+  # lbm_family_new = function(offset=0) {
   #   structure(list(
   #     linkfun = function(mu) mu + offset,
   #     linkinv = function(eta) mu - offset,

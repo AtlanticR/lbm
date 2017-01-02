@@ -38,7 +38,7 @@ sp::spplot(rfG)
 ss = rfG[ si, ]
 locs_xy = ss[, c("x","y") ]
 z = ss[,"sim1"]
-vg = hivemod_variogram( locs_xy, z, methods="gstat" )
+vg = lbm_variogram( locs_xy, z, methods="gstat" )
 
 
 # -------------------
@@ -51,7 +51,7 @@ lines.variomodel(rfGeoR)
 image(rfGeoR)
 z = rfG[si,3]
 
-vg = hivemod_variogram( locs_xy, z, methods="geoR" )
+vg = lbm_variogram( locs_xy, z, methods="geoR" )
 
 
 # -------------------

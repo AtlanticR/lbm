@@ -7,7 +7,7 @@
   #\\ http://www.statsref.com/HTML/index.html?temporal_autocorrelation.html
 
 
-  bioLibrary( "bio.spacetime" , "hivemod" )
+  bioLibrary( "bio.spacetime" , "lbm" )
 
   #sunspot data
   o = timeseries_simulator( DS="sunspots.seasonal" )
@@ -25,8 +25,8 @@
 
   x = sunspot.year
   x = sunspots
-  o = hivemod_timeseries( x=x, freq=frequency(x) ) # default = spec.pgram
-  o = hivemod_timeseries( x=x, method="fft", freq=frequency(x) )
+  o = lbm_timeseries( x=x, freq=frequency(x) ) # default = spec.pgram
+  o = lbm_timeseries( x=x, method="fft", freq=frequency(x) )
 
 
 
