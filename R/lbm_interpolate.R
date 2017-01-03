@@ -43,7 +43,7 @@ lbm_interpolate = function( ip=NULL, p ) {
   }
 
   Yi = lbm_attach( p$storage.backend, p$ptr$Yi )
-  Yi = as.vector(Yi[])  #force copy to RAM as a vector
+  # Yi = as.vector(Yi[])  #force copy to RAM as a vector
 
   # misc intermediate calcs to be done outside of parallel loops
   upsampling = sort( p$sampling[ which( p$sampling > 1 ) ] )
@@ -78,8 +78,8 @@ lbm_interpolate = function( ip=NULL, p ) {
     print( iip )
 
     # find data nearest S[Si,] and with sufficient data
-    dlon = abs( Sloc[Si,1] - Yloc[Yi,1] ) 
-    dlat = abs( Sloc[Si,2] - Yloc[Yi,2] ) 
+    dlon = abs( Sloc[Si,1] - Yloc[Yi[],1] ) 
+    dlat = abs( Sloc[Si,2] - Yloc[Yi[],2] ) 
     U =  which( (dlon  <= p$lbm_distance_scale)  & (dlat <= p$lbm_distance_scale) )
     lbm_distance_cur = p$lbm_distance_scale
     ndata = length(U)
@@ -135,6 +135,8 @@ lbm_interpolate = function( ip=NULL, p ) {
       }
     }
 
+   if (ndata < p$n.min)  next() # check in case a fault in logic, above
+
     o = try( lbm_variogram( xy=Yloc[U,], z=p$lbm_local_family$linkfun(Y[U]), 
       methods=p$lbm_variogram_method ) )
       if ( !is.null(o)) {
@@ -173,7 +175,7 @@ lbm_interpolate = function( ip=NULL, p ) {
     # So, YiU and dist_prediction determine the data entering into local model construction
     # dist_model = lbm_distance_cur
 
-    dist_prediction = min( p$lbm_distance_prediction, lbm_distance_cur ) # do not predict greater than p$lbm_distance_prediction
+    if ( lbm_distance_cur < p$lbm_distance_prediction ) dist_prediction = p$lbm_distance_prediction # do not predict greater than p$lbm_distance_prediction
 
     # construct prediction/output grid area ('pa')
     windowsize.half = floor(dist_prediction/p$pres) # convert distance to discretized increments of row/col indices

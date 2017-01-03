@@ -5,8 +5,10 @@
     #// B is the xyz or xytz data or the function to get the data to work upon
 
     # --------------------------
-    if (!exists("savedir", p)) p$savedir = file.path(p$project.root, "lbm", p$spatial.domain )
-
+    if (!exists("savedir", p)) {
+      p$savedir = file.path(p$project.root, "lbm", p$spatial.domain )
+    }
+    
     if (DS %in% "filenames" ) {
       # input data stored as a bigmemory file to permit operations with min memory usage
       # split into separate components to reduce filelocking conflicts

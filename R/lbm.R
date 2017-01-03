@@ -27,10 +27,10 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     p = bio.substrate::substrate.parameters() # reset to defaults
     p$lbm_local_modelengine = "krige" 
     p$storage.backend="bigmemory.ram"  # filebacked metods are still too slow ..
-    p = bio.bathymetry::bathymetry.parameters( p=p, DS="lbm" )
+    p = bio.substrate::substrate.parameters( p=p, DS="lbm" )
     continue=FALSE
     p$clusters = rep("localhost",  detectCores() )
-    DATA = 'substrate.db( p=p, DS="substrate.lbm" )'
+    DATA = 'substrate.db( p=p, DS="lbm.inputs" )'
   
   
     p = bio.temperature::temperature.parameters( current.year=2016 )
@@ -38,9 +38,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     # p$lbm_local_modelengine="twostep" 
     # p$lbm_local_modelengine="uked" # (universal) kriging with external drift
     p$storage.backend="bigmemory.ram"
-    p = bio.temperature::temperature.parameters( DS="lbm", p=p )
+    p = bio.temperature::temperature.parameters( p=p, DS="lbm" )
     continue=FALSE
-    DATA='hydro.db( p=p, DS="temperature.lbm" )'
+    DATA='hydro.db( p=p, DS="lbm.inputs" )'
 
   }
 
