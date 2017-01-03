@@ -47,9 +47,17 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
 
   if (continue | exists( "ptr", p) ) {
   
-    message( "Continuing from an interrupted start. This only works if your data objects still exist in RAM or on disk. " )
-    message( "There is no guarantee that this is the case and so your mileage will vary ... ")
-    if (exists("storage.backend", p) && p$storage.backend !="bigmemory.ram" ) p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
+    message( "Continuing from an interrupted start" ) 
+    if (0) {
+      p =list( 
+        project.root=project.datadirectory( "bio.bathymetry" ), 
+        spatial.domain="canada.east.superhighres" ,
+        spatial.domain.default = "canada.east.superhighres"
+      )
+    }
+
+    p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
+    
     RLibrary( p$libs )
     lbm_db(p=p, DS="statistics.status.reset" )
 
@@ -638,7 +646,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   if ( !is.null(toredo) && length(toredo) > 0) { 
     Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
     Sflag[toredo]=0L
-    p = p$lbm_local_modelengine = "fft"  
+    p$lbm_local_modelengine = "fft"  
     p$lbm_fft_filter = "spatial.process"
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="lbm" )
     p = make.list( list( locs=sample( toredo )) , Y=p ) # random order helps use all cpus

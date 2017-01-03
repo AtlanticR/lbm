@@ -12,7 +12,6 @@
     if (DS %in% "filenames" ) {
       # input data stored as a bigmemory file to permit operations with min memory usage
       # split into separate components to reduce filelocking conflicts
-         
       
       p$cache =list()
       p$cache$Yraw =    file.path( p$stloc, "input.Yraw.cache" ) # raw data
