@@ -451,10 +451,10 @@ lbm_interpolate = function( ip=NULL, p ) {
 
 
     res$predictions$mean = p$lbm_local_family$linkinv( res$predictions$mean )
-    res$predictions$sd   = p$lbm_local_family$linkinv( res$predictions$sd )
+    # res$predictions$sd   = p$lbm_local_family$linkinv( res$predictions$sd )
     if (p$lbm_local_modelengine=="habitat") {
       res$predictions$logitmean = p$lbm_local_family_logit$linkinv( res$predictions$logitmean )
-      res$predictions$logitsd   = p$lbm_local_family_logit$linkinv( res$predictions$logitsd )
+      # res$predictions$logitsd   = p$lbm_local_family_logit$linkinv( res$predictions$logitsd )
     }
  
     if (exists( "lbm_quantile_bounds", p)) {

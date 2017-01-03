@@ -5,6 +5,7 @@
     #// B is the xyz or xytz data or the function to get the data to work upon
 
     # --------------------------
+    if (!exists("savedir", p)) p$savedir = file.path(p$project.root, "lbm", p$spatial.domain )
 
     if (DS %in% "filenames" ) {
       # input data stored as a bigmemory file to permit operations with min memory usage
@@ -279,7 +280,7 @@
     # -----
   
     if (DS %in% c("global_model", "global_model.redo") ) {
-      
+
       fn.global_model = file.path( p$savedir, paste( "global_model", p$lbm_global_modelengine, "rdata", sep=".") )
 
       if (DS =="global_model") {
@@ -367,7 +368,6 @@
     if (DS %in% c("lbm.prediction.redo", "lbm.prediction") )  {
 
       if (DS=="lbm.prediction")  {
-        if (!exists("savedir", p)) p$savedir = file.path(p$project.root, "lbm", p$spatial.domain )
         if (! exists("TIME", p$variables)) {
           fn = file.path( p$savedir, paste("lbm.prediction", ret, "rdata", sep="." ) )
         } else {

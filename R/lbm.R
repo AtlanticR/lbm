@@ -21,7 +21,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     p$storage.backend="bigmemory.ram"
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="lbm" )
     continue=FALSE
-    DATA='bathymetry.db( p=p, DS="bathymetry.lbm" )'
+    DATA='bathymetry.db( p=p, DS="lbm.inputs" )'
   
 
     p = bio.substrate::substrate.parameters() # reset to defaults
@@ -607,7 +607,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
 
 
   # stage 2... revisit eac location in case it was due to a bad subsample 
-  toredo = lbm.db( p=p, DS="flag.incomplete.predictions" )
+  toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
   if ( !is.null(toredo) && length(toredo) > 0) { 
     Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
     Sflag[toredo]=0L
@@ -634,7 +634,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
 
  
   # stage 4 .. last resort .. use a simple but failsafe method to interopalte the rest
-  toredo = lbm.db( p=p, DS="flag.incomplete.predictions" )
+  toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
   if ( !is.null(toredo) && length(toredo) > 0) { 
     Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
     Sflag[toredo]=0L
@@ -655,12 +655,15 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   lbm_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside lbm*
 
   message ("Finished! \n")
-  resp = readline( "To delete temporary files, type <Yes>:  ")
-  if (resp=="Yes") {
-    lbm_db( p=p, DS="cleanup" )
-  } else {
-    message( "Leaving temporary files alone in case you need to examine them or restart a process.")
-    message( "You can delete them by running: lbm_db( p=p, DS='cleanup' ), once you are done.")
+  
+  if ( p$storage.backend !="bigmemory.ram" ) {
+    resp = readline( "To delete temporary files, type <YES>:  ")
+    if (resp=="YES") {
+      lbm_db( p=p, DS="cleanup" )
+    } else {
+      message( "Leaving temporary files alone in case you need to examine them or restart a process.")
+      message( "You can delete them by running: lbm_db( p=p, DS='cleanup' ), once you are done.")
+    }
   }
 
   p$time.end =  Sys.time()
