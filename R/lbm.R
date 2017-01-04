@@ -40,7 +40,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     p$storage.backend="bigmemory.ram"
     p = bio.temperature::temperature.parameters( p=p, DS="lbm" )
     continue=FALSE
-    DATA='hydro.db( p=p, DS="lbm.inputs" )'
+    DATA='temperature.db( p=p, DS="lbm.inputs" )'
 
   }
 
@@ -130,6 +130,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     if (length(withdata) < 1) stop( "Missing data or insufficient data")
     DATA$input = DATA$input[withdata, ]
     rm(withdata)
+    
 
     # number of time slices
     if (!exists("nt", p)) {
