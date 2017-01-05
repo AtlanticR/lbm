@@ -20,7 +20,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     p$lbm_local_modelengine = "krige"  # about 5 X faster than bayesx-mcmc method
     p$storage.backend="bigmemory.ram"
     p = bio.bathymetry::bathymetry.parameters( p=p, DS="lbm" )
-    continue=FALSE
     DATA='bathymetry.db( p=p, DS="lbm.inputs" )'
   
 
@@ -28,8 +27,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     p$lbm_local_modelengine = "krige" 
     p$storage.backend="bigmemory.ram"  # filebacked metods are still too slow ..
     p = bio.substrate::substrate.parameters( p=p, DS="lbm" )
-    continue=FALSE
-    p$clusters = rep("localhost",  detectCores() )
     DATA = 'substrate.db( p=p, DS="lbm.inputs" )'
   
   
@@ -39,7 +36,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     # p$lbm_local_modelengine="uked" # (universal) kriging with external drift
     p$storage.backend="bigmemory.ram"
     p = bio.temperature::temperature.parameters( p=p, DS="lbm" )
-    continue=FALSE
     DATA='temperature.db( p=p, DS="lbm.inputs" )'
 
   }
@@ -236,6 +232,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
       Ydata = Yraw[]
       if (exists("lbm_global_modelengine", p)) {
         # to add global covariate model ??  .. simplistic this way but faster
+        if (p$lbm_global_modelengine=="gam") require(mgcv)
+   
         covmodel = lbm_db( p=p, DS="global_model")
         if (!is.null(covmodel)) {
           Ydata = predict(covmodel, type="response", se.fit=FALSE )

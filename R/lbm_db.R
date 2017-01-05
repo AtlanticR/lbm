@@ -295,6 +295,8 @@
 
       # as a first pass, model the time-independent factors as a user-defined model
       if (p$lbm_global_modelengine=="gam") {
+        require(mgcv)
+        
         global_model = try( 
           gam( formula=p$lbm_global_modelformula, data=B, optimizer=c("outer","bfgs"), family=p$lbm_global_family ) ) 
       }
