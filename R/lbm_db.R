@@ -336,6 +336,13 @@
         }
         pa = as.data.frame( pa )
         names(pa) = p$variables$COV
+        
+        if ( any( p$variables$LOCS %in%  all.vars( p$lbm_global_modelformula ) ) ) {
+          Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
+          pa = cbind(pa, Ploc[])
+          names(pa) = c( p$variables$COV, p$variables$LOCS )
+        }
+
         if (p$lbm_global_modelengine=="gam") {
           Pbaseline = try( predict( global_model, newdata=pa, type="response", se.fit=TRUE ) ) 
           pa = NULL
@@ -345,18 +352,20 @@
             P0sd[,it] = Pbaseline$se.fit
           } 
           Pbaseline = NULL; gc()
-        } else if (p$lbm_global_modelengine=="abc") {
-          # ... other methods ..
+        } else  {
+          stop ("This global model method requires a bit more work .. ")
         }
         
         if (p$all.covars.static) {
           # if this is true then this is a single cpu run and all predictions for each time slice is the same
           # could probably catch this and keep storage small but that would make the update math a little more complex
           # this keeps it simple with a quick copy
-          for (j in ip[2:p$nruns]){
-            P0[,j] = P0[,1]
-            P0sd[,j] = P0sd[,1]
-          } 
+          if (p$nt  > 1 ) {
+            for (j in ip[2:p$nruns]){
+              P0[,j] = P0[,1]
+              P0sd[,j] = P0sd[,1]
+            } 
+          }
           global_model =NULL
           return(NULL) 
         }
@@ -462,13 +471,12 @@
         stats[,i] = as.vector( fields::interp.surface( u, loc=Ploc[] ) ) # linear interpolation
       }
 
-     # lattice::levelplot( stats[,1] ~ locsout[,1]+locsout[,2])
-     # lattice::levelplot( stats[,1] ~ Ploc[,1]+Ploc[,2])
+      # lattice::levelplot( stats[,1] ~ Ploc[,1]+Ploc[,2])
  
       boundary = try( lbm_db( p=p, DS="boundary" ) )
       if (!is.null(boundary)) {
         if( !("try-error" %in% class(boundary) ) ) {
-        inside.polygon = point.in.polygon( locsout[,1], locsout[,2],
+        inside.polygon = point.in.polygon( Ploc[,1], Ploc[,2],
           boundary$polygon[,1], boundary$polygon[,2], mode.checked=TRUE )
         o = which( inside.polygon == 0 ) # outside boundary
         if (length(o) > 0) stats[o,] = NA         

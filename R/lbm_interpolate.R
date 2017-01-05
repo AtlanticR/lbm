@@ -145,12 +145,12 @@ lbm_interpolate = function( ip=NULL, p ) {
             ores = o[[p$lbm_variogram_method]] # store current best estimate of variogram characteristics
             if (!is.null(ores[["range"]] ) ) {
               if ( (ores[["range"]] > p$pres) & (ores[["range"]] <= p$lbm_distance_max) ) {
+                lbm_distance_cur = ores[["range"]]
                 vario_U  = which( dlon  <= ores[["range"]]  & dlat <= ores[["range"]] )
                 vario_ndata =length(vario_U)                
                 if ((vario_ndata > p$n.min) & (vario_ndata < p$n.max) ) { 
                   U  = vario_U
                   ndata = vario_ndata
-                  lbm_distance_cur = ores[["range"]]
                 }  
               }
             } 
@@ -172,13 +172,11 @@ lbm_interpolate = function( ip=NULL, p ) {
     dlon=dlat=o=NULL; gc()
 
     YiU = Yi[U]  
-    # So, YiU and dist_prediction determine the data entering into local model construction
+    # So, YiU and p$lbm_distance_prediction determine the data entering into local model construction
     # dist_model = lbm_distance_cur
 
-    if ( lbm_distance_cur < p$lbm_distance_prediction ) dist_prediction = p$lbm_distance_prediction # do not predict greater than p$lbm_distance_prediction
-
     # construct prediction/output grid area ('pa')
-    windowsize.half = floor(dist_prediction/p$pres) # convert distance to discretized increments of row/col indices
+    windowsize.half = floor(p$lbm_distance_prediction/p$pres) # convert distance to discretized increments of row/col indices
 
     pa_w = -windowsize.half : windowsize.half
     pa_w_n = length(pa_w)

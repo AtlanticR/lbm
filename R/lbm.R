@@ -1,5 +1,5 @@
 
-lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
+lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "stage1") ) {
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
@@ -41,7 +41,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   }
 
 
-  if (continue | exists( "ptr", p) ) {
+  if ( ("continue" %in% work) | exists( "ptr", p) ) {
   
     message( "Continuing from an interrupted start" ) 
     if (0) {
@@ -57,8 +57,10 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
     RLibrary( p$libs )
     lbm_db(p=p, DS="statistics.status.reset" )
 
-  } else {
+  } 
 
+
+  if ( "initiate" %in% work) {
 
     p$time.start =  Sys.time()
 
@@ -339,11 +341,12 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
       if (exists("COV", p$variables)) {
         # this needs to be done as Prediction covars need to be structured as lists
         if (!exists("Pcov", p$ptr) ) p$ptr$Pcov = list()
+        p$bm$Pcov = list()
+       
         for ( covname in p$variables$COV ) {
           Pcovdata = as.matrix( DATA$output$COV[[covname]] )
           attr( Pcovdata, "dimnames" ) = NULL
           if (p$storage.backend == "bigmemory.ram" ) {
-            p$bm$Pcov = list()
             p$bm$Pcov[[covname]] = big.matrix( nrow=nrow(Pcovdata), ncol=ncol(Pcovdata), type="double"  )
             p$bm$Pcov[[covname]][] = Pcovdata
             p$ptr$Pcov[[covname]]  = bigmemory::describe( p$bm$Pcov[[covname]] )
@@ -586,75 +589,89 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", continue=FALSE) {
   message ("Current status is updated to file:" )
   message (p$lbm_current_status )
 
-  p$timei0 =  Sys.time()
-  o = lbm_db( p=p, DS="statistics.status" )
-  # o = lbm_db(p=p, DS="statistics.status.reset" )
-  p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
-  # lbm_interpolate (p=p )
-  parallel.run( lbm_interpolate, p=p )
-  p$timei1 =  Sys.time()
-  message( paste( "Time taken for main interpolations (mins):", round( difftime( p$timei1, p$timei0, units="mins" ),3) ) )
-  gc()
+  if ( "stage1" %in% work) {  
+    p$timei0 =  Sys.time()
+    o = lbm_db( p=p, DS="statistics.status" )
+    # o = lbm_db(p=p, DS="statistics.status.reset" )
+    p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
+    # lbm_interpolate (p=p )
+    parallel.run( lbm_interpolate, p=p )
+    p$timei1 =  Sys.time()
+    message( paste( "Time taken for main interpolations (stage 1; mins):", round( difftime( p$timei1, p$timei0, units="mins" ),3) ) )
+    gc()
+  }
 
 
-    if (0) {
+  if ( "debug_pred_map" %in% work) {  
       Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
       P = lbm_attach( p$storage.backend, p$ptr$P )
       j = which( P[] > 5 & P[] < 1000 )
 
+      lattice::levelplot( (P[,1])~Ploc[,1]+Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
+  }
+
+  if (0) {
       lattice::levelplot( log(P[j,1])~Ploc[j,1]+Ploc[j,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
       for (i in 1:p$nt) {
         print( lattice::levelplot( P[j,i] ~ Ploc[j,1] + Ploc[j,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
       }
+  }
+  
+  if ( "debug_stats_map" %in% work) {  
       Sloc = lbm_attach( p$storage.backend, p$ptr$Sloc )
       S = lbm_attach( p$storage.backend, p$ptr$S )
       lattice::levelplot(S[,1]~Sloc[,1]+Sloc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
+  }
+
+
+  if ( "stage2" %in% work) {
+    # stage 2... revisit eac location in case it was due to a bad subsample 
+    toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
+    if ( !is.null(toredo) && length(toredo) > 0) { 
+      Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
+      Sflag[toredo]=0L
+      p = make.list( list( locs=sample( toredo )) , Y=p ) # random order helps use all cpus
+      parallel.run( lbm_interpolate, p=p )
     }
-
-
-
-  # stage 2... revisit eac location in case it was due to a bad subsample 
-  toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
-  if ( !is.null(toredo) && length(toredo) > 0) { 
-    Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
-    Sflag[toredo]=0L
-    p = make.list( list( locs=sample( toredo )) , Y=p ) # random order helps use all cpus
-    parallel.run( lbm_interpolate, p=p )
+    p$timei2 =  Sys.time()
+    message( paste( "Time taken to stage 2 interpolations (mins):", 
+                   round( difftime( p$timei2, p$timei1, units="mins" ),3) ) )
   }
-  p$timei2 =  Sys.time()
-  message( paste( "Time taken to stage 2 interpolations (mins):", 
-                 round( difftime( p$timei2, p$timei1, units="mins" ),3) ) )
 
 
- # stage 3 .. redo, using solutions with relaxed spatial extent
-  o = lbm_db(p=p, DS="statistics.status.reset" ) 
-  if (length(o$todo) > 0) {
-    p$lbm_distance_prediction = p$lbm_distance_prediction * 2
-    p$lbm_distance_max = p$lbm_distance_max * 2
-    p$lbm_distance_scale = p$lbm_distance_scale*2 # km ... approx guess of 95% AC range 
-    p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
-    parallel.run( lbm_interpolate, p=p )
+  if ( "stage3" %in% work) {
+   # stage 3 .. redo, using solutions with relaxed spatial extent
+    o = lbm_db(p=p, DS="statistics.status.reset" ) 
+    if (length(o$todo) > 0) {
+      p$lbm_distance_prediction = p$lbm_distance_prediction * 2
+      p$lbm_distance_max = p$lbm_distance_max * 2
+      p$lbm_distance_scale = p$lbm_distance_scale*2 # km ... approx guess of 95% AC range 
+      p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
+      parallel.run( lbm_interpolate, p=p )
+    }
+    p$timei3 =  Sys.time()
+    message( paste( "Time taken to stage 3 interpolations (mins):", 
+                   round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
   }
-  p$timei3 =  Sys.time()
-  message( paste( "Time taken to stage 3 interpolations (mins):", 
-                 round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
 
- 
-  # stage 4 .. last resort .. use a simple but failsafe method to interopalte the rest
-  toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
-  if ( !is.null(toredo) && length(toredo) > 0) { 
-    Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
-    Sflag[toredo]=0L
-    p$lbm_local_modelengine = "fft"  
-    p$lbm_fft_filter = "spatial.process"
-    p = bio.bathymetry::bathymetry.parameters( p=p, DS="lbm" )
-    p = make.list( list( locs=sample( toredo )) , Y=p ) # random order helps use all cpus
-    parallel.run( lbm_interpolate, p=p )
-  }
-  p$timei4 =  Sys.time()
 
-  message( paste( "Time taken to stage 2 interpolations (mins):", 
+  if ( "stage4" %in% work) {
+    # stage 4 .. last resort .. use a simple but failsafe method to interopalte the rest
+    toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
+    if ( !is.null(toredo) && length(toredo) > 0) { 
+      Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
+      Sflag[toredo]=0L
+      p$lbm_local_modelengine = "fft"  
+      p$lbm_fft_filter = "spatial.process"
+      p = bio.bathymetry::bathymetry.parameters( p=p, DS="lbm" )
+      p = make.list( list( locs=sample( toredo )) , Y=p ) # random order helps use all cpus
+      parallel.run( lbm_interpolate, p=p )
+    }
+    p$timei4 =  Sys.time()
+
+    message( paste( "Time taken to stage 4 interpolations (mins):", 
                  round( difftime( p$timei4, p$timei3, units="mins" ),3) ) )
+  }
 
   # save solutions to disk (again .. overwrite)
   message( "Saving results to disk .. " )
