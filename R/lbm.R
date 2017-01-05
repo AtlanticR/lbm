@@ -1,5 +1,5 @@
 
-lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "stage1") ) {
+lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "stage1") ) {
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
@@ -41,7 +41,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "s
   }
 
 
-  if ( ("continue" %in% work) | exists( "ptr", p) ) {
+  if ( ("continue" %in% tasks) | exists( "ptr", p) ) {
   
     message( "Continuing from an interrupted start" ) 
     if (0) {
@@ -60,7 +60,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "s
   } 
 
 
-  if ( "initiate" %in% work) {
+  if ( "initiate" %in% tasks) {
 
     p$time.start =  Sys.time()
 
@@ -150,10 +150,14 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "s
     message( "These are large files (4 to 6 X 5GB), esp. prediction grids (5 min .. faster if on fileserver), so be patient. ")
     lbm_db( p=p, DS="cleanup" )
 
-    if (exists("lbm_global_modelengine", p)) {
-      # to add global covariate model ??  .. simplistic this way but faster ~ kriging with external drift
-      lbm_db( p=p, DS="global_model.redo", B=DATA$input )
+    
+    if ( "globalmodel" %in% tasks ) {
+      if (exists("lbm_global_modelengine", p)) {
+        # to add global covariate model ??  .. simplistic this way but faster ~ kriging with external drift
+        lbm_db( p=p, DS="global_model.redo", B=DATA$input )
+      }
     }
+
 
     # NOTE:: must not sink the following memory allocation into a deeper funcion as 
     # NOTE:: bigmemory RAM seems to lose the pointers if they are not made simultaneously 
@@ -589,7 +593,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "s
   message ("Current status is updated to file:" )
   message (p$lbm_current_status )
 
-  if ( "stage1" %in% work) {  
+  if ( "stage1" %in% tasks) {  
     p$timei0 =  Sys.time()
     o = lbm_db( p=p, DS="statistics.status" )
     # o = lbm_db(p=p, DS="statistics.status.reset" )
@@ -602,7 +606,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "s
   }
 
 
-  if ( "debug_pred_map" %in% work) {  
+  if ( "debug_pred_map" %in% tasks) {  
       Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
       P = lbm_attach( p$storage.backend, p$ptr$P )
       j = which( P[] > 5 & P[] < 1000 )
@@ -617,14 +621,14 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "s
       }
   }
   
-  if ( "debug_stats_map" %in% work) {  
+  if ( "debug_stats_map" %in% tasks) {  
       Sloc = lbm_attach( p$storage.backend, p$ptr$Sloc )
       S = lbm_attach( p$storage.backend, p$ptr$S )
       lattice::levelplot(S[,1]~Sloc[,1]+Sloc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
   }
 
 
-  if ( "stage2" %in% work) {
+  if ( "stage2" %in% tasks) {
     # stage 2... revisit eac location in case it was due to a bad subsample 
     toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
     if ( !is.null(toredo) && length(toredo) > 0) { 
@@ -639,7 +643,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "s
   }
 
 
-  if ( "stage3" %in% work) {
+  if ( "stage3" %in% tasks) {
    # stage 3 .. redo, using solutions with relaxed spatial extent
     o = lbm_db(p=p, DS="statistics.status.reset" ) 
     if (length(o$todo) > 0) {
@@ -655,7 +659,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", work=c("initiate", "s
   }
 
 
-  if ( "stage4" %in% work) {
+  if ( "stage4" %in% tasks) {
     # stage 4 .. last resort .. use a simple but failsafe method to interopalte the rest
     toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
     if ( !is.null(toredo) && length(toredo) > 0) { 
