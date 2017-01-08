@@ -128,8 +128,8 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
     mvg = max(vg, na.rm=TRUE)
     mvx = max(vx, na.rm=TRUE)
     eps = 1e-6
-    lower =c(0, eps, mvx/20, 0.05 )
-    upper =c(varmax*2, varmax*2, mvx*2, 2.5 )
+    lower =c(0, eps, mvx/20, 0.02 )
+    upper =c(mvg, mvg, mvx*1.5, 2)
     #nonlinear est
     par = c(tau.sq=varmax*0.05, sigma.sq=varmax*0.95, phi=mvx/10, nu=0.5) 
     o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", lower=lower, upper=upper,

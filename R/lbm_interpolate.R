@@ -170,9 +170,11 @@ lbm_interpolate = function( ip=NULL, p ) {
     }
 
     if (ndata < p$n.min)  next() # check in case a fault in logic, above
-    if (ndata > p$n.max) {
+    if (ndata > p$n.max & ndata <= p$n.max * 1.5) {
       U = U[ .Internal( sample( length(U), p$n.max, replace=FALSE, prob=NULL)) ] 
       ndata = p$n.max
+    } else {
+      next()
     }
 
     dlon=dlat=o=NULL; gc()

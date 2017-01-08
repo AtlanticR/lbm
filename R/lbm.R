@@ -509,7 +509,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
           p$clusters= p$clusters0
         }
         p$timec1 =  Sys.time()
-        message( paste( "Time taken to predict covariate surface (mins):", round(difftime( p$timec1, p$timec0 , units="mins"), 3) ) )
+        message( paste( "Time taken to predict covariate surface (hours):", round(difftime( p$timec1, p$timec0 , units="hours"), 3) ) )
     }
 
     P = NULL; gc() # yes, repeat in case covs are not modelled
@@ -591,16 +591,17 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   # localized space-time modelling/interpolation/prediction
   message ("Current status is updated to file:" )
   message (p$lbm_current_status )
+  
+  p$timei0 =  Sys.time()
 
   if ( "stage1" %in% tasks) {  
-    p$timei0 =  Sys.time()
     o = lbm_db( p=p, DS="statistics.status" )
     # o = lbm_db(p=p, DS="statistics.status.reset" )
     p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
     # lbm_interpolate (p=p )
     parallel.run( lbm_interpolate, p=p )
     p$timei1 =  Sys.time()
-    message( paste( "Time taken for main interpolations (stage 1; mins):", round( difftime( p$timei1, p$timei0, units="mins" ),3) ) )
+    message( paste( "Time taken for main interpolations (stage 1; hours):", round( difftime( p$timei1, p$timei0, units="hours" ),3) ) )
     gc()
   }
 
@@ -626,6 +627,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       lattice::levelplot(S[,1]~Sloc[,1]+Sloc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
   }
 
+  p$timei1 =  Sys.time()
 
   if ( "stage2" %in% tasks) {
     # stage 2... revisit eac location in case it was due to a bad subsample 
@@ -637,11 +639,12 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       parallel.run( lbm_interpolate, p=p )
     }
     p$timei2 =  Sys.time()
-    message( paste( "Time taken to stage 2 interpolations (mins):", 
-                   round( difftime( p$timei2, p$timei1, units="mins" ),3) ) )
+    message( paste( "Time taken to stage 2 interpolations (hours):", 
+                   round( difftime( p$timei2, p$timei1, units="hours" ),3) ) )
   }
 
-
+  p$timei2 =  Sys.time()
+  
   if ( "stage3" %in% tasks) {
    # stage 3 .. redo, using solutions with relaxed spatial extent
     o = lbm_db(p=p, DS="statistics.status.reset" ) 
@@ -653,11 +656,12 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       parallel.run( lbm_interpolate, p=p )
     }
     p$timei3 =  Sys.time()
-    message( paste( "Time taken to stage 3 interpolations (mins):", 
-                   round( difftime( p$timei3, p$timei2, units="mins" ),3) ) )
+    message( paste( "Time taken to stage 3 interpolations (hours):", 
+                   round( difftime( p$timei3, p$timei2, units="hours" ),3) ) )
   }
 
-
+  p$timei3 =  Sys.time()
+  
   if ( "stage4" %in% tasks) {
     # stage 4 .. last resort .. use a simple but failsafe method to interopalte the rest
     toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
@@ -672,15 +676,19 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     }
     p$timei4 =  Sys.time()
 
-    message( paste( "Time taken to stage 4 interpolations (mins):", 
-                 round( difftime( p$timei4, p$timei3, units="mins" ),3) ) )
+    message( paste( "Time taken to stage 4 interpolations (hours):", 
+                 round( difftime( p$timei4, p$timei3, units="hours" ),3) ) )
   }
+
+  p$timei4 =  Sys.time()
 
 
   if ("save" %in% tasks) {
     # save solutions to disk (again .. overwrite)
-    message( "Saving results to disk .. " )
+    message( "Saving predictions to disk .. " )
     lbm_db( p=p, DS="lbm.prediction.redo" ) # save to disk for use outside lbm*
+ 
+    message( "Saving statistics to disk .. " )
     lbm_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside lbm*
 
     message ("Finished! \n")
@@ -697,7 +705,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   }
 
   p$time.end =  Sys.time()
-  message( paste( "Time taken for full analysis (mins):", round( difftime( p$time.end, p$time.start, units="mins" ),3) ) )
+  message( paste( "Time taken for full analysis (hours):", round( difftime( p$time.end, p$time.start, units="hours" ),3) ) )
 
   return( p )
 
