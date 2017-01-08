@@ -51,8 +51,9 @@ lbm_interpolate = function( ip=NULL, p ) {
   downsampling = sort( p$sampling[ which( p$sampling < 1) ] , decreasing=TRUE )
   downsampling = downsampling[ which(downsampling*p$lbm_distance_scale >= p$lbm_distance_min )]
 
-  am = c(p$nplons, p$nplats)
-  ploc_ids = array_map( "2->1", round(cbind(Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1])/p$pres+1), am )
+  gridparams = list( dims=c(p$nplons,p$nplats), corner=c(p$plons[1], p$plats[1]), res=c(p$pres, p$pres) )
+
+  ploc_ids = array_map( "xy->1", Ploc[], gridparams=gridparams )
 
   localcount = -1 
 
@@ -61,12 +62,17 @@ lbm_interpolate = function( ip=NULL, p ) {
     localcount = localcount + 1 
     if (( localcount %% 100 )== 0) {
       varstoout = c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete", "prop_incomp" )
-      header = paste( c( "system.time", varstoout) )
+      header = paste( c( varstoout) )
       currentstatus = lbm_db( p=p, DS="statistics.status" )
-      currentstatus = c( Sys.time(), unlist( currentstatus[ varstoout ] ) )
+      currentstatus = c( unlist( currentstatus[ varstoout ] ) )
+      deltat = difftime( Sys.time(), p$timei0, units="hours" )
+      nrate = currentstatus["n.complete"]/deltat
+      tmore = currentstatus["n.todo"] / nrate
       cat( header, file=p$lbm_current_status, append=FALSE)
       cat( paste("\n"), file=p$lbm_current_status, append=TRUE)
       cat( currentstatus, file=p$lbm_current_status, append=TRUE )
+      cat( paste( "Time elapsed (hrs):", round( deltat, 3 ) ))
+      cat( paste( "Time to completion (hrs):", round( tmore,3) ))
     }
 
     Si = p$runs[ iip, "locs" ]
@@ -196,7 +202,10 @@ lbm_interpolate = function( ip=NULL, p ) {
       next()
     }
 
-    pa$i = match( array_map( "2->1", cbind(pa$iplon, pa$iplat), am ), ploc_ids )
+
+    pa$i = match( 
+      array_map( "2->1", pa[, c("iplon", "iplat")], dims=c(p$nplons,p$nplats) ), 
+      ploc_ids )
         
     bad = which( !is.finite(pa$i))
     if (length(bad) > 0 ) pa = pa[-bad,]
@@ -334,7 +343,10 @@ lbm_interpolate = function( ip=NULL, p ) {
 
       # ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
       # test which is faster ... remove non-unique?
-      ids = array_map( "2->1", round(cbind(px$plon, px$plat)/p$pres+1), c(p$nplons, p$nplats) ) # 100X faster than paste / merge
+
+      gridparams = list( dims=c(p$nplons,p$nplats), corner=c(p$plons[1], p$plats[1]), res=c(p$pres, p$pres) )
+
+      ids = array_map( "xy->1", px[, c("plon", "plat")], gridparams=gridparams ) # 100X faster than paste / merge
       todrop = which(duplicated( ids) )
       if (length(todrop>0)) px = px[-todrop,]
       rm(ids, todrop)

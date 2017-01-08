@@ -76,8 +76,12 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     } 
     
     # map of row, col indices of input data in the new (output) coordinate system
-    x_id = cbind( round(( x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres) + 1, 
-                  round(( x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres) + 1 )
+    
+    x_id = array_map( "xy->2", coords=x[xi,p$variables$LOCS], 
+      corner=c(x_r[1], x_c[1]), res=c(p$pres, p$pres) )
+
+    # x_id = cbind( round(( x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres) + 1, 
+    #               round(( x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres) + 1 )
     
     u = as.image( x[xi,p$variables$Y], ind=as.matrix( x_id), na.rm=TRUE, nx=nr, ny=nc )
     
@@ -119,8 +123,11 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
       pa_i = 1:nrow(pa)
     }
 
-    Z_i = round( cbind( ( pa[pa_i,p$variables$LOCS[1]]-pa_r[1])/p$pres + 1, 
-                        ( pa[pa_i,p$variables$LOCS[2]]-pa_c[1])/p$pres + 1 ) )
+    Z_i = array_map( "xy->2", coords=pa[pa_i,p$variables$LOCS], 
+      corner=c(pa_r[1], pa_c[1]), res=c(p$pres, p$pres) )
+
+    # Z_i = round( cbind( ( pa[pa_i,p$variables$LOCS[1]]-pa_r[1])/p$pres + 1, 
+    #                     ( pa[pa_i,p$variables$LOCS[2]]-pa_c[1])/p$pres + 1 ) )
 
     # make sure predictions exist
     if ( any( Z_i<1) ) next()  

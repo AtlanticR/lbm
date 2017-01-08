@@ -17,15 +17,14 @@ lbm_interpolate_fast = function( ip=NULL, p ) {
   Psd = lbm_attach( p$storage.backend, p$ptr$Psd )
   Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
   
-  Z2P = as.matrix( round( cbind( Ploc[,1]-p$plons[1], Ploc[,2]-p$plats[1] ) /p$pres + 1) ) # row, col indices in matrix form Z
-
   dx = dy = p$pres
   nr = p$nplons
   nc = p$nplats
   nr2 = 2 * nr
   nc2 = 2 * nc
   
-  zp = array_map( "2->1", Z2P, c(nr2, nc2) )
+  gridparams = list( dims=c(nr2, nc2), corner=c(p$plons[1], p$plats[1]), res=c(p$pres, p$pres) )
+  zp = array_map( "xy->1", Ploc[], gridparams=gridparams )
 
   dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))
   center = matrix(c((dx * nr2)/2, (dy * nc2)/2), nrow = 1, 

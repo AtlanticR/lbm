@@ -47,8 +47,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     if (0) {
       p =list( 
         project.root=project.datadirectory( "bio.bathymetry" ), 
-        spatial.domain="canada.east.superhighres" ,
-        spatial.domain.default = "canada.east.superhighres"
+        spatial.domain="canada.east.superhighres" 
       )
     }
 
@@ -677,13 +676,16 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
                  round( difftime( p$timei4, p$timei3, units="mins" ),3) ) )
   }
 
-  # save solutions to disk (again .. overwrite)
-  message( "Saving results to disk .. " )
-  lbm_db( p=p, DS="lbm.prediction.redo" ) # save to disk for use outside lbm*
-  lbm_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside lbm*
 
-  message ("Finished! \n")
-  
+  if ("save" %in% tasks) {
+    # save solutions to disk (again .. overwrite)
+    message( "Saving results to disk .. " )
+    lbm_db( p=p, DS="lbm.prediction.redo" ) # save to disk for use outside lbm*
+    lbm_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside lbm*
+
+    message ("Finished! \n")
+  }
+
   if ( p$storage.backend !="bigmemory.ram" ) {
     resp = readline( "To delete temporary files, type <YES>:  ")
     if (resp=="YES") {
