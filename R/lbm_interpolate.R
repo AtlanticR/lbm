@@ -57,6 +57,8 @@ lbm_interpolate = function( ip=NULL, p ) {
 
   localcount = -1 
 
+  stime = Sys.time()
+
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
     localcount = localcount + 1 
@@ -65,7 +67,7 @@ lbm_interpolate = function( ip=NULL, p ) {
       header = paste( c( varstoout) )
       currentstatus = lbm_db( p=p, DS="statistics.status" )
       currentstatus = c( unlist( currentstatus[ varstoout ] ) )
-      deltat = difftime( Sys.time(), p$timei0, units="hours" )
+      deltat = difftime( Sys.time(), stime, units="hours" )
       nrate = currentstatus["n.complete"]/deltat
       tmore = currentstatus["n.todo"] / nrate
       cat( header, file=p$lbm_current_status, append=FALSE)

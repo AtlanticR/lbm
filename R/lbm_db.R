@@ -379,7 +379,7 @@
     
     if (DS %in% c("lbm.prediction.redo", "lbm.prediction") )  {
 
-      if (DS=="lbm.prediction")  {
+      if (DS=="lbm.prediction") {
         if (! exists("TIME", p$variables)) {
           fn = file.path( p$savedir, paste("lbm.prediction", ret, "rdata", sep="." ) )
         } else {
