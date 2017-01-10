@@ -67,13 +67,13 @@ lbm_interpolate = function( ip=NULL, p ) {
       header = paste( c( varstoout) )
       currentstatus = lbm_db( p=p, DS="statistics.status" )
       currentstatus = c( unlist( currentstatus[ varstoout ] ) )
-      deltat = difftime( Sys.time(), stime, units="hours" )
-      nrate = currentstatus["n.complete"]/deltat
+      dtime = difftime( Sys.time(), stime, units="hours" )
+      nrate = currentstatus["n.complete"]/ as.numeric(dtime)
       tmore = currentstatus["n.todo"] / nrate
       cat( header, file=p$lbm_current_status, append=FALSE)
       cat( paste("\n"), file=p$lbm_current_status, append=TRUE)
       cat( currentstatus, file=p$lbm_current_status, append=TRUE )
-      cat( paste( "Time elapsed (hrs):", round( deltat, 3 ) ))
+      cat( paste( "Time elapsed (hrs):", round( dtime, 3 ) ))
       cat( paste( "Time to completion (hrs):", round( tmore,3) ))
     }
 
