@@ -73,8 +73,8 @@ lbm_interpolate = function( ip=NULL, p ) {
       cat( header, file=p$lbm_current_status, append=FALSE)
       cat( paste("\n"), file=p$lbm_current_status, append=TRUE)
       cat( currentstatus, file=p$lbm_current_status, append=TRUE )
-      cat( paste( "Time elapsed (hrs):", round( dtime, 3 ) ))
-      cat( paste( "Time to completion (hrs):", round( tmore,3) ))
+      cat( paste( "Time elapsed (hrs):", round( dtime, 3 ) ), file=p$lbm_current_status, append=TRUE)
+      cat( paste( "Estimated time to completion (hrs):", round( tmore,3) ), file=p$lbm_current_status, append=TRUE)
     }
 
     Si = p$runs[ iip, "locs" ]

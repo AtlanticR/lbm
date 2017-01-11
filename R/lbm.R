@@ -589,7 +589,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   # -------------------------------------
   # localized space-time modelling/interpolation/prediction
-  message ("Current status is updated to file:" )
+  message ("Monitor the status of modelling by looking at the output of file (e.g., 'watch -n 60 cat /tmp/lbm_current_status' " )
   message (p$lbm_current_status )
   
   p$timei0 =  Sys.time()
