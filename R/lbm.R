@@ -1,5 +1,7 @@
 
-lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "stage1") ) {
+
+lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "stage1", "save") ) {
+
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
@@ -14,51 +16,14 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   # TODO: look at bayesX a little more carefully.
   # TODO: MBA mba.surf method? ... seems very fast
 
-  if(0) {
-
-    p = bio.bathymetry::bathymetry.parameters( )
-    p$lbm_local_modelengine = "krige"  # about 5 X faster than bayesx-mcmc method
-    p$storage.backend="bigmemory.ram"
-    p = bio.bathymetry::bathymetry.parameters( p=p, DS="lbm" )
-    DATA='bathymetry.db( p=p, DS="lbm.inputs" )'
-  
-
-    p = bio.substrate::substrate.parameters() # reset to defaults
-    p$lbm_local_modelengine = "krige" 
-    p$storage.backend="bigmemory.ram"  # filebacked metods are still too slow ..
-    p = bio.substrate::substrate.parameters( p=p, DS="lbm" )
-    DATA = 'substrate.db( p=p, DS="lbm.inputs" )'
-  
-  
-    p = bio.temperature::temperature.parameters( current.year=2016 )
-    p$lbm_local_modelengine="gam"  # smoothest
-    # p$lbm_local_modelengine="twostep" 
-    # p$lbm_local_modelengine="uked" # (universal) kriging with external drift
-    p$storage.backend="bigmemory.ram"
-    p = bio.temperature::temperature.parameters( p=p, DS="lbm" )
-    DATA='temperature.db( p=p, DS="lbm.inputs" )'
-
-  }
-
 
   if ( ("continue" %in% tasks) | exists( "ptr", p) ) {
-  
     message( "Continuing from an interrupted start" ) 
-    if (0) {
-      p =list( 
-        project.root=project.datadirectory( "bio.bathymetry" ), 
-        spatial.domain="canada.east.superhighres" 
-      )
-    }
-
     p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
-    
     RLibrary( p$libs )
     lbm_db(p=p, DS="statistics.status.reset" )
-
   } 
-
-
+    
   if ( "initiate" %in% tasks) {
 
     p$time.start =  Sys.time()
@@ -90,7 +55,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       if (p$lbm_krige_engine %in% c("default", "fields")) p$libs = c( p$libs, "fields" )
       if (p$lbm_krige_engine %in% c("gstat")) p$libs = c( p$libs, "gstat" )
     }  
-
 
     p$libs = unique( p$libs )
     RLibrary( p$libs )
@@ -706,6 +670,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   p$time.end =  Sys.time()
   message( paste( "Time taken for full analysis (hours):", round( difftime( p$time.end, p$time.start, units="hours" ),3) ) )
+
 
   return( p )
 

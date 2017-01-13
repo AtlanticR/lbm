@@ -6,7 +6,7 @@
 
     # --------------------------
     if (!exists("savedir", p)) {
-      p$savedir = file.path(p$project.root, "lbm", p$spatial.domain )
+      p$savedir = file.path(p$project.root, "lbm", p$spatial.domain, p$variables$Y )
     }
     
     if (DS %in% "filenames" ) {
@@ -70,13 +70,15 @@
     # --------------------------
 
     if (DS=="save.parameters")  {
-      save(p, file=file.path( p$savedir, "p.rdata") )
-      message( "Saved parameters:")
-      message( file.path( p$savedir, "p.rdata") )
+      fns = file.path( p$savedir, "p.rdata" )
+      save( p, file=fns )
+      message( "Saved parameters to file:")
+      message( fns )
     }
 
     if (DS=="load.parameters")  {
-      load( file.path( p$savedir, "p.rdata") )
+      fns = file.path( p$savedir, "p.rdata" )
+      if (file.exists( fns)) load( fns )
       return(p)
     }
 
@@ -381,9 +383,9 @@
 
       if (DS=="lbm.prediction") {
         if (! exists("TIME", p$variables)) {
-          fn = file.path( p$savedir, paste("lbm.prediction", ret, "rdata", sep="." ) )
+          fn = file.path( p$savedir, paste("lbm.prediction",  ret, "rdata", sep="." ) )
         } else {
-          fn = file.path( p$savedir, paste("lbm.prediction", ret, yr, "rdata", sep="." ) ) 
+          fn = file.path( p$savedir, paste("lbm.prediction",  ret, yr, "rdata", sep="." ) ) 
         }
         if (file.exists(fn) ) load(fn) 
         if (ret=="mean") return (P)
@@ -401,8 +403,8 @@
         # outputs are on yearly breakdown
         for ( r in 1:p$ny ) {
           y = p$yrs[r]
-          fn1 = file.path( p$savedir, paste("lbm.prediction.mean",  y, "rdata", sep="." ) )
-          fn2 = file.path( p$savedir, paste("lbm.prediction.sd",  y, "rdata", sep="." ) )
+          fn1 = file.path( p$savedir, paste("lbm.prediction", "mean", y, "rdata", sep="." ) )
+          fn2 = file.path( p$savedir, paste("lbm.prediction", "sd",   y, "rdata", sep="." ) )
           if (exists("nw", p)) {
             col.ranges = (r-1) * p$nw + (1:p$nw) 
             P = PP  [,col.ranges]
@@ -421,8 +423,8 @@
           print ( paste("Year:", y)  )
         } 
       } else {
-          fn1 = file.path( p$savedir, paste("lbm.prediction.mean",  "rdata", sep="." ) )
-          fn2 = file.path( p$savedir, paste("lbm.prediction.sd", "rdata", sep="." ) )
+          fn1 = file.path( p$savedir, paste("lbm.prediction", "mean", "rdata", sep="." ) )
+          fn2 = file.path( p$savedir, paste("lbm.prediction", "sd",   "rdata", sep="." ) )
           P = PP[]
           V = PPsd[]
           if (exists("lbm_global_modelengine", p) ) {

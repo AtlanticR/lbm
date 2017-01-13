@@ -287,8 +287,8 @@ lbm_interpolate = function( ip=NULL, p ) {
       if (exists("local_cov", p$variables)) {
         # add time-varying covars .. not necessary except when covars are modelled locally
         pvars2 = names(pa)
-        pa$iy = pa$yr - p$yrs[1] + 1 #yr index
-        pa$it = p$nw*(pa$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
+        
+        
         for (ci in 1:length(p$variables$local_cov)) {
           vn = p$variables$local_cov[ci]
           pu = NULL
@@ -296,10 +296,12 @@ lbm_interpolate = function( ip=NULL, p ) {
           nts = ncol(pu)
           if ( nts == p$ny )  {
             pvars2 = c( pvars2, vn )
+            pa$iy = pa$yr - p$yrs[1] + 1 #yr index
             pa[,vn] = pu[pa$i, pa$iy ]  
             message("Need to check that data order is correct")
            } else if ( nts == p$nt) {
             pvars2 = c( pvars2, vn )
+            pa$it = p$nw*(pa$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
             pa[,vn] = pu[pa$i, pa$it ]  
             message("Need to check that data order is correct")
           }
@@ -389,8 +391,6 @@ lbm_interpolate = function( ip=NULL, p ) {
       if (exists("local_cov", p$variables)) {
         # add time-varying covars .. not necessary except when covars are modelled locally
         pvars2 = names(px)
-        px$iy = px$yr - p$yrs[1] + 1 #yr index
-        px$it = p$nw*(px$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
         for (ci in 1:length(p$variables$local_cov)) {
           vn = p$variables$local_cov[ci]
           pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
@@ -399,9 +399,11 @@ lbm_interpolate = function( ip=NULL, p ) {
             # static vars are retained in the previous step
           } else if ( nts == p$ny )  {
             pvars2 = c( pvars2, vn )
+            px$iy = px$yr - p$yrs[1] + 1 #yr index
             px[,vn] = pu[px$i, px$iy ]  
            } else if ( nts == p$nt) {
             pvars2 = c( pvars2, vn )
+            px$it = p$nw*(px$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
             px[,vn] = pu[px$i, px$it ]  
           }
         } # end for loop
