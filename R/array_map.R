@@ -1,24 +1,24 @@
 
-  array_map = function( method, coords, dims=NULL, corner=NULL, res=NULL, gridparams=NULL ) {
+  array_map = function( method, coords, dims=NULL, origin=NULL, res=NULL, gridparams=NULL ) {
     #// array indexing from 1d to nd and nd to 1d 
     # .. for higher dimensions, just follow the patterns
     # coords are input coords 
     # dims are dimension sizes 
-    # corner min coord values
+    # origin min coord values
     # res resolution (dx, dy)
 
     if ( !is.null(gridparams) ) {
       dims = gridparams$dims
-      corner = gridparams$corner
+      origin = gridparams$origin
       res = gridparams$res
     }
 
     if (method=="xy->2") {
-      return( round( cbind( (coords[,1]-corner[1])/res[1], (coords[,2]-corner[2])/res[2] ) ) + 1L )
+      return( round( cbind( (coords[,1]-origin[1])/res[1], (coords[,2]-origin[2])/res[2] ) ) + 1L )
     }
 
     if (method=="xy->1") {
-      ij = round( cbind( (coords[,1]-corner[1])/res[1], (coords[,2]-corner[2])/res[2] ) ) + 1L  # same as "xy->2"
+      ij = round( cbind( (coords[,1]-origin[1])/res[1], (coords[,2]-origin[2])/res[2] ) ) + 1L  # same as "xy->2"
       return( ij[,1] + (ij[,2]-1L)*dims[1] ) # same as 2->1
     }
 

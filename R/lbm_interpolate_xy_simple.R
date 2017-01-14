@@ -226,7 +226,7 @@ lbm_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=NUL
  
   #  rm(dgrid, covar, mC, mcovar); gc()
     x_id = lbm::array_map( "xy->1", data[,c("x","y")], 
-      dims=c(nr2,nc2), corner=c(min(data$x), min(data$y)), res=c(pres, pres) )
+      dims=c(nr2,nc2), origin=c(min(data$x), min(data$y)), res=c(pres, pres) )
 
     # data
     mN = matrix(0, nrow = nr2, ncol = nc2)

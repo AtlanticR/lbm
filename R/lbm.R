@@ -28,7 +28,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
     p$time.start =  Sys.time()
 
-    p$savedir = file.path(p$project.root, "lbm", p$spatial.domain, p$variables$Y )
+    p$savedir = file.path(p$project.root, "lbm", p$variables$Y, p$spatial.domain )
     message( paste( "In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
     if ( !file.exists(p$savedir)) dir.create( p$savedir, recursive=TRUE, showWarnings=FALSE )
 
@@ -557,6 +557,13 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   message (p$lbm_current_status )
   
   p$timei0 =  Sys.time()
+
+  if ("debug" %in% tasks) {
+    o = lbm_db( p=p, DS="statistics.status" )
+    p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
+    lbm_interpolate (p=p )
+  }
+
 
   if ( "stage1" %in% tasks) {  
     o = lbm_db( p=p, DS="statistics.status" )

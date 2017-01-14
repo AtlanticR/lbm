@@ -6,7 +6,7 @@
 
     # --------------------------
     if (!exists("savedir", p)) {
-      p$savedir = file.path(p$project.root, "lbm", p$spatial.domain, p$variables$Y )
+      p$savedir = file.path(p$project.root, "lbm", p$variables$Y, p$spatial.domain )
     }
     
     if (DS %in% "filenames" ) {
@@ -173,11 +173,10 @@
           Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
           Sloc = lbm_attach( p$storage.backend, p$ptr$Sloc )
 
-          pidA = array_map( "2->1", round( cbind(Ploc[Pabove,1]-p$origin[1], Ploc[Pabove,2]-p$origin[2])/p$pres)+1, c(p$nplons, p$nplats) ) 
-          pidB = array_map( "2->1", round( cbind(Ploc[Pbelow,1]-p$origin[1], Ploc[Pbelow,2]-p$origin[2])/p$pres)+1, c(p$nplons, p$nplats) )
+          pidA = array_map( "xy->1", Ploc[Pabove,], gridparams=p$gridparams ) 
+          pidB = array_map( "xy->1", Ploc[Pbelow,], gridparams=p$gridparams )
+          sid  = array_map( "xy->1", Sloc[], gridparams=p$gridparams )
 
-          sid  = array_map( "2->1", round( cbind(Sloc[,1]-p$origin[1], Sloc[,2]-p$origin[2])/p$pres)+1, c(p$nplons, p$nplats) ) 
-          
           below = which( is.finite( match( sid, pidB ) )) 
           above = which( is.finite( match( sid, pidA ) ))
           

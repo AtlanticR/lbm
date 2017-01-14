@@ -1,5 +1,5 @@
 
-lbm_interpolate = function( ip=NULL, p ) {
+lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
   #\\ core function to intepolate (model and predict) in parllel
 
   if (exists( "libs", p)) RLibrary( p$libs )
@@ -179,6 +179,10 @@ lbm_interpolate = function( ip=NULL, p ) {
 
     dlon=dlat=o=NULL; gc()
 
+    if (debug) {
+      print( ores )
+    }
+
     YiU = Yi[U]  
     # So, YiU and p$lbm_distance_prediction determine the data entering into local model construction
     # dist_model = lbm_distance_cur
@@ -204,10 +208,7 @@ lbm_interpolate = function( ip=NULL, p ) {
       next()
     }
 
-
-    pa$i = match( 
-      array_map( "2->1", pa[, c("iplon", "iplat")], dims=c(p$nplons,p$nplats) ), 
-      ploc_ids )
+    pa$i = match( array_map( "2->1", pa[, c("iplon", "iplat")], gridparams=p$gridparams ), ploc_ids )
         
     bad = which( !is.finite(pa$i))
     if (length(bad) > 0 ) pa = pa[-bad,]
@@ -217,7 +218,7 @@ lbm_interpolate = function( ip=NULL, p ) {
       next()
     }
 
-      if (0) {
+      if (debug) {
         # check that position indices are working properly
         Sloc = lbm_attach( p$storage.backend, p$ptr$Sloc )
         Yloc = lbm_attach( p$storage.backend, p$ptr$Yloc )
@@ -234,6 +235,7 @@ lbm_interpolate = function( ip=NULL, p ) {
         points( grids$plats[pa$iplat] ~ grids$plons[ pa$iplon] , col="cyan", pch=20, cex=0.01 ) # check on Proc iplat indexing
         points( Ploc[pa$i,2] ~ Ploc[ pa$i, 1] , col="black", pch=20, cex=0.7 ) # check on pa$i indexing -- prediction locations
       }
+
    
     pa$plon = Ploc[ pa$i, 1]
     pa$plat = Ploc[ pa$i, 2]
@@ -349,7 +351,7 @@ lbm_interpolate = function( ip=NULL, p ) {
       # ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
       # test which is faster ... remove non-unique?
 
-      ids = array_map( "xy->1", px[, c("plon", "plat")], gridparams=gridparams ) # 100X faster than paste / merge
+      ids = array_map( "xy->1", px[, c("plon", "plat")], gridparams=p$gridparams ) # 100X faster than paste / merge
       todrop = which(duplicated( ids) )
       if (length(todrop>0)) px = px[-todrop,]
       rm(ids, todrop)
@@ -440,6 +442,10 @@ lbm_interpolate = function( ip=NULL, p ) {
       lbm_local_modelengine_userdefined = p$lbm_local_modelengine_userdefined( p, dat, pa)
     ) )
 
+  
+    if (debug) {
+      print( str(res))
+    }
 
     if (0) {
       lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==2012.05,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
@@ -684,6 +690,17 @@ lbm_interpolate = function( ip=NULL, p ) {
       }
     }
     
+    if (debug) {
+        v = res$predictions
+        if ( exists("TIME", p$variables) ){
+          v = v[which( v[,p$variables$TIME]==2000.55),]
+        }
+        require(lattice)
+        print(
+          levelplot( mean ~ plon+plat, v, aspect="iso", labels=TRUE, pretty=TRUE, xlab=NULL,ylab=NULL,scales=list(draw=TRUE) )
+      )
+    }
+      
       if (0) {
      
         lattice::levelplot( mean ~ plon + plat, data=res$predictions[res$predictions[,p$variables$TIME]==2012.05,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
@@ -694,12 +711,6 @@ lbm_interpolate = function( ip=NULL, p ) {
           print( lattice::levelplot( P[pa$i,i] ~ Ploc[pa$i,1] + Ploc[ pa$i, 2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
         }
 
-        v = res$predictions
-        if ( exists("TIME", p$variables) ){
-          v = v[which( v[,p$variables$TIME]==1990.55),]
-        }
-        require(lattice)
-        levelplot( mean ~ plon+plat, v, aspect="iso", labels=TRUE, pretty=TRUE, xlab=NULL,ylab=NULL,scales=list(draw=TRUE) )
       }
    
     res = NULL

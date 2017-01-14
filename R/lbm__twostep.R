@@ -46,10 +46,10 @@ lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   # step 2 :: spatial modelling
 
   Z_all = array_map( "xy->2", coords=pa[,p$variables$LOCS], 
-    corner=c(px_r[1], px_c[1]), res=c(p$pres, p$pres) )
+    origin=c(px_r[1], px_c[1]), res=c(p$pres, p$pres) )
 
   M_all = array_map( "xy->2", coords=px[,p$variables$LOCS], 
-    corner=c(px_r[1], px_c[1]), res=c(p$pres, p$pres) )
+    origin=c(px_r[1], px_c[1]), res=c(p$pres, p$pres) )
 
   # default in case there is no time (a single time slice)
   pa_i = 1:nrow(pa)
@@ -107,7 +107,7 @@ lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
     # Z = try( smooth.2d( Y=px[px_i,"mean"], x=px[px_i,p$variables$LOCS], nrow=nr, ncol=nc, dx=p$pres, dy=p$pres, range=phi, cov.function=stationary.cov, Covariance="Matern", nu=nu ) )
 
     x_id = array_map( "xy->2", coords=px[px_i,p$variables$LOCS], 
-      corner=c(px_r[1], px_c[1]), res=c(p$pres, p$pres) )
+      origin=c(px_r[1], px_c[1]), res=c(p$pres, p$pres) )
 
     u = as.image( px[px_i, "mean"], ind=as.matrix( x_id), na.rm=TRUE, nx=nr, ny=nc )
     
