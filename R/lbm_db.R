@@ -173,10 +173,10 @@
           Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
           Sloc = lbm_attach( p$storage.backend, p$ptr$Sloc )
 
-          pidA = array_map( "2->1", round( cbind(Ploc[Pabove,1]-p$plons[1], Ploc[Pabove,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) 
-          pidB = array_map( "2->1", round( cbind(Ploc[Pbelow,1]-p$plons[1], Ploc[Pbelow,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) )
+          pidA = array_map( "2->1", round( cbind(Ploc[Pabove,1]-p$origin[1], Ploc[Pabove,2]-p$origin[2])/p$pres)+1, c(p$nplons, p$nplats) ) 
+          pidB = array_map( "2->1", round( cbind(Ploc[Pbelow,1]-p$origin[1], Ploc[Pbelow,2]-p$origin[2])/p$pres)+1, c(p$nplons, p$nplats) )
 
-          sid  = array_map( "2->1", round( cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$pres)+1, c(p$nplons, p$nplats) ) 
+          sid  = array_map( "2->1", round( cbind(Sloc[,1]-p$origin[1], Sloc[,2]-p$origin[2])/p$pres)+1, c(p$nplons, p$nplats) ) 
           
           below = which( is.finite( match( sid, pidB ) )) 
           above = which( is.finite( match( sid, pidA ) ))
@@ -216,8 +216,8 @@
         Sloc_nplon = ceiling( diff( p$corners$plon) / p$lbm_distance_statsgrid)
 
         Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
-        uS = array_map( "2->1", round( cbind(Sloc[,1]-p$plons[1], Sloc[,2]-p$plats[1])/p$lbm_distance_statsgrid)+1, c(Sloc_nplon, Sloc_nplat) )
-        uP = array_map( "2->1", round( cbind(Ploc[noP,1]-p$plons[1], Ploc[noP,2]-p$plats[1])/p$lbm_distance_statsgrid)+1, c(Sloc_nplon, Sloc_nplat) ) 
+        uS = array_map( "2->1", round( cbind(Sloc[,1]-p$origin[1], Sloc[,2]-p$origin[2])/p$lbm_distance_statsgrid)+1, c(Sloc_nplon, Sloc_nplat) )
+        uP = array_map( "2->1", round( cbind(Ploc[noP,1]-p$origin[1], Ploc[noP,2]-p$origin[2])/p$lbm_distance_statsgrid)+1, c(Sloc_nplon, Sloc_nplat) ) 
         inrange = which( (uP >= min(uS)) & (uP <= max(uS)) )
         if (length( inrange) > 0) uP = uP[inrange] 
         uP = unique(uP)
@@ -255,12 +255,12 @@
 
       ii = na.omit(hasdata)
       Yloc = lbm_attach(  p$storage.backend, p$ptr$Yloc )
-      yplon = round( ( Yloc[ii,1] - p$plons[1] )/p$pres) + 1
-      yplat = round( ( Yloc[ii,2] - p$plats[1] )/p$pres) + 1
+      yplon = round( ( Yloc[ii,1] - p$origin[1] )/p$pres) + 1
+      yplat = round( ( Yloc[ii,2] - p$origin[2] )/p$pres) + 1
       uu = unique( array_map( "2->1", cbind(yplon, yplat), c(p$nplons, p$nplats) ) )
       vv = array_map( "1->2", uu, c(p$nplons, p$nplats) )
       
-      ww = cbind( (vv[,1] - 1) * p$pres + p$plons[1], (vv[,2] - 1) * p$pres + p$plats[1] )
+      ww = cbind( (vv[,1] - 1) * p$pres + p$origin[1], (vv[,2] - 1) * p$pres + p$origin[2] )
 
       if (!exists("lbm_nonconvexhull_alpha", p)) p$lbm_nonconvexhull_alpha=20
       boundary=list( polygon = non_convex_hull( ww, alpha=p$lbm_nonconvexhull_alpha, plot=FALSE ) )

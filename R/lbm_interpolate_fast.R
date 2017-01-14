@@ -23,7 +23,7 @@ lbm_interpolate_fast = function( ip=NULL, p ) {
   nr2 = 2 * nr
   nc2 = 2 * nc
   
-  gridparams = list( dims=c(nr2, nc2), corner=c(p$plons[1], p$plats[1]), res=c(p$pres, p$pres) )
+  gridparams = list( dims=c(nr2, nc2), corner=p$origin, res=c(p$pres, p$pres) )
   zp = array_map( "xy->1", Ploc[], gridparams=gridparams )
 
   dgrid = make.surface.grid(list((1:nr2) * dx, (1:nc2) * dy))

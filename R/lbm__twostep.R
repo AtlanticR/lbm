@@ -95,8 +95,8 @@ lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
   for ( ti in 1:p$nt ) {
   
     if ( exists("TIME", p$variables) ) {
-      pa_i =  which( pa[, p$variables$TIME]==p$ts[ti] ) 
-      px_i =  which( px[, p$variables$TIME]==p$ts[ti] ) 
+      pa_i =  which( pa[, p$variables$TIME]==p$prediction.ts[ti] ) 
+      px_i =  which( px[, p$variables$TIME]==p$prediction.ts[ti] ) 
     } 
 
     if ( any( M_all[ px_i,] < 1) ) next()  

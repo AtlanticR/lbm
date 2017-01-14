@@ -45,7 +45,7 @@ lbm__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
 
   xM = array( NA, dim=adims )
   px_id = cbind( 
-    round( ( px[,p$variables$TIME ] - p$ts[1] ) / p$tres) + 1,
+    round( ( px[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1,
     ( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
     ( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1 
   )
@@ -59,7 +59,7 @@ lbm__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
   px_id = array_map( "3->1", m=round( cbind( 
     ( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
     ( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1, 
-    round( ( px[,p$variables$TIME ] - p$ts[1] ) / p$tres) + 1 )),
+    round( ( px[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 )),
     n=adims )
   
   xM = array( NA, dim=adims )

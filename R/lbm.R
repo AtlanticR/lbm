@@ -28,7 +28,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
     p$time.start =  Sys.time()
 
-    p$savedir = file.path(p$project.root, "lbm", p$spatial.domain )
+    p$savedir = file.path(p$project.root, "lbm", p$spatial.domain, p$variables$Y )
     message( paste( "In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
     if ( !file.exists(p$savedir)) dir.create( p$savedir, recursive=TRUE, showWarnings=FALSE )
 
@@ -100,8 +100,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       if (exists( "nw", p)) p$nt = p$nt * p$nw  # sub-annual time slices
     }
 
-    # prediction times  for 2D methods, treat time as independent timeslices
-    if ( !exists("ts", p)) p$ts = 1
+    # prediction times for space.annual methods, treat time as independent timeslices
+    if ( !exists("prediction.ts", p)) p$prediction.ts = 1
 
     # require knowledge of size of stats output before create S, which varies with a given type of analysis
     othervars = c( )

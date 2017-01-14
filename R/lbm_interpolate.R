@@ -51,9 +51,7 @@ lbm_interpolate = function( ip=NULL, p ) {
   downsampling = sort( p$sampling[ which( p$sampling < 1) ] , decreasing=TRUE )
   downsampling = downsampling[ which(downsampling*p$lbm_distance_scale >= p$lbm_distance_min )]
 
-  gridparams = list( dims=c(p$nplons,p$nplats), corner=c(p$plons[1], p$plats[1]), res=c(p$pres, p$pres) )
-
-  ploc_ids = array_map( "xy->1", Ploc[], gridparams=gridparams )
+  ploc_ids = array_map( "xy->1", Ploc[], gridparams=p$gridparams )
 
   localcount = -1 
 
@@ -191,8 +189,8 @@ lbm_interpolate = function( ip=NULL, p ) {
     pa_w = -windowsize.half : windowsize.half
     pa_w_n = length(pa_w)
     
-    iwplon = round( (Sloc[Si,1]-p$plons[1])/p$pres + 1 + pa_w )
-    iwplat = round( (Sloc[Si,2]-p$plats[1])/p$pres + 1 + pa_w )
+    iwplon = round( (Sloc[Si,1]-p$origin[1])/p$pres + 1 + pa_w )
+    iwplat = round( (Sloc[Si,2]-p$origin[2])/p$pres + 1 + pa_w )
     
     pa = NULL
     pa = data.frame( iplon = rep.int(iwplon, pa_w_n) , 
@@ -229,10 +227,11 @@ lbm_interpolate = function( ip=NULL, p ) {
         points( Yloc[YiU,2] ~ Yloc[YiU,1], col="green" )  # with covars and no other data issues
         points( Sloc[Si,2] ~ Sloc[Si,1], col="blue" ) # statistical locations
         # statistical output locations
-        
-        points( p$plats[round( (Sloc[Si,2]-p$plats[1])/p$pres) + 1] ~ p$plons[round((Sloc[Si,1]-p$plons[1])/p$pres) + 1] , col="purple", pch=25, cex=5 ) 
+        grids= spatial_grid(p, DS="planar.coords" )
+        points( grids$plats[round( (Sloc[Si,2]-p$origin[2])/p$pres) + 1] 
+              ~ grids$plons[round( (Sloc[Si,1]-p$origin[1])/p$pres) + 1] , col="purple", pch=25, cex=5 ) 
 
-        points( p$plats[pa$iplat] ~ p$plons[ pa$iplon] , col="cyan", pch=20, cex=0.01 ) # check on Proc iplat indexing
+        points( grids$plats[pa$iplat] ~ grids$plons[ pa$iplon] , col="cyan", pch=20, cex=0.01 ) # check on Proc iplat indexing
         points( Ploc[pa$i,2] ~ Ploc[ pa$i, 1] , col="black", pch=20, cex=0.7 ) # check on pa$i indexing -- prediction locations
       }
    
@@ -259,7 +258,7 @@ lbm_interpolate = function( ip=NULL, p ) {
 
     if ( exists("TIME", p$variables) ) {
       pa = cbind( pa[ rep.int(1:pa_n, p$nt), ], 
-                      rep.int(p$ts, rep(pa_n, p$nt )) )
+                      rep.int(p$prediction.ts, rep(pa_n, p$nt )) )
       names(pa) = c( pvars, p$variables$TIME )
       if ( p$variables$TIME != "yr" ) pa$yr = trunc( pa[,p$variables$TIME] )
       # where time exists and there are seasonal components, 
@@ -344,13 +343,11 @@ lbm_interpolate = function( ip=NULL, p ) {
       # some methods require a uniform prediction grid based upon all dat locations (and time) 
       # begin with "dat"    
       px = dat # only the static parts .. time has to be a uniform grid so reconstruct below
-      px$plat = grid.internal( px$plat, p$plats )
-      px$plon = grid.internal( px$plon, p$plons )
+      # px$plat = grid.internal( px$plat, p$plats )
+      # px$plon = grid.internal( px$plon, p$plons )
 
       # ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
       # test which is faster ... remove non-unique?
-
-      gridparams = list( dims=c(p$nplons,p$nplats), corner=c(p$plons[1], p$plats[1]), res=c(p$pres, p$pres) )
 
       ids = array_map( "xy->1", px[, c("plon", "plat")], gridparams=gridparams ) # 100X faster than paste / merge
       todrop = which(duplicated( ids) )
@@ -375,7 +372,7 @@ lbm_interpolate = function( ip=NULL, p ) {
       # add temporal grid
       if ( exists("TIME", p$variables) ) {
         px = cbind( px[ rep.int(1:px_n, p$nt), ], 
-                        rep.int(p$ts, rep(px_n, p$nt )) )
+                        rep.int(p$prediction.ts, rep(px_n, p$nt )) )
         names(px)[ ncol(px) ] = p$variables$TIME 
         if ( p$variables$TIME != "yr" ) px$yr = trunc( px[,p$variables$TIME] )
         if ("dyear" %in% p$variables$local_all)  px$dyear = px[, p$variables$TIME] - px$yr  # fractional year

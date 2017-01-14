@@ -19,7 +19,7 @@ lbm__gaussianprocess2Dt = function( p, x, pa ) {
   for ( ti in 1:p$nt ) {
     
     if ( exists("TIME", p$variables) ) {
-      xi = which( x[ , p$variables$TIME ] == p$ts[ti] )
+      xi = which( x[ , p$variables$TIME ] == p$prediction.ts[ti] )
     } else {
       xi = 1:nrow(x) # all data as p$nt==1
     }
@@ -45,7 +45,7 @@ lbm__gaussianprocess2Dt = function( p, x, pa ) {
     if (rsquared < p$lbm_rsquared_threshold ) next()
 
     if ( exists("TIME", p$variables) ) {
-      pa_i = which( pa[, p$variables$TIME]==p$ts[ti])
+      pa_i = which( pa[, p$variables$TIME]==p$prediction.ts[ti])
     } else {
       pa_i = 1:nrow(pa)
     }

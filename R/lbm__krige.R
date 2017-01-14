@@ -13,8 +13,8 @@ lbm__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
   for ( ti in 1:p$nt ) {
     
     if ( exists("TIME", p$variables) ) {
-      xi = which( x[ , p$variables$TIME ] == p$ts[ti] )
-      pa_i = which( pa[, p$variables$TIME]==p$ts[ti])
+      xi = which( x[ , p$variables$TIME ] == p$prediction.ts[ti] )
+      pa_i = which( pa[, p$variables$TIME]==p$prediction.ts[ti])
     } else {
       xi = 1:nrow(x) # all data as p$nt==1
       pa_i = 1:nrow(pa)
