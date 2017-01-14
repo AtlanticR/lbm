@@ -6,7 +6,7 @@
 
     # --------------------------
     if (!exists("savedir", p)) {
-      p$savedir = file.path(p$project.root, "lbm", p$variables$Y, p$spatial.domain )
+      p$savedir = file.path(p$project.root, "modelled", p$variables$Y, p$spatial.domain )
     }
     
     if (DS %in% "filenames" ) {

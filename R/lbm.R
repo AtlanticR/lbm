@@ -28,7 +28,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
     p$time.start =  Sys.time()
 
-    p$savedir = file.path(p$project.root, "lbm", p$variables$Y, p$spatial.domain )
+    p$savedir = file.path(p$project.root, "modelled", p$variables$Y, p$spatial.domain )
     message( paste( "In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
     if ( !file.exists(p$savedir)) dir.create( p$savedir, recursive=TRUE, showWarnings=FALSE )
 
