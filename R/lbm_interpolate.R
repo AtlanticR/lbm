@@ -74,7 +74,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       cat( paste( "Time elapsed:", format(dtime), "\n" ), file=p$lbm_current_status, append=TRUE)
       cat( paste( "Estimated time to completion (hrs):", round( tmore,3), "\n" ), file=p$lbm_current_status, append=TRUE)
       for ( hd in varstoout ){
-        cat( paste( hd, ":" currentstatus[hd], "\n" ), file=p$lbm_current_status, append=TRUE)
+        cat( paste( hd, ":", currentstatus[hd], "\n" ), file=p$lbm_current_status, append=TRUE)
       }
     }
 
