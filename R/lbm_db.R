@@ -327,12 +327,12 @@
           pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[i]] )
           ncpu = ncol(pu)
           if ( ncpu== 1 ) {
-            pa = cbind( pa, pu[] ) # ie. a static variable
+            pa = cbind( pa, pu[] ) # ie. a static variable (space)
           } else if( ncpu == p$ny )  {
             iy = round( (it-1) / p$nw ) + 1
-            pa = cbind( pa, pu[,iy] ) # ie., annual data 
+            pa = cbind( pa, pu[,iy] ) # ie., annual data (space.annual)
           } else if ( ncpu == p$nt) {
-            pa = cbind( pa, pu[,it] ) # ie. same time dimension as predictive data
+            pa = cbind( pa, pu[,it] ) # ie. same time dimension as predictive data (space.annual.seasonal)
           }
         }
         pa = as.data.frame( pa )
@@ -414,7 +414,11 @@
           }
           if (exists("lbm_global_modelengine", p) ) {
             ## maybe add via simulation ? ... 
+            uu = which(!is.finite(P[]))
+            if (length(uu)>0) P[uu] = 0 # permit covariate-base predictions to pass through .. 
             P = P[] + P0[,r] 
+            vv = which(!is.finite(V[]))
+            if (length(vv)>0) V[vv] = 0 # permit covariate-base predictions to pass through ..
             V = sqrt( V[]^2 + P0sd[,r]^2) # simple additive independent errors assumed
           }
           save( P, file=fn1, compress=T )
@@ -427,7 +431,11 @@
           P = PP[]
           V = PPsd[]
           if (exists("lbm_global_modelengine", p) ) {
+            uu = which(!is.finite(P[]))
+            if (length(uu)>0) P[uu] = 0 # permit covariate-base predictions to pass through ..
             P = P[] + P0[] 
+            vv = which(!is.finite(V[]))
+            if (length(vv)>0) V[vv] = 0 # permit covariate-base predictions to pass through ..
             V = sqrt( V[]^2 + P0sd[]^2) # simple additive independent errors assumed
           }
           save( P, file=fn1, compress=T )

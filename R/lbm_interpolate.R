@@ -69,10 +69,13 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       dtimehr = difftime( Sys.time(), stime, units="hours" )
       nrate = currentstatus["n.complete"]/ as.numeric(dtimehr)
       tmore = currentstatus["n.todo"] / nrate
-      cat( paste( "Start time:  ", stime, "\n"), file=p$lbm_current_status, append=FALSE )
-      cat( paste( "Current time:", Sys.time(), "\n"), file=p$lbm_current_status, append=TRUE )
-      cat( paste( "Time elapsed:", format(dtime), "\n" ), file=p$lbm_current_status, append=TRUE)
-      cat( paste( "Estimated time to completion (hrs):", round( tmore,3), "\n" ), file=p$lbm_current_status, append=TRUE)
+      tall = (currentstatus["n.todo"]+currentstatus["n.complete"]) / nrate
+      cat( paste( "", p$project.root, p$variables$Y, p$spatial.domain, "\n", sep="-"), file=p$lbm_current_status, append=FALSE )
+      cat( paste( "Start time :  ", stime, "\n"), file=p$lbm_current_status, append=TRUE )
+      cat( paste( "Current time :", Sys.time(), "\n"), file=p$lbm_current_status, append=TRUE )
+      cat( paste( "Elapsed time :", format(dtime), "\n" ), file=p$lbm_current_status, append=TRUE)
+      cat( paste( "Est. time remaining (hrs) :", round( tmore,3), "\n" ), file=p$lbm_current_status, append=TRUE)
+      cat( paste( "Est. time total (hrs) :", round( tall,3), "\n" ), file=p$lbm_current_status, append=TRUE)
       for ( hd in varstoout ){
         cat( paste( hd, ":", currentstatus[hd], "\n" ), file=p$lbm_current_status, append=TRUE)
       }
