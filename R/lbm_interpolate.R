@@ -65,14 +65,17 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       header = paste( c( varstoout) )
       currentstatus = lbm_db( p=p, DS="statistics.status" )
       currentstatus = c( unlist( currentstatus[ varstoout ] ) )
-      dtime = difftime( Sys.time(), stime, units="hours" )
-      nrate = currentstatus["n.complete"]/ as.numeric(dtime)
+      dtime = difftime( Sys.time(), stime )
+      dtimehr = difftime( Sys.time(), stime, units="hours" )
+      nrate = currentstatus["n.complete"]/ as.numeric(dtimehr)
       tmore = currentstatus["n.todo"] / nrate
-      cat( header, file=p$lbm_current_status, append=FALSE)
-      cat( paste("\n"), file=p$lbm_current_status, append=TRUE)
-      cat( currentstatus, file=p$lbm_current_status, append=TRUE )
-      cat( paste( "Time elapsed (hrs):", round( dtime, 3 ) ), file=p$lbm_current_status, append=TRUE)
-      cat( paste( "Estimated time to completion (hrs):", round( tmore,3) ), file=p$lbm_current_status, append=TRUE)
+      cat( paste( "Start time:  ", stime, "\n"), file=p$lbm_current_status, append=FALSE )
+      cat( paste( "Current time:", Sys.time(), "\n"), file=p$lbm_current_status, append=TRUE )
+      cat( paste( "Time elapsed:", format(dtime), "\n" ), file=p$lbm_current_status, append=TRUE)
+      cat( paste( "Estimated time to completion (hrs):", round( tmore,3), "\n" ), file=p$lbm_current_status, append=TRUE)
+      for ( hd in varstoout ){
+        cat( paste( hd, ":" currentstatus[hd], "\n" ), file=p$lbm_current_status, append=TRUE)
+      }
     }
 
     Si = p$runs[ iip, "locs" ]
