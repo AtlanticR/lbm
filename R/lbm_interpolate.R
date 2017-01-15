@@ -53,6 +53,13 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
 
   ploc_ids = array_map( "xy->1", Ploc[], gridparams=p$gridparams )
 
+  # construct prediction/output grid area ('pa')
+  windowsize.half = floor(p$lbm_distance_prediction/p$pres) # convert distance to discretized increments of row/col indices
+
+  pa_w = -windowsize.half : windowsize.half
+  pa_w_n = length(pa_w)
+  rm(windowsize.half)
+
   localcount = -1 
 
   stime = Sys.time()
@@ -155,15 +162,17 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         if (!inherits(o, "try-error")) {
           if (exists(p$lbm_variogram_method, o)) {
             ores = o[[p$lbm_variogram_method]] # store current best estimate of variogram characteristics
-            if (!is.null(ores[["range"]] ) ) {
-              if ( (ores[["range"]] > p$pres) & (ores[["range"]] <= p$lbm_distance_max) ) {
-                lbm_distance_cur = ores[["range"]]
-                vario_U  = which( dlon  <= ores[["range"]]  & dlat <= ores[["range"]] )
-                vario_ndata =length(vario_U)                
-                if ((vario_ndata > p$n.min) & (vario_ndata < p$n.max) ) { 
-                  U  = vario_U
-                  ndata = vario_ndata
-                }  
+            if (exists("range", ores) ) {
+              if (is.finite(ores[["range"]] )) {
+                if ( (ores[["range"]] > p$lbm_distance_min) & (ores[["range"]] <= p$lbm_distance_max) ) {
+                  lbm_distance_cur = ores[["range"]]
+                  vario_U  = which( dlon  <= ores[["range"]]  & dlat <= ores[["range"]] )
+                  vario_ndata =length(vario_U)                
+                  if ((vario_ndata > p$n.min) & (vario_ndata < p$n.max) ) { 
+                    U  = vario_U
+                    ndata = vario_ndata
+                  }  
+                }
               }
             } 
           }
@@ -193,19 +202,13 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     # So, YiU and p$lbm_distance_prediction determine the data entering into local model construction
     # dist_model = lbm_distance_cur
 
-    # construct prediction/output grid area ('pa')
-    windowsize.half = floor(p$lbm_distance_prediction/p$pres) # convert distance to discretized increments of row/col indices
-
-    pa_w = -windowsize.half : windowsize.half
-    pa_w_n = length(pa_w)
-    
     iwplon = round( (Sloc[Si,1]-p$origin[1])/p$pres + 1 + pa_w )
     iwplat = round( (Sloc[Si,2]-p$origin[2])/p$pres + 1 + pa_w )
     
     pa = NULL
     pa = data.frame( iplon = rep.int(iwplon, pa_w_n) , 
                      iplat = rep.int(iwplat, rep.int(pa_w_n, pa_w_n)) )
-    rm(iwplon, iwplat, pa_w, pa_w_n, windowsize.half)
+    rm(iwplon, iwplat)
 
     bad = which( (pa$iplon < 1 & pa$iplon > p$nplons) | (pa$iplat < 1 & pa$iplat > p$nplats) )
     if (length(bad) > 0 ) pa = pa[-bad,]
