@@ -235,8 +235,8 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         points( Sloc[Si,2] ~ Sloc[Si,1], col="blue" ) # statistical locations
         # statistical output locations
         grids= spatial_grid(p, DS="planar.coords" )
-        points( grids$plats[round( (Sloc[Si,2]-p$origin[2])/p$pres) + 1] 
-              ~ grids$plons[round( (Sloc[Si,1]-p$origin[1])/p$pres) + 1] , col="purple", pch=25, cex=5 ) 
+        points( grids$plat[round( (Sloc[Si,2]-p$origin[2])/p$pres) + 1] 
+              ~ grids$plon[round( (Sloc[Si,1]-p$origin[1])/p$pres) + 1] , col="purple", pch=25, cex=5 ) 
 
         points( grids$plats[pa$iplat] ~ grids$plons[ pa$iplon] , col="cyan", pch=20, cex=0.01 ) # check on Proc iplat indexing
         points( Ploc[pa$i,2] ~ Ploc[ pa$i, 1] , col="black", pch=20, cex=0.7 ) # check on pa$i indexing -- prediction locations
