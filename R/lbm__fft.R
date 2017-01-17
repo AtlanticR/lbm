@@ -65,22 +65,19 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
 
   sp.covar = sp.covar2 = sp.covar.surf = sp.covar.surf2 = dgrid = center = mC = NULL
   gc()
- 
+
+  xi =1:nrow(x) 
+  pa_i = 1:nrow(pa)
+  origin=c(x_r[1], x_c[1])
+  res=c(p$pres, p$pres)
+
   for ( ti in 1:p$nt ) {
 
-    if ( exists("TIME", p$variables)) {
-      xi = which( x[, p$variables$TIME]==p$prediction.ts[ti] ) 
-    } else {
-      xi =1:nrow(x) 
-    } 
+    if ( exists("TIME", p$variables)) xi = which( x[, p$variables$TIME]==p$prediction.ts[ti] ) 
     
     # map of row, col indices of input data in the new (output) coordinate system
     
-    x_id = array_map( "xy->2", coords=x[xi,p$variables$LOCS], 
-      origin=c(x_r[1], x_c[1]), res=c(p$pres, p$pres) )
-
-    # x_id = cbind( round(( x[xi,p$variables$LOCS[1]]-x_r[1])/p$pres) + 1, 
-    #               round(( x[xi,p$variables$LOCS[2]]-x_c[1])/p$pres) + 1 )
+    x_id = array_map( "xy->2", coords=x[xi,p$variables$LOCS], origin=origin, res=res )
     
     u = as.image( x[xi,p$variables$Y], ind=as.matrix( x_id), na.rm=TRUE, nx=nr, ny=nc )
     
@@ -103,17 +100,9 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     Z = fY/fN
     fY = fN = NULL
     
-    if (exists("TIME", p$variables) ) {
-      pa_i =  which( pa[, p$variables$TIME]==p$prediction.ts[ti])
-    } else {
-      pa_i = 1:nrow(pa)
-    }
+    if (exists("TIME", p$variables) ) pa_i =  which( pa[, p$variables$TIME]==p$prediction.ts[ti])
 
-    Z_i = array_map( "xy->2", coords=pa[pa_i,p$variables$LOCS], 
-      origin=c(pa_r[1], pa_c[1]), res=c(p$pres, p$pres) )
-
-    # Z_i = round( cbind( ( pa[pa_i,p$variables$LOCS[1]]-pa_r[1])/p$pres + 1, 
-    #                     ( pa[pa_i,p$variables$LOCS[2]]-pa_c[1])/p$pres + 1 ) )
+    Z_i = array_map( "xy->2", coords=pa[pa_i,p$variables$LOCS], origin=origin, res=res )
 
     # make sure predictions exist
     if ( any( Z_i<1) ) next()  
