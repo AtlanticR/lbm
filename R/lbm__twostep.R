@@ -28,13 +28,13 @@ lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, va
 
   # step 2 :: spatial modelling
   if ( p$lbm_fft_filter == "krige" ) {
-    out = lbm__krige( p, x, pa=px, nu=NULL, phi=phi, varObs=varObs, varSpatial=varSpatial ) {
+    out = lbm__krige( p, x, pa=px, nu=NULL, phi=phi, varObs=varObs, varSpatial=varSpatial ) 
     return( out )  
   }
 
   if (p$lbm_fft_filter %in% c("lowpass", "spatial.process", "lowpass_spatial.process") ) {
     out = lbm_fft( p, x, pa=px, ... )  ## px vs pa ... fix this
- 
+  }
 
   # if not kriging the use FFT processes:
   px_r = range(px[,p$variables$LOCS[1]], na.rm=TRUE)
