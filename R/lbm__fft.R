@@ -5,8 +5,7 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice
   #\\ first a low-pass filter as defined by p$lbm_lowpass_nu, p$lbm_lowpass_phi, then a simple covariance filter determined by nu,phi
-
-  rY = range( x[,p$variables$Y], na.rm=TRUE)
+  # varObs=varObs, varSpatial=varSpatial
 
   x_r = range(x[,p$variables$LOCS[1]])
   x_c = range(x[,p$variables$LOCS[2]])
@@ -103,19 +102,6 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
 
     Z = fY/fN
     fY = fN = NULL
-
-    # lb = which( Z < rY[1] )
-    # if (length(lb) > 0) Z[lb] = NA
-    # ub = which( Z > rY[2] )
-    # if (length(ub) > 0) Z[ub] = NA
-    # # image.plot(Z)
-  
-    # match prediction to input data 
-    # x$mean[xi] = Z[x_id]
-    # ss = try( lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit) )
-    # if ( "try-error" %in% class( ss ) ) next()
-    # rsquared = summary(ss)$r.squared
-    # if (rsquared < p$lbm_rsquared_threshold ) next()
     
     if (exists("TIME", p$variables) ) {
       pa_i =  which( pa[, p$variables$TIME]==p$prediction.ts[ti])

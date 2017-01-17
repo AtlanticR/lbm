@@ -1,49 +1,47 @@
 
-lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL ) {
+lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, varSpatial=varSpatial ) {
 
   #\\ twostep modelling time first as a simple ts and then spatial or spatio-temporal interpolation
   #\\ nu is the bessel smooth param
 
   # step 1 -- timeseries modelling
   # use all available data in 'x' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
-  # currently only a GAM is enable for the TS component
-
-  rY = range( x[,p$variables$Y], na.rm=TRUE)
-
-  if ( exists("lbm_local_model_distanceweighted", p) ) {
-    if (p$lbm_local_model_distanceweighted) {
-      hmod = try( gam( p$lbm_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
-    } else {
-      hmod = try( gam( p$lbm_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
-    }
-  } else {
-      hmod = try( gam( p$lbm_local_modelformula, data=x ) )
-  } 
-
-  if ( "try-error" %in% class(hmod) ) return( NULL )
-
-  ss = summary(hmod)
-  if (ss$r.sq < p$lbm_rsquared_threshold ) return(NULL)
+  # currently only a GAM is enabled for the TS component
 
   if (is.null(px)) px=pa
 
-  preds = try( predict( hmod, newdata=px, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
+  ts_gam = lbm__gam( p, dat, pa ) 
+  if (ts_gam$lbm_stats$rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-  toosmall = which( preds$fit < rY[1] )
-  toolarge = which( preds$fit > rY[2] )
-  if (length(toosmall) > 0) preds$fit[toosmall] = rY[1]   
-  if (length(toolarge) > 0) preds$fit[toolarge] = rY[2]   
+  # over-write px with ts predictions
+  px = ts_gam$predictions
 
-  px$mean = as.vector( preds$fit )
-  px$sd = as.vector( preds$se.fit )
+  # range checks
+  rY = range( x[,p$variables$Y], na.rm=TRUE)
+  toosmall = which( px$mean < rY[1] )
+  toolarge = which( px$mean > rY[2] )
+  if (length(toosmall) > 0) px$mean[toosmall] = rY[1]   
+  if (length(toolarge) > 0) px$mean[toolarge] = rY[2]   
 
+
+  out = NULL
+
+  # step 2 :: spatial modelling
+  if ( p$lbm_fft_filter == "krige" ) {
+    out = lbm__krige( p, x, pa=px, nu=NULL, phi=phi, varObs=varObs, varSpatial=varSpatial ) {
+    return( out )  
+  }
+
+  if (p$lbm_fft_filter %in% c("lowpass", "spatial.process", "lowpass_spatial.process") ) {
+    out = lbm_fft( p, x, pa=px, ... )  ## px vs pa ... fix this
+ 
+
+  # if not kriging the use FFT processes:
   px_r = range(px[,p$variables$LOCS[1]], na.rm=TRUE)
   px_c = range(px[,p$variables$LOCS[2]], na.rm=TRUE)
   
   nr = round( diff(px_r)/p$pres) + 1
   nc = round( diff(px_c)/p$pres) + 1
-
-  # step 2 :: spatial modelling
 
   Z_all = array_map( "xy->2", coords=pa[,p$variables$LOCS], 
     origin=c(px_r[1], px_c[1]), res=c(p$pres, p$pres) )
