@@ -447,6 +447,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       splancs = lbm__spate( p, dat, pa ), # TODO
       spate = lbm__spate( p, dat, pa, sloc=Sloc[Si,], px=px ), 
       fft = lbm__fft( p, dat, pa, nu=nu, phi=phi ), 
+      tps = lbm__tps( p, dat, pa, phi=phi, lambda=varObs/varSpatial ), 
       twostep = lbm__twostep( p, dat, pa, px=px, nu=nu, phi=phi  ), # slow ...!
       lbm_local_modelengine_userdefined = p$lbm_local_modelengine_userdefined( p, dat, pa)
     ) )

@@ -31,6 +31,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     p$savedir = file.path(p$project.root, "modelled", p$variables$Y, p$spatial.domain )
     message( paste( "In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
     if ( !file.exists(p$savedir)) dir.create( p$savedir, recursive=TRUE, showWarnings=FALSE )
+    
+    p$lbm_current_status = file.path( p$savedir, "lbm_current_status" ) 
 
     p$stloc = file.path( p$project.root, "lbm", p$spatial.domain, "tmp" )
     message( paste( "Temporary files are being created at:", p$stloc ) )
@@ -109,6 +111,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     if (exists("TIME", p$variables) )  othervars = c( "ar_timerange", "ar_1" )
     p$statsvars = unique( c( "sdTotal", "rsquared", "ndata", "sdSpatial", "sdObs", "range", "phi", "nu", othervars ) )
 
+    message("---")
     message( "Initializing temporary storage of data and outputs (will take a bit longer on NFS clusters) ... ")
     message( "These are large files (4 to 6 X 5GB), esp. prediction grids (5 min .. faster if on fileserver), so be patient. ")
     lbm_db( p=p, DS="cleanup" )
@@ -452,9 +455,11 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         P=NULL; gc()
 
         # test to see if all covars are static as this can speed up the initial predictions
+        message("---")
         message( "Predicting global effect of covariates at each prediction location ... ")
-        message( "depending upon the size of the prediction grid and number of cpus (~1hr?)..")
-        p$timec0 =  Sys.time()
+        message( "depending upon the size of the prediction grid and number of cpus (~1hr?).. ")
+
+        p$timec_covariates_0 =  Sys.time()
         nc_cov =NULL
         for (i in p$variables$COV ) {
           pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[i]] )
@@ -472,8 +477,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
           parallel.run( lbm_db, p=p, DS="global.prediction.surface" )
           p$clusters= p$clusters0
         }
-        p$timec1 =  Sys.time()
-        message( paste( "Time taken to predict covariate surface (hours):", round(difftime( p$timec1, p$timec0 , units="hours"), 3) ) )
+        p$time_covariates = round(difftime( Sys.time(), p$timec_covariates_0 , units="hours"), 3)
+        message( paste( "Time taken to predict covariate surface (hours):", p$time_covariates ) )
     }
 
     P = NULL; gc() # yes, repeat in case covs are not modelled
@@ -531,7 +536,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     if ( !exists("lbm_distance_scale", p)) {
       Yloc = lbm_attach( p$storage.backend, p$ptr$Yloc )
       p$lbm_distance_scale = min( diff(range( Yloc[,1]) ), diff(range( Yloc[,2]) ) ) / 10
-      message( paste( "Crude distance scale:", p$lbm_distance_scale ) )
+      message("---")
+      message( paste( "Crude distance scale:", p$lbm_distance_scale, "" ) )
     }
     if ( !exists("lbm_distance_min", p)) p$lbm_distance_min = mean( c(p$lbm_distance_prediction, p$lbm_distance_scale /20 ) )
     if ( !exists("lbm_distance_max", p)) p$lbm_distance_max = mean( c(p$lbm_distance_prediction*10, p$lbm_distance_scale * 2 ) )
@@ -542,6 +548,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     }
 
     lbm_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
+    message("---")
     message( "Finished. Moving onto analysis... ")
     gc()
 
@@ -553,26 +560,33 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   # -------------------------------------
   # localized space-time modelling/interpolation/prediction
-  message ("Monitor the status of modelling by looking at the output of file (e.g., 'watch -n 60 cat /tmp/lbm_current_status' " )
+  message("---")
+  message("Monitor the status of modelling by looking at the output of the following file (e.g., 'watch -n 60 cat {directory}/lbm_current_status'" )
   message (p$lbm_current_status )
+  message("---")
   
-  p$timei0 =  Sys.time()
 
-  if ("debug" %in% tasks) {
-    o = lbm_db( p=p, DS="statistics.status" )
-    p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
+  if ("stage0" %in% tasks) {
+    currentstatus = lbm_db( p=p, DS="statistics.status" )
+    print( c( unlist( currentstatus[ c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete" ) ] ) ) )
+    p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
     lbm_interpolate (p=p )
+    browser()
   }
 
-
   if ( "stage1" %in% tasks) {  
-    o = lbm_db( p=p, DS="statistics.status" )
-    # o = lbm_db(p=p, DS="statistics.status.reset" )
-    p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
+    p$timei1 =  Sys.time()
+    # this is the basic run
+    currentstatus = lbm_db( p=p, DS="statistics.status" )
+    # currentstatus = lbm_db(p=p, DS="statistics.status.reset" )
+    p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
     # lbm_interpolate (p=p )
     parallel.run( lbm_interpolate, p=p )
-    p$timei1 =  Sys.time()
-    message( paste( "Time taken for main interpolations (stage 1; hours):", round( difftime( p$timei1, p$timei0, units="hours" ),3) ) )
+    p$time_stage1 = round( difftime( Sys.time(), p$timei1, units="hours" ), 3 )
+    message("---")
+    message( paste( "Time taken for main stage 1, interpolations (hours):", p$time_stage1, "" ) )
+    currentstatus = lbm_db( p=p, DS="statistics.status" )
+    print( c( unlist( currentstatus[ c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete" ) ] ) ) )
     gc()
   }
 
@@ -598,71 +612,64 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       lattice::levelplot(S[,1]~Sloc[,1]+Sloc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
   }
 
-  p$timei1 =  Sys.time()
 
   if ( "stage2" %in% tasks) {
-    # stage 2... revisit eac location in case it was due to a bad subsample 
-    toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
-    if ( !is.null(toredo) && length(toredo) > 0) { 
-      Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
-      Sflag[toredo]=0L
-      p = make.list( list( locs=sample( toredo )) , Y=p ) # random order helps use all cpus
-      parallel.run( lbm_interpolate, p=p )
-    }
     p$timei2 =  Sys.time()
-    message( paste( "Time taken to stage 2 interpolations (hours):", 
-                   round( difftime( p$timei2, p$timei1, units="hours" ),3) ) )
-  }
-
-  p$timei2 =  Sys.time()
-  
-  if ( "stage3" %in% tasks) {
-   # stage 3 .. redo, using solutions with relaxed spatial extent
-    o = lbm_db(p=p, DS="statistics.status.reset" ) 
-    if (length(o$todo) > 0) {
-      p$lbm_distance_prediction = p$lbm_distance_prediction * 2
-      p$lbm_distance_max = p$lbm_distance_max * 2
-      p$lbm_distance_scale = p$lbm_distance_scale*2 # km ... approx guess of 95% AC range 
-      p = make.list( list( locs=sample( o$todo )) , Y=p ) # random order helps use all cpus
+    message("---")
+    message( "Starting stage 2: more permisssive/relaxed distance settings (spatial extent) " )
+    currentstatus = lbm_db(p=p, DS="statistics.status.reset" ) 
+    if (length(currentstatus$todo) > 0) {
+      p$lbm_distance_prediction = p$lbm_distance_prediction *  p$lbm_multiplier_stage2
+      p$lbm_distance_max = p$lbm_distance_max *  p$lbm_multiplier_stage2
+      p$lbm_distance_scale = p$lbm_distance_scale* p$lbm_multiplier_stage2 # km ... approx guess of 95% AC range 
+      p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
       parallel.run( lbm_interpolate, p=p )
     }
-    p$timei3 =  Sys.time()
-    message( paste( "Time taken to stage 3 interpolations (hours):", 
-                   round( difftime( p$timei3, p$timei2, units="hours" ),3) ) )
+    p$time_stage2 = round( difftime( Sys.time(), p$timei2, units="hours" ), 3)
+    message("---")
+    message( paste( "Time taken to stage 2 interpolations (hours):", p$time_stage2, "" ) )
+    currentstatus = lbm_db( p=p, DS="statistics.status" )
+    print( c( unlist( currentstatus[ c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete" ) ] ) ) )
+    gc()
   }
 
-  p$timei3 =  Sys.time()
-  
-  if ( "stage4" %in% tasks) {
-    # stage 4 .. last resort .. use a simple but failsafe method to interopalte the rest
+
+  if ( "stage3" %in% tasks) {
+    p$timei3 =  Sys.time()
+    message("---")
+    message( "Starting stage 3: simple TPS-based failsafe method to interpolate all the remaining locations " )
     toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
     if ( !is.null(toredo) && length(toredo) > 0) { 
       Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
       Sflag[toredo]=0L
-      p$lbm_local_modelengine = "fft"  
-      p$lbm_fft_filter = "spatial.process"
+      p$lbm_local_modelengine = "tps"  
       p = bio.bathymetry::bathymetry.parameters( p=p, DS="lbm" )
       p = make.list( list( locs=sample( toredo )) , Y=p ) # random order helps use all cpus
       parallel.run( lbm_interpolate, p=p )
     }
-    p$timei4 =  Sys.time()
-
-    message( paste( "Time taken to stage 4 interpolations (hours):", 
-                 round( difftime( p$timei4, p$timei3, units="hours" ),3) ) )
+    p$time_stage3 = round( difftime( Sys.time(), p$timei3, units="hours" ), 3)
+    message( paste( "Time taken to stage 3 interpolations (hours):", p$time_stage3, "" ) )
+    currentstatus = lbm_db( p=p, DS="statistics.status" )
+    print( c( unlist( currentstatus[ c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete" ) ] ) ) )
+    gc()
   }
 
-  p$timei4 =  Sys.time()
+
+  # save again, in case some timings/etc needed in a restart
+  p <<- p  # push to parent in case a manual restart is possible
+  lbm_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
 
 
   if ("save" %in% tasks) {
     # save solutions to disk (again .. overwrite)
+    message("---")
     message( "Saving predictions to disk .. " )
     lbm_db( p=p, DS="lbm.prediction.redo" ) # save to disk for use outside lbm*
  
     message( "Saving statistics to disk .. " )
     lbm_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside lbm*
 
-    message ("Finished! \n")
+    message ("Finished! ")
   }
 
   if ( p$storage.backend !="bigmemory.ram" ) {
@@ -670,16 +677,16 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     if (resp=="YES") {
       lbm_db( p=p, DS="cleanup" )
     } else {
-      message( "Leaving temporary files alone in case you need to examine them or restart a process.")
-      message( "You can delete them by running: lbm_db( p=p, DS='cleanup' ), once you are done.")
+      message("---")
+      message( "Leaving temporary files alone in case you need to examine them or restart a process. ")
+      message( "You can delete them by running: lbm_db( p=p, DS='cleanup' ), once you are done. ")
     }
   }
 
-  p$time.end =  Sys.time()
-  message( paste( "Time taken for full analysis (hours):", round( difftime( p$time.end, p$time.start, units="hours" ),3) ) )
-
+  p$time_total = round( difftime( Sys.time(), p$time.start, units="hours" ),3)
+  message("---")
+  message( paste( "Time taken for full analysis (hours):", p$time_total, "" ) )
 
   return( p )
-
 }
 

@@ -5,12 +5,12 @@ lbm__gam = function( p, x, pa ) {
   
   if ( exists("lbm_local_model_distanceweighted", p) ) {
     if (p$lbm_local_model_distanceweighted) {
-      hmod = try( gam( p$lbm_local_modelformula, data=x, weights=weights, optimizer=p$lbm_gam_optimizer) )
+      hmod = try( gam( p$lbm_local_modelformula, data=x, na.action="na.omit", weights=weights, optimizer=p$lbm_gam_optimizer) )
     } else {
-      hmod = try( gam( p$lbm_local_modelformula, data=x, optimizer=p$lbm_gam_optimizer  ) )
+      hmod = try( gam( p$lbm_local_modelformula, data=x, na.action="na.omit", optimizer=p$lbm_gam_optimizer  ) )
     }
   } else {
-      hmod = try( gam( p$lbm_local_modelformula, data=x, optimizer=c("outer", "bfgs")  ) )
+      hmod = try( gam( p$lbm_local_modelformula, data=x, na.action="na.omit", optimizer=c("outer", "bfgs")  ) )
   } 
 
 

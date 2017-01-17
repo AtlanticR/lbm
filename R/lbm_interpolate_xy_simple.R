@@ -21,8 +21,6 @@ lbm_interpolate_xy_simple = function( interp.method, data, locsout, datagrid=NUL
       nr2 = round( nr*2)
       nc2 = round( nc*2)
       
-
-
       (o=lbm::lbm_variogram( xy=RMprecip$x, z=RMprecip$y, methods="gstat" ) )
       (o=ulbm_variogram( xy=RMprecip$x, z=RMprecip$y, methods="fast" ) )
 
