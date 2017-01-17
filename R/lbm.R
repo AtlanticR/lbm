@@ -112,8 +112,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     p$statsvars = unique( c( "sdTotal", "rsquared", "ndata", "sdSpatial", "sdObs", "range", "phi", "nu", othervars ) )
 
     message("---")
-    message( "Initializing temporary storage of data and outputs (will take a bit longer on NFS clusters) ... ")
-    message( "These are large files (4 to 6 X 5GB), esp. prediction grids (5 min .. faster if on fileserver), so be patient. ")
+    message( "Initializing temporary storage of data and outputs files... ")
+    message( "These are large files (4 to 6 X 5GB), it will take a minute ... ")
     lbm_db( p=p, DS="cleanup" )
 
     

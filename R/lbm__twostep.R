@@ -7,7 +7,7 @@ lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, va
   # step 1 -- timeseries modelling
   # use all available data in 'x' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
   
-  ts_gam = lbm__gam( p, dat, pa ) # currently only a GAM is enabled for the TS component
+  ts_gam = lbm__gam( p, x, pa ) # currently only a GAM is enabled for the TS component
 
   if (is.null( ts_gam)) return(NULL)
   if (ts_gam$lbm_stats$rsquared < p$lbm_rsquared_threshold ) return(NULL)
