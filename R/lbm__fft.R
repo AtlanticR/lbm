@@ -106,11 +106,15 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
 
     Z_i = array_map( "xy->2", coords=pa[pa_i,p$variables$LOCS], origin=origin, res=res )
 
-    # make sure predictions exist
-    if ( any( Z_i<1) ) next()  
-    if ( any( Z_i[,1] > nr) ) next()
-    if ( any( Z_i[,2] > nc) ) next()
-    pa$mean[pa_i] = Z[Z_i]
+    # bounds check: make sure predictions exist
+    Z_i_test = NULL
+    Z_i_test = which( Z_i<1 | Z_i[,1] > nr | Z_i[,2] > nc )
+    if (length(Z_i_test) > 0) {
+      pa$mean[pa_i[-Z_i_test]] = Z[Z_i[-Z_i_test]]
+    } else {
+      pa$mean[pa_i] = Z[Z_i]
+    }
+
     # pa$sd[pa_i] = NA  ## fix as NA
     Z = NULL
     
