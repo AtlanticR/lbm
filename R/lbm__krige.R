@@ -20,7 +20,7 @@ lbm__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
       pa_i = 1:nrow(pa)
     }
 
-    if (p$lbm_krige_engine %in% c("default", "fields") ) {
+    if (!exists("lbm_krige_engine",p) | p$lbm_krige_engine %in% c("default", "fields") ) {
       fspmodel <- try( Krig( x[xi, p$variables$LOCS], x[xi, p$variables$Y], 
         sigma2=varObs, rho=varSpatial , cov.function="stationary.cov", 
         Covariance="Matern", range=phi, smoothness=nu) )

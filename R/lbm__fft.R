@@ -42,7 +42,9 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   mC = matrix(0, nrow = nr2, ncol = nc2)
   mC[nr, nc] = 1
  
-  if (p$lbm_fft_filter == "lowpass") {
+  if (!exists("lbm_fft_filter",p) p$lbm_fft_filter="lowpass" # default in case of no specification
+
+  if ( p$lbm_fft_filter == "lowpass") {
     sp.covar = stationary.cov( dgrid, center, Covariance="Matern", range=p$lbm_lowpass_phi, nu=p$lbm_lowpass_nu )
     sp.covar.surf = as.surface(dgrid, c(sp.covar))$z
     sp.covar.kernel = fft(sp.covar.surf) / ( fft(mC) * nr2 * nc2 )

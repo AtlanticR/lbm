@@ -3,6 +3,8 @@ lbm__gam = function( p, x, pa ) {
   #\\ this is the core engine of lbm .. localised space-time modelling interpolation and prediction
   #\\ simple GAM with spatial weights (inverse distance squared) and ts harmonics 
   
+  if (!exists("lbm_gam_optimizer", p)) p$lbm_gam_optimizer=c("outer", "bfgs")
+  
   if ( exists("lbm_local_model_distanceweighted", p) ) {
     if (p$lbm_local_model_distanceweighted) {
       hmod = try( gam( p$lbm_local_modelformula, data=x, na.action="na.omit", weights=weights, optimizer=p$lbm_gam_optimizer) )
