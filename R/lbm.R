@@ -14,6 +14,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   # TODO: look at bayesX a little more carefully.
   # TODO: MBA mba.surf method? ... seems very fast
 
+  p$time.start = Sys.time()
 
   if ( "continue" %in% tasks) {
     message( "Continuing from an interrupted start" ) 
@@ -46,14 +47,14 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   }
 
   if ( "stage1" %in% tasks) {  
-    p$timei1 =  Sys.time()
+    timei1 =  Sys.time()
     # this is the basic run
     currentstatus = lbm_db( p=p, DS="statistics.status" )
     # currentstatus = lbm_db(p=p, DS="statistics.status.reset" )
     p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
     # lbm_interpolate (p=p )
     parallel.run( lbm_interpolate, p=p )
-    p$time_stage1 = round( difftime( Sys.time(), p$timei1, units="hours" ), 3 )
+    p$time_stage1 = round( difftime( Sys.time(), timei1, units="hours" ), 3 )
     message("---")
     message( paste( "Time taken for main stage 1, interpolations (hours):", p$time_stage1, "" ) )
     currentstatus = lbm_db( p=p, DS="statistics.status" )
@@ -85,7 +86,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
 
   if ( "stage2" %in% tasks) {
-    p$timei2 =  Sys.time()
+    timei2 =  Sys.time()
     message("---")
     message( "Starting stage 2: more permisssive/relaxed distance settings (spatial extent) " )
     currentstatus = lbm_db(p=p, DS="statistics.status.reset" ) 
@@ -96,7 +97,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
       parallel.run( lbm_interpolate, p=p )
     }
-    p$time_stage2 = round( difftime( Sys.time(), p$timei2, units="hours" ), 3)
+    p$time_stage2 = round( difftime( Sys.time(), timei2, units="hours" ), 3)
     message("---")
     message( paste( "Time taken to stage 2 interpolations (hours):", p$time_stage2, "" ) )
     currentstatus = lbm_db( p=p, DS="statistics.status" )
@@ -106,7 +107,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
 
   if ( "stage3" %in% tasks) {
-    p$timei3 =  Sys.time()
+    timei3 =  Sys.time()
     message("---")
     message( "Starting stage 3: simple TPS-based failsafe method to interpolate all the remaining locations " )
     toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
@@ -118,7 +119,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       p = make.list( list( locs=sample( toredo )) , Y=p ) # random order helps use all cpus
       parallel.run( lbm_interpolate, p=p )
     }
-    p$time_stage3 = round( difftime( Sys.time(), p$timei3, units="hours" ), 3)
+    p$time_stage3 = round( difftime( Sys.time(), timei3, units="hours" ), 3)
     message( paste( "Time taken to stage 3 interpolations (hours):", p$time_stage3, "" ) )
     currentstatus = lbm_db( p=p, DS="statistics.status" )
     print( c( unlist( currentstatus[ c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete" ) ] ) ) )

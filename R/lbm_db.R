@@ -674,7 +674,8 @@
     if ( DS %in% c( "statistics.Sflag" ) ) {
       # create location specific flags for analysis, etc..
       if (exists( "boundary", p) && p$boundary) {
-        p$timeb0 =  Sys.time()
+        timeb0 =  Sys.time()
+        message("\n")
         message( "Defining boundary polygon for data .. this reduces the number of points to analyse")
         message( "but takes a few minutes to set up ...")
         lbm_db( p=p, DS="boundary.redo" ) # ~ 5 min on nfs
@@ -687,8 +688,7 @@
             if (length(outside)>0) Sflag[outside] = 2L
         }}
         bnds = NULL
-        p$timeb1 =  Sys.time()
-        message( paste( "Time taken to estimate spatial bounds (mins):", round( difftime( p$timeb1, p$timeb0, units="mins" ),3) ) )
+        message( paste( "Time taken to estimate spatial bounds (mins):", round( difftime( Sys.time(), timeb0, units="mins" ),3) ) )
       }
 
       if ( exists("depth.filter", p) && p$depth.filter ) {
