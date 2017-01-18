@@ -1,5 +1,5 @@
 
-  lbm_db = function( ip=NULL, DS, p, B=NULL, yr=NULL, ret="mean"  ) {
+  lbm_db = function( ip=NULL, DS, p, B=NULL, yr=NULL, ret="mean", tasks=NULL  ) {
     #// usage: low level function to convert data into file-based data obects to permit parallel
     #// data access and manipulation and deletes/updates
     #// B is the xyz or xytz data or the function to get the data to work upon
