@@ -4,6 +4,9 @@ lbm__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
   # \ as a 2D gaussian process (basically, simple krigimg or TPS -- time is treated as being independent)
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice ..  essentially this is kriging 
+  
+ if (!exists("lbm_krige_engine", p) ) p$lbm_krige_engine="fields"
+
   sdTotal = sd(x[,p$variable$Y], na.rm=T)
 
   x$mean = NA
@@ -20,7 +23,7 @@ lbm__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
       pa_i = 1:nrow(pa)
     }
 
-    if (!exists("lbm_krige_engine",p) | p$lbm_krige_engine %in% c("default", "fields") ) {
+    if ( p$lbm_krige_engine == "fields" ) {
       fspmodel <- try( Krig( x[xi, p$variables$LOCS], x[xi, p$variables$Y], 
         sigma2=varObs, rho=varSpatial , cov.function="stationary.cov", 
         Covariance="Matern", range=phi, smoothness=nu) )
@@ -42,7 +45,7 @@ lbm__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
       }
     }
 
-    if (p$lbm_krige_engine %in% c("gstat") ) {
+    if (p$lbm_krige_engine == "gstat" ) {
       xy = x[xi, p$variables$LOCS]
       z = x[xi, p$variables$Y]
 
