@@ -5,8 +5,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
-  #\\ do a more relaxed second stage: turned off for now .. this would make sense to try but 
-  #\\ it can be costly in terms of time in production runs .. use only for research purposes
 
   # TODO: splancs::kernel3d as a method ? .. for count data?
   # TODO: habitat methods
@@ -17,7 +15,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   # TODO: MBA mba.surf method? ... seems very fast
 
 
-  if ( ("continue" %in% tasks) | exists( "ptr", p) ) {
+  if ( "continue" %in% tasks) {
     message( "Continuing from an interrupted start" ) 
     p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
     RLibrary( p$libs )
@@ -25,7 +23,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   } 
     
   if ( "initiate" %in% tasks) {
-    lbm_db( p=p, DS="initialize")
+    lbm_db( p=p, DS="initialize", tasks=tasks )
     lbm_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
     message( "Finished. Moving onto analysis... ")
     p <<- p  # push to parent in case a manual restart is needed
@@ -33,13 +31,10 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   } 
   
 
-
   # -------------------------------------
   # localized space-time modelling/interpolation/prediction
-  message("---")
   message("Monitor the status of modelling by looking at the output of the following file (e.g., 'watch -n 60 cat {directory}/lbm_current_status'" )
   message (p$lbm_current_status )
-  message("---")
   
 
   if ("stage0" %in% tasks) {

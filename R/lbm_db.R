@@ -1,5 +1,5 @@
 
-  lbm_db = function( ip=NULL, DS, p, B=NULL, yr=NULL, ret="mean"  ) {
+  lbm_db = function( ip=NULL, DS, p, B=NULL, yr=NULL, ret="mean", tasks=NULL  ) {
     #// usage: low level function to convert data into file-based data obects to permit parallel
     #// data access and manipulation and deletes/updates
     #// B is the xyz or xytz data or the function to get the data to work upon
@@ -91,7 +91,7 @@
 
 
 
-    if (DS=="iniialize") {
+    if (DS=="initialize") {
       p$time.start =  Sys.time()
 
       p$savedir = file.path(p$project.root, "modelled", p$variables$Y, p$spatial.domain )
@@ -193,6 +193,7 @@
 
       # NOTE:: must not sink the following memory allocation into a deeper funcion as 
       # NOTE:: bigmemory RAM seems to lose the pointers if they are not made simultaneously 
+   
       # init output data objects
       # statistics storage matrix ( aggregation window, coords ) .. no inputs required
       sbox = list( 
