@@ -1,6 +1,6 @@
 
 
-lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "stage1", "save") ) {
+lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "stage1", "save"), vindex=1 ) {
 
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state
@@ -22,6 +22,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     RLibrary( p$libs )
     lbm_db(p=p, DS="statistics.status.reset" )
   } 
+
     
   if ( "initiate" %in% tasks) {
 
@@ -583,25 +584,45 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   }
 
 
-  if ( "debug_pred_map" %in% tasks) {  
+  # to view maps from an external R session:
+  # lbm(p=p, tasks="debug_pred_static_map", vindex=1)
+  # lbm(p=p, tasks="debug_pred_static_log_map", vindex=1)
+  # lbm(p=p, tasks="debug_pred_dynamic_map", vindex=1)
+  # lbm(p=p, tasks="debug_stats_map", vindex=1)
+
+
+  if ( "debug_pred_static_map" %in% tasks) {  
+      p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
+      RLibrary( p$libs )
       Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
       P = lbm_attach( p$storage.backend, p$ptr$P )
-      j = which( P[] > 5 & P[] < 1000 )
-
-      lattice::levelplot( (P[,1])~Ploc[,1]+Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
+      lattice::levelplot( (P[,vindex])~Ploc[,1]+Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
   }
 
-  if (0) {
-      lattice::levelplot( log(P[j,1])~Ploc[j,1]+Ploc[j,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
+  if ( "debug_pred_static_log_map" %in% tasks) {  
+      p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
+      RLibrary( p$libs )
+      Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
+      P = lbm_attach( p$storage.backend, p$ptr$P )
+      lattice::levelplot( log(P[,vindex])~Ploc[,1]+Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
+  }
+
+  if ( "debug_pred_dynamic_map" %in% tasks) {  
+      p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
+      RLibrary( p$libs )
+      Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
+      P = lbm_attach( p$storage.backend, p$ptr$P )
       for (i in 1:p$nt) {
-        print( lattice::levelplot( P[j,i] ~ Ploc[j,1] + Ploc[j,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
+        print( lattice::levelplot( P[,i] ~ Ploc[,1] + Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" ) )
       }
   }
-  
+
   if ( "debug_stats_map" %in% tasks) {  
+      p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
+      RLibrary( p$libs )
       Sloc = lbm_attach( p$storage.backend, p$ptr$Sloc )
       S = lbm_attach( p$storage.backend, p$ptr$S )
-      lattice::levelplot(S[,1]~Sloc[,1]+Sloc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
+      lattice::levelplot(S[,vindex]~Sloc[,1]+Sloc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
   }
 
 
