@@ -98,21 +98,21 @@
       ioutside = which( Sflag[]==2L )
       itodo = which( Sflag[]==0L )       # 0 = TODO
       idone = which( Sflag[]==1L )       # 1 = completed
-      iland = which( Sflag[]==3L )       # 3 = land
-      iproblems = which( Sflag[] == 9L ) # 9 not completed due to a failed attempt
-      out = list(problematic=iproblems, todo=itodo, completed=idone, outside=ioutside, land=iland,
-                 n.total=length(Sflag), n.land=length(iland),
-                 n.todo=length(itodo), n.problematic=length(iproblems), 
+      ishallow = which( Sflag[]==3L )  # 3 = depth shallower than p$depth.filter (if it exists)
+      iskipped = which( Sflag[] == 9L )  # 9 not completed due to a failed attempt
+      out = list(skipped=iskipped, todo=itodo, completed=idone, outside=ioutside, shallow=ishallow,
+                 n.total=length(Sflag), n.shallow=length(ishallow),
+                 n.todo=length(itodo), n.skipped=length(iskipped), 
                  n.outside=length(which(is.finite(ioutside))),
                  n.complete=length(idone) )
       out$prop_incomp=out$n.todo / ( out$n.todo + out$n.complete)
 
       if ( DS=="statistics.status.reset" ) {
         # to reset all rejected locations 
-        if (length(which(is.finite(out$problematic))) > 0) {
-          Sflag[out$problematic] = 0L  # to reset all the problem flags to todo
-          out$problematic=which( Sflag[] == 9L )
-          out$n.problematic = 0
+        if (length(which(is.finite(out$skipped))) > 0) {
+          Sflag[out$skipped] = 0L  # to reset all the problem flags to todo
+          out$skipped=which( Sflag[] == 9L )
+          out$n.skipped = 0
           out$todo = which( Sflag[]==0L )
           out$n.todo = length(which( Sflag[]==0L ))
         }
@@ -143,6 +143,7 @@
 
     #-------------------
 
+
     if ( DS %in% c( "statistics.Sflag" ) ) {
       # create location specific flags for analysis, etc..
       if (exists( "boundary", p) && p$boundary) {
@@ -163,7 +164,7 @@
         message( paste( "Time taken to estimate spatial bounds (mins):", round( difftime( Sys.time(), timeb0, units="mins" ),3) ) )
       }
 
-      if ( exists("depth.filter", p) && p$depth.filter ) {
+      if ( exists("depth.filter", p) && is.finite(p$depth.filter) ) {
         # additionaldepth-based filter:
         # assuming that there is depth information in Pcov, match Sloc's and filter out locations that fall on land
         if ( "z" %in% p$variables$COV ){
@@ -202,8 +203,10 @@
 
     }
 
+
     #---------------------
    
+
     if (DS== "flag.incomplete.predictions") {
       # statistics locations where estimations need to be redone 
       P = lbm_attach( p$storage.backend, p$ptr$P )
@@ -503,9 +506,9 @@
         # stats is now with the same indices as Pcov, Ploc, etc..
         if ( "z" %in% p$variables$COV ){
           depths = lbm_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
-          land = which( depths[] < p$depth.filter )
-          if (length(land)>0) stats[land,] = NA 
-          rm(land); gc()
+          shallower = which( depths[] < p$depth.filter )
+          if (length(shallower)>0) stats[shallower,] = NA 
+          rm(shallower); gc()
         }
       }
 

@@ -561,7 +561,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   if ("stage0" %in% tasks) {
     currentstatus = lbm_db( p=p, DS="statistics.status" )
-    print( c( unlist( currentstatus[ c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete" ) ] ) ) )
+    print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
     p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
     lbm_interpolate (p=p )
     browser()
@@ -579,7 +579,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     message("---")
     message( paste( "Time taken for main stage 1, interpolations (hours):", p$time_stage1, "" ) )
     currentstatus = lbm_db( p=p, DS="statistics.status" )
-    print( c( unlist( currentstatus[ c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete" ) ] ) ) )
+    print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
     gc()
   }
 
@@ -642,7 +642,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     message("---")
     message( paste( "Time taken to stage 2 interpolations (hours):", p$time_stage2, "" ) )
     currentstatus = lbm_db( p=p, DS="statistics.status" )
-    print( c( unlist( currentstatus[ c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete" ) ] ) ) )
+    print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
     gc()
   }
 
@@ -663,7 +663,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     p$time_stage3 = round( difftime( Sys.time(), timei3, units="hours" ), 3)
     message( paste( "Time taken to stage 3 interpolations (hours):", p$time_stage3, "" ) )
     currentstatus = lbm_db( p=p, DS="statistics.status" )
-    print( c( unlist( currentstatus[ c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete" ) ] ) ) )
+    print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
     gc()
   }
 

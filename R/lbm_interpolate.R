@@ -69,7 +69,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
   for ( iip in ip ) {
     localcount = localcount + 1 
     if (( localcount %% 100 )== 0) {
-      varstoout = c("n.total", "n.land", "n.todo", "n.problematic", "n.outside", "n.complete", "prop_incomp" )
+      varstoout = c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete", "prop_incomp" )
       header = paste( c( varstoout) )
       currentstatus = lbm_db( p=p, DS="statistics.status" )
       currentstatus = c( unlist( currentstatus[ varstoout ] ) )
@@ -92,9 +92,9 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     Si = p$runs[ iip, "locs" ]
 
     # Sflag: 
-    #   0=TODO, 1=complete, 9=problem, 2=oustide bounds(if any), 3=land(if z is a covariate) 
+    #   0=TODO, 1=complete, 9=problem, 2=oustide bounds(if any), 3=shallow(if z is a covariate) 
     if ( Sflag[Si] != 0L ) next() 
-    Sflag[Si] = 9L   # mark as problematic here. if not it is over-written below 
+    Sflag[Si] = 9L   # mark as skipped here. if not it is over-written below 
     print( iip )
 
     # find data nearest S[Si,] and with sufficient data
