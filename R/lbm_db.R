@@ -402,6 +402,15 @@
         P0sd = lbm_attach( p$storage.backend, p$ptr$P0sd )
       }
 
+      shallower = NULL
+      if ( exists("depth.filter", p) && is.finite( p$depth.filter) ) {
+        if ( "z" %in% p$variables$COV ){
+          depths = lbm_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
+          shallower = which( depths[] < p$depth.filter )
+          rm(depths)
+        }
+      }
+
       if ( exists("TIME", p$variables)) {
         # outputs are on yearly breakdown
         for ( r in 1:p$ny ) {
@@ -425,6 +434,10 @@
             if (length(vv)>0) V[vv] = 0 # permit covariate-base predictions to pass through ..
             V = sqrt( V[]^2 + P0sd[,r]^2) # simple additive independent errors assumed
           }
+          if ( !is.null(shallower) ){
+            P[shallower,] = NA
+            V[shallower,] = NA
+          }
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
           print ( paste("Year:", y)  )
@@ -441,6 +454,10 @@
             vv = which(!is.finite(V[]))
             if (length(vv)>0) V[vv] = 0 # permit covariate-base predictions to pass through ..
             V = sqrt( V[]^2 + P0sd[]^2) # simple additive independent errors assumed
+          }
+          if ( !is.null(shallower) ){
+            P[shallower,] = NA
+            V[shallower,] = NA
           }
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
@@ -502,7 +519,7 @@
         lattice::levelplot( stats[ii,i] ~ Ploc[ii,1]+Ploc[ii,2])
       }
  
-      if ( exists("depth.filter", p) && p$depth.filter ) {
+      if ( exists("depth.filter", p) && is.finite( p$depth.filter) ) {
         # stats is now with the same indices as Pcov, Ploc, etc..
         if ( "z" %in% p$variables$COV ){
           depths = lbm_attach( p$storage.backend, p$ptr$Pcov[["z"]] )

@@ -27,7 +27,7 @@ lbm_parameters = function( p=NULL  ) {
 
   if ( p$lbm_local_modelengine %in% c("gam" )) { 
     # p$lbm_gam_optimizer=c("outer","optim")
-    if (!exists("lbm_gam_optimizer", p)) p$lbm_gam_optimizer=c("outer","bfgs)
+    if (!exists("lbm_gam_optimizer", p)) p$lbm_gam_optimizer=c("outer","bfgs")
     # if (!exists("lbm_gam_optimizer", p)) p$lbm_gam_optimizer="perf"
   }
 
