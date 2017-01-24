@@ -1,10 +1,13 @@
 
-lbm__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
+lbm__gstat = function( p, x, pa, nu, phi, varObs, varSpatial ) {
   #\\ this is the core engine of lbm .. localised space (no-time) modelling interpolation 
-  # \ as a 2D gaussian process (basically, simple krigimg or TPS -- time is treated as being independent)
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice ..  essentially this is kriging 
   
+  if (!exists( "lbm_gstat_formula", p)) p$lbm_gstat_formula = formula( paste( p$variables$Y, "~ 1 ")) 
+
+  approx_range = phi*sqrt( 8*nu)
+
   sdTotal = sd(x[,p$variable$Y], na.rm=T)
 
   x$mean = NA
@@ -20,26 +23,21 @@ lbm__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
       xi = 1:nrow(x) # all data as p$nt==1
       pa_i = 1:nrow(pa)
     }
+    xy = x[xi, p$variables$LOCS]
+    z = x[xi, p$variables$Y]
 
-    fspmodel <- try( Krig( x[xi, p$variables$LOCS], x[xi, p$variables$Y], 
-      sigma2=varObs, rho=varSpatial , cov.function="stationary.cov", 
-      Covariance="Matern", range=phi, smoothness=nu) )
-    if (inherits(fspmodel, "try-error") )  next()
-    x$mean[xi] = fspmodel$fitted.values 
+    vMod0 = vgm(psill=varSpatial, model="Mat", range=phi, nugget=varObs, kappa=nu ) # starting model parameters
+    gs = gstat(id = "hmk", formula=p$lbm_gstat_formula, locations=~plon+plat, data=xy[xi,], maxdist=approx_range, nmin=p$n.min, nmax=p$n.max, force=TRUE, model=vMod0 )
+    # this step adds a lot of time .. 
+    preds = predict(gs, newdata=xy[xi,] )
+    x$mean[xi] = as.vector( preds[,1] )
     ss = lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit)
     if ( "try-error" %in% class( ss ) ) next()
     rsquared = summary(ss)$r.squared
     if (rsquared < p$lbm_rsquared_threshold ) next()
-    pa$mean[pa_i] = predict(fspmodel, x=pa[pa_i, p$variables$LOCS] )
-    # pa$sd[pa_i]   = predictSE(fspmodel, x=pa[pa_i, p$variables$LOCS] ) # SE estimates are slooow
-    if ( 0 ){
-      # debugging plots
-      surface(fspmodel)
-      fsp.p<- predictSurface(fspmodel, lambda=fsp$pars["lambda"], nx=200, ny=200, )
-      surface(fsp.p, type="I")
-      fsp.p2<- predictSurfaceSE(fspmodel)
-      surface(fsp.p, type="C")
-    }
+    gsp = predict(gs, newdata=pa[pa_i,] ) # slow for large n
+    pa$mean[pa_i] = as.vector(gsp[,1] )
+    pa$sd[pa_i]   = as.vector(gsp[,2] )
 
   }
 

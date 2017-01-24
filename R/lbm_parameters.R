@@ -27,12 +27,12 @@ lbm_parameters = function( p=NULL  ) {
 
   if ( p$lbm_local_modelengine %in% c("gam" )) { 
     # p$lbm_gam_optimizer=c("outer","optim")
-    # p$lbm_gam_optimizer=c("outer","bfgs)
-    if (!exists("lbm_gam_optimizer", p)) p$lbm_gam_optimizer="perf"
+    if (!exists("lbm_gam_optimizer", p)) p$lbm_gam_optimizer=c("outer","bfgs)
+    # if (!exists("lbm_gam_optimizer", p)) p$lbm_gam_optimizer="perf"
   }
 
   if ( p$lbm_local_modelengine %in% c("krige" )) { 
-    if (!exists("lbm_krige_engine", p)) p$lbm_krige_engine="fields" # faster
+     # nothing to add yet ..
   }
 
   return(p)

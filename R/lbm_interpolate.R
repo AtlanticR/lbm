@@ -443,6 +443,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       gaussianprocess2Dt = lbm__gaussianprocess2Dt( p, dat, pa ), 
       gaussianprocess = lbm__gaussianprocess( p, dat, pa ),  # TODO
       glm = lbm__glm( p, dat, pa, nu=nu, phi=phi ), 
+      gstat = lbm__gstat( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), 
       krige = lbm__krige( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), 
       LaplacesDemon = lbm__LaplacesDemon( p, dat, pa ),
       splancs = lbm__splancs( p, dat, pa ), # TODO

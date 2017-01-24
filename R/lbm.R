@@ -51,11 +51,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     if (p$lbm_local_modelengine %in% c("spate") )  p$libs = c( p$libs, "spate" )
     if (p$lbm_local_modelengine %in% c("splancs") )  p$libs = c( p$libs, "splancs" )
     if (p$lbm_local_modelengine %in% c("twostep") )  p$libs = c( p$libs, "mgcv", "fields" )
-    if (p$lbm_local_modelengine %in% c("krige") ) {
-      if (p$lbm_krige_engine %in% c("default", "fields")) p$libs = c( p$libs, "fields" )
-      if (p$lbm_krige_engine %in% c("gstat")) p$libs = c( p$libs, "gstat" )
-    }  
-
+    if (p$lbm_local_modelengine %in% c("krige") ) p$libs = c( p$libs, "fields" )
+    if (p$lbm_local_modelengine %in% c("gstat") ) p$libs = c( p$libs, "gstat" )
+ 
     p$libs = unique( p$libs )
     RLibrary( p$libs )
 
