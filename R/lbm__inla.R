@@ -14,7 +14,7 @@ lbm__inla = function( p, x, pa ) {
 
   if ( !exists("inla.mesh.hull.resolution", p)) p$inla.mesh.hull.resolution = 125  ## resolution for discretization to find boundary
 
-  if ( !exists("lbm_noise", p)) p$lbm_noise = p$pres / 10  # add a little noise to coordinates to prevent a race condition
+  if ( !exists("lbm_eps", p)) p$lbm_eps = p$pres / 10  # add a little noise to coordinates to prevent a race condition
 
   if ( !exists("inla.alpha", p)) p$inla.alpha = 1.5 # alpha-1 = nu of bessel function curviness
   if ( !exists("inla.nsamples", p)) p$inla.nsamples = 5000 # posterior similations 
@@ -42,7 +42,7 @@ lbm__inla = function( p, x, pa ) {
     }
   }
 
-  locs_noise = runif( nrow(x)*2, min=-p$pres*p$lbm_noise, max=p$pres*p$lbm_noise ) # add  noise  to prevent a race condition
+  locs_noise = runif( nrow(x)*2, min=-p$pres*p$lbm_eps, max=p$pres*p$lbm_eps ) # add  noise  to prevent a race condition
 
   # also sending direct distances rather than proportion seems to cause issues..
   MESH = lbm_mesh_inla( locs=x[,p$variables$LOC] + locs_noise,

@@ -11,7 +11,7 @@ lbm_parameters = function( p=NULL  ) {
   if( !exists( "lbm_variogram_method", p)) p$lbm_variogram_method="fast"   # note GP methods are slow when there is too much data
   if (!exists( "lbm_local_family", p)) p$lbm_local_family = gaussian()
   if (!exists( "lbm_global_family", p)) p$lbm_global_family = gaussian()
-  if (!exists( "lbm_noise", p)) p$lbm_noise = 0.001  # distance units for eps noise to permit mesh gen for boundaries
+  if (!exists( "lbm_eps", p)) p$lbm_eps = 0.001  # distance units for eps noise to permit mesh gen for boundaries
   if (!exists( "lbm_quantile_bounds", p)) p$lbm_quantile_bounds = c(0.01, 0.99) # remove these extremes in interpolations
   if (!exists( "eps", p)) p$eps = 1e-6 # floating point precision 
   if (!exists( "boundary", p)) p$boundary = FALSE
