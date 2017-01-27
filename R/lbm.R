@@ -467,9 +467,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
           p = make.list( list( tindex=1:p$nt) , Y=p ) # takes about 28 GB per run .. adjust cluster number temporarily
           lbm_db( p=p, DS="global.prediction.surface" )
         } else {
-          if (!exists("no.clusters.covars") ) p$no.clusters.covars = 4
           p$clusters0 = p$clusters
-          p$clusters = p$clusters[p$no.clusters.covars]
+          if (exists("clusters.covars", p) ) p$clusters = p$clusters.covars
           p = make.list( list( tindex=1:p$nt) , Y=p ) # takes about 28 GB per run .. adjust cluster number temporarily
           parallel.run( lbm_db, p=p, DS="global.prediction.surface" )
           p$clusters= p$clusters0

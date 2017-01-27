@@ -272,7 +272,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       pa = cbind( pa[ rep.int(1:pa_n, p$nt), ], 
                       rep.int(p$prediction.ts, rep(pa_n, p$nt )) )
       names(pa) = c( pvars, p$variables$TIME )
-      if ( p$variables$TIME != "yr" ) pa$yr = trunc( pa[,p$variables$TIME] )
       # where time exists and there are seasonal components, 
       # additional variables are created/needed here: cos.w, sin.w, etc.. 
       # for harmonic analysis: to add an offset to a trig function (b) must add cos to a sin function
@@ -286,6 +285,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       #   c = sqrt(b1^2 + b2^2)
       #   b1/b2 = tan(b)  
       #   b = arctan(b1/b2)
+      if ("yr" %in% p$variables$local_all)     pa$yr = trunc( pa[,p$variables$TIME] )
       if ("dyear" %in% p$variables$local_all)  pa$dyear = pa[, p$variables$TIME] - pa$yr  # fractional year
       if ("cos.w" %in% p$variables$local_all)  pa$cos.w  = cos( pa[,p$variables$TIME] )
       if ("sin.w" %in% p$variables$local_all)  pa$sin.w  = sin( pa[,p$variables$TIME] )
@@ -340,7 +340,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
      
     if (exists("TIME", p$variables)) {
       dat[, p$variables$TIME ] = Ytime[YiU,] 
-      if ( p$variables$TIME != "yr" ) dat$yr = trunc( dat[, p$variables$TIME]) 
+      if ("yr" %in% p$variables$local_all)     dat$yr = trunc( dat[, p$variables$TIME]) 
       if ("dyear" %in% p$variables$local_all)  dat$dyear = dat[, p$variables$TIME] - dat$yr
       if ("cos.w" %in% p$variables$local_all)  dat$cos.w  = cos( 2*pi*dat[,p$variables$TIME] )
       if ("sin.w" %in% p$variables$local_all)  dat$sin.w  = sin( 2*pi*dat[,p$variables$TIME] )
@@ -386,7 +386,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         px = cbind( px[ rep.int(1:px_n, p$nt), ], 
                         rep.int(p$prediction.ts, rep(px_n, p$nt )) )
         names(px)[ ncol(px) ] = p$variables$TIME 
-        if ( p$variables$TIME != "yr" ) px$yr = trunc( px[,p$variables$TIME] )
+        if ("yr" %in% p$variables$local_all)     px$yr = trunc( px[,p$variables$TIME] )
         if ("dyear" %in% p$variables$local_all)  px$dyear = px[, p$variables$TIME] - px$yr  # fractional year
         if ("cos.w" %in% p$variables$local_all)  px$cos.w  = cos( px[,p$variables$TIME] )
         if ("sin.w" %in% p$variables$local_all)  px$sin.w  = sin( px[,p$variables$TIME] )

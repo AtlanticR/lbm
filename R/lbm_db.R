@@ -348,6 +348,19 @@
           names(pa) = c( p$variables$COV, p$variables$LOCS )
         }
 
+     
+        if ( "yr" %in%  all.vars( p$lbm_global_modelformula ) ) {
+          npa = names(pa)
+          pa = cbind(pa, p$yrs[it] )
+          names(pa) = c( npa, "yr" )
+        }
+
+        if ( "dyear" %in%  all.vars( p$lbm_global_modelformula ) ) {
+          npa = names(pa)
+          pa = cbind(pa, p$prediction.dyear )
+          names(pa) = c( npa, "dyear" )
+        }
+
         if (p$lbm_global_modelengine=="gam") {
           Pbaseline = try( predict( global_model, newdata=pa, type="response", se.fit=TRUE ) ) 
           pa = NULL
