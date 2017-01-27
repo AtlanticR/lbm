@@ -15,17 +15,17 @@ lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, va
 
 
   # range checks
-  px_ts = ts_gam$predictions
+  ts_gam$predictions = ts_gam$predictions
   rY = range( x[,p$variables$Y], na.rm=TRUE)
-  toosmall = which( px_ts$mean < rY[1] )
-  toolarge = which( px_ts$mean > rY[2] )
-  if (length(toosmall) > 0) px_ts$mean[toosmall] = rY[1]   
-  if (length(toolarge) > 0) px_ts$mean[toolarge] = rY[2]   
+  toosmall = which( ts_gam$predictions$mean < rY[1] )
+  toolarge = which( ts_gam$predictions$mean > rY[2] )
+  if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = rY[1]   
+  if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = rY[2]   
 
   
-  px[,p$variables$Y] = px_ts$mean
-  px[, paste(p$variables$Y, "sd", sep=".")] = px_ts$sd
-  px_ts = NULL
+  px[,p$variables$Y] = ts_gam$predictions$mean
+  px[, paste(p$variables$Y, "sd", sep=".")] = ts_gam$predictions$sd
+  ts_gam$predictions = NULL
   gc()
 
   out = NULL

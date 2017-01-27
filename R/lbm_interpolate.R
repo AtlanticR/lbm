@@ -23,7 +23,10 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
   Pn = lbm_attach( p$storage.backend, p$ptr$Pn )
   Psd = lbm_attach( p$storage.backend, p$ptr$Psd )
 
-  if (exists("local_cov", p$variables)) {
+  nloccov = 0
+  if (exists("local_cov", p$variables)) nloccov = length(p$variables$local_cov)
+
+  if (nloccov > 0) {
     Ycov = lbm_attach( p$storage.backend, p$ptr$Ycov )
   }
   if ( exists("TIME", p$variables) ) {
@@ -253,9 +256,9 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
  
     # prediction covariates i.e., independent variables/ covariates
     pvars = c("plon", "plat", "i")
-    if (exists("local_cov", p$variables)) {
+    if (nloccov > 0) {
       # .. not necessary except when covars are modelled locally
-      for (ci in 1:length(p$variables$local_cov)) {
+      for (ci in 1:nloccov) {
         vn = p$variables$local_cov[ci]
         pu = NULL
         pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
@@ -295,12 +298,10 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       if ("sin.w3" %in% p$variables$local_all) pa$sin.w3 = sin( 3*pa[,p$variables$TIME] )
       # more than 3 harmonics would not be advisable .. but you would add them here..
       
-      if (exists("local_cov", p$variables)) {
+      if (nloccov > 0) {
         # add time-varying covars .. not necessary except when covars are modelled locally
         pvars2 = names(pa)
-        
-        
-        for (ci in 1:length(p$variables$local_cov)) {
+        for (ci in 1:nloccov) {
           vn = p$variables$local_cov[ci]
           pu = NULL
           pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
@@ -334,8 +335,8 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     dat$weights[ which( dat$weights < 1e-3 ) ] = 1e-3
     dat$weights[ which( dat$weights > 1 ) ] = 1
     
-    if (exists("local_cov", p$variables)) {
-      for (i in 1:length(p$variables$local_cov )) dat[, p$variables$local_cov[i] ] = Ycov[YiU,i]
+    if (nloccov > 0) {
+      for (i in 1:nloccov) dat[, p$variables$local_cov[i] ] = Ycov[YiU,i]
     }
      
     if (exists("TIME", p$variables)) {
@@ -369,8 +370,8 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       # static vars .. don't need to look up
       tokeep = c(p$variables$LOCS )
       if (exists("weights", dat) ) tokeep = c(tokeep, "weights")
-      if (exists("local_cov", p$variables)) {
-        for (ci in 1:length(p$variables$local_cov)) {
+      if (nloccov > 0) {
+        for (ci in 1:nloccov) {
           vn = p$variables$local_cov[ci]
           pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
           nts = ncol(pu)
@@ -397,10 +398,10 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         # more than 3 harmonics would not be advisable .. but you would add them here..
       }
 
-      if (exists("local_cov", p$variables)) {
+      if (nloccov > 0) {
         # add time-varying covars .. not necessary except when covars are modelled locally
         pvars2 = names(px)
-        for (ci in 1:length(p$variables$local_cov)) {
+        for (ci in 1:nloccov) {
           vn = p$variables$local_cov[ci]
           pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
           nts = ncol(pu)
