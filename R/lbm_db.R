@@ -86,7 +86,7 @@
     if (DS %in% "cleanup" ) {
       for (fn in unlist(p$cache) ) if (length(fn)>0) if (file.exists(fn)) file.remove(fn)
       for (fn in unlist(p$bm) ) if (length(fn)>0)  if (file.exists(fn)) file.remove(fn)
-      return( "done" )
+      return( NULL )
     }
 
 
