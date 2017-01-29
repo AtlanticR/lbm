@@ -26,8 +26,12 @@ lbm__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
   ss = summary(hmod)
   if (ss$r.sq < p$lbm_rsquared_threshold ) return(NULL)
 
-  if (is.null(px)) px = pa
-  if (is.null(ws)) ws = round( p$lbm_distance_prediction / p$pres)  
+  if (is.null(px)) {
+    px = pa
+    ws = lbm_distance_cur
+  }
+
+  # ws =  p$lbm_distance_prediction
 
   preds = try( predict( hmod, newdata=px, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
 
@@ -41,16 +45,15 @@ lbm__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
   px$sd = as.vector( preds$se.fit )
 
   nsq = 2*ws +1 
-  adims = c(nsq, nsq, p$nt) 
+  adims = c(p$nt, nsq, nsq ) 
 
   xM = array( NA, dim=adims )
   px_id = cbind( 
     round( ( px[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1,
-    ( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
-    ( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1 
+    round( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
+    round( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1 
   )
   xM[px_id] = px[,"mean"]  
-  xM = xM[,-1, -1]  # this needs to be an even matrix ???
   xM2 = matrix( xM, nrow=p$nt )
   g = spate.mcmc( y=xM2, n=nsq-1 ) 
   # plot(g, postProcess=TRUE)
