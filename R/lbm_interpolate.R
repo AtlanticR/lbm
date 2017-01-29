@@ -313,7 +313,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
             pa$it = p$nw*(pa$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
             pa[,vn] = pu[ cbind(pa$i, pa$it) ]  
             message("Need to check that data order is correct")
-          } else if (nts==1) { #nothing to do .. already processed above }
+          } else if (nts==1) { } #nothing to do .. already processed above }
         }
       }
     }
