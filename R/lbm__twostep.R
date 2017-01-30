@@ -15,11 +15,11 @@ lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, va
 
 
   # range checks
-  rY = range( x[,p$variables$Y], na.rm=TRUE)
-  toosmall = which( ts_gam$predictions$mean < rY[1] )
-  toolarge = which( ts_gam$predictions$mean > rY[2] )
-  if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
-  if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
+  # rY = range( x[,p$variables$Y], na.rm=TRUE)
+  # toosmall = which( ts_gam$predictions$mean < rY[1] )
+  # toolarge = which( ts_gam$predictions$mean > rY[2] )
+  # if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
+  # if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
 
   px = ts_gam$predictions
   names(px)[which(names(px)=="mean")] = p$variables$Y
