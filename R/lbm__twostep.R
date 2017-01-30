@@ -18,8 +18,8 @@ lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, va
   rY = range( x[,p$variables$Y], na.rm=TRUE)
   toosmall = which( ts_gam$predictions$mean < rY[1] )
   toolarge = which( ts_gam$predictions$mean > rY[2] )
-  if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = rY[1]   
-  if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = rY[2]   
+  if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
+  if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
 
   px = ts_gam$predictions
   names(px)[which(names(px)=="mean")] = p$variables$Y
@@ -30,18 +30,24 @@ lbm__twostep = function( p, x, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, va
 
   out = NULL
 
-  # step 2 :: spatial modelling
-  if (!exists( "lbm_fft_filter", p)) p$lbm_fft_filter="krige" # default
+  # step 2 :: spatial modelling .. essentially a time-space separable solution
+  if (!exists( "lbm_twostep_space", p)) p$lbm_twostep_space="krige" # default
   
-  if ( p$lbm_fft_filter == "krige" ) {
+  if ( p$lbm_twostep_space == "krige" ) {
     out = lbm__krige( p, x=px, pa=pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ) 
     if (is.null( out)) return(NULL)
   }
 
-  if (p$lbm_fft_filter %in% c("lowpass", "spatial.process", "lowpass_spatial.process") ) {
+  if (p$lbm_twostep_space %in% c("tps") ) {
+    out = lbm__tps( p, x=px, pa=pa, phi=phi, lambda=varObs/varSpatial  )  
+    if (is.null( out)) return(NULL)
+  }
+
+  if (p$lbm_twostep_space %in% c("fft", "lowpass", "spatial.process", "lowpass_spatial.process") ) {
     out = lbm__fft( p, x=px, pa=pa, nu=nu, phi=phi )  ## px vs pa ... fix this
     if (is.null( out)) return(NULL)
   }
+
 
   return( out )  
 }
