@@ -103,11 +103,10 @@
       iskipped = which( Sflag[] == 9L )  # 9 not completed due to a failed attempt
       out = list(skipped=iskipped, todo=itodo, completed=idone, outside=ioutside, 
                  shallow=ishallow, preddomain=ipreddomain,
-                 n.total=length(Sflag), n.shallow=length(ishallow), n.preddomain=length(ipreddomain),
+                 n.total=length(Sflag), n.shallow=length(ishallow),
                  n.todo=length(itodo), n.skipped=length(iskipped), 
-                 n.outside=length(which(is.finite(ioutside))),
+                 n.outside=length(which(is.finite(ioutside))), n.outsidepreddomain=length(ipreddomain),
                  n.complete=length(idone) )
-      out$prop_incomp=out$n.todo / ( out$n.todo + out$n.complete)
 
       if ( DS=="statistics.status.reset" ) {
         # to reset all rejected locations 
@@ -120,7 +119,8 @@
         }
       }
 
-      message( paste("Proportion to do:", round(out$prop_incomp,5), "\n" )) 
+      out$prop_incomp=out$n.todo / ( out$n.todo + out$n.complete)
+      message( paste("Proportion to do:", round(out$prop_incomp, 3), "\n" )) 
       return( out )
   
       if (0) {
