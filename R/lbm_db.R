@@ -98,10 +98,12 @@
       ioutside = which( Sflag[]==2L )
       itodo = which( Sflag[]==0L )       # 0 = TODO
       idone = which( Sflag[]==1L )       # 1 = completed
-      ishallow = which( Sflag[]==3L )  # 3 = depth shallower than p$depth.filter (if it exists)
+      ishallow = which( Sflag[]==3L )    # 3 = depth shallower than p$depth.filter (if it exists)
+      ipreddomain = which( Sflag[]==4L ) # not in prediction domain
       iskipped = which( Sflag[] == 9L )  # 9 not completed due to a failed attempt
-      out = list(skipped=iskipped, todo=itodo, completed=idone, outside=ioutside, shallow=ishallow,
-                 n.total=length(Sflag), n.shallow=length(ishallow),
+      out = list(skipped=iskipped, todo=itodo, completed=idone, outside=ioutside, 
+                 shallow=ishallow, preddomain=ipreddomain,
+                 n.total=length(Sflag), n.shallow=length(ishallow), n.preddomain=length(ipreddomain),
                  n.todo=length(itodo), n.skipped=length(iskipped), 
                  n.outside=length(which(is.finite(ioutside))),
                  n.complete=length(idone) )
@@ -135,6 +137,7 @@
         points( Sloc[which( Sflag[]== 1L),], pch=".", col="purple", cex=5 )
         points( Sloc[which( Sflag[]== 2L),], pch=".", col="red", cex=5 )
         points( Sloc[which( Sflag[]== 3L),], pch=".", col="yellow", cex=5 )
+        points( Sloc[which( Sflag[]== 4L),], pch=".", col="green", cex=5 )
         points( Sloc[which( Sflag[]== 9L),], pch=".", col="magenta", cex=5 )
 
       }
@@ -146,6 +149,19 @@
 
     if ( DS %in% c( "statistics.Sflag" ) ) {
       # create location specific flags for analysis, etc..
+
+      # flag areas overlapping with prediction locations:
+      Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
+      Sloc = lbm_attach( p$storage.backend, p$ptr$Sloc )
+
+      pidP = array_map( "xy->1", Ploc, gridparams=p$gridparams ) 
+      pidS = array_map( "xy->1", Sloc, gridparams=p$gridparams )
+      overlap = match( pidS, pidP )
+      outside = which( !is.finite( overlap )) 
+      Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
+      if (length(outside)  > 0 ) Sflag[outside] = 4L  # outside of prediction domain
+
+      # catch data boundaries if present
       if (exists( "boundary", p) && p$boundary) {
         timeb0 =  Sys.time()
         message("\n")
@@ -430,14 +446,16 @@
           y = p$yrs[r]
           fn1 = file.path( p$savedir, paste("lbm.prediction", "mean", y, "rdata", sep="." ) )
           fn2 = file.path( p$savedir, paste("lbm.prediction", "sd",   y, "rdata", sep="." ) )
-          if (exists("nw", p)) {
+          vv = ncol(PP)
+          if ( vv > p$ny ) {
             col.ranges = (r-1) * p$nw + (1:p$nw) 
             P = PP  [,col.ranges]
             V = PPsd[,col.ranges] # simpleadditive independent errors assumed
-          } else {
+          } else if ( vv==p$ny) {
             P = PP[,r]
             V = PPsd[,r]
           }
+
           if (exists("lbm_global_modelengine", p) ) {
             ## maybe add via simulation ? ... 
             uu = which(!is.finite(P[]))
@@ -447,10 +465,17 @@
             if (length(vv)>0) V[vv] = 0 # permit covariate-base predictions to pass through ..
             V = sqrt( V[]^2 + P0sd[,r]^2) # simple additive independent errors assumed
           }
+
           if ( !is.null(shallower) ){
-            P[shallower,] = NA
-            V[shallower,] = NA
+            if ( is.vector(P) ) {
+              P[shallower] = NA
+              V[shallower] = NA
+              } else {
+              P[shallower,] = NA
+              V[shallower,] = NA
+            }
           }
+          
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
           print ( paste("Year:", y)  )

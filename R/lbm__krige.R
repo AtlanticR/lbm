@@ -12,7 +12,7 @@ lbm__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
   pa$sd = sdTotal  # leave as this as sd estimation is too expensive
 
   for ( ti in 1:p$nt ) {
-    
+
     if ( exists("TIME", p$variables) ) {
       xi = which( x[ , p$variables$TIME ] == p$prediction.ts[ti] )
       pa_i = which( pa[, p$variables$TIME]==p$prediction.ts[ti])
@@ -35,7 +35,7 @@ lbm__krige = function( p, x, pa, nu, phi, varObs, varSpatial ) {
     if ( 0 ){
       # debugging plots
       surface(fspmodel)
-      fsp.p<- predictSurface(fspmodel, lambda=fsp$pars["lambda"], nx=200, ny=200, )
+      fsp.p<- predictSurface(fspmodel, lambda=fspmodel$pars["lambda"], nx=200, ny=200, )
       surface(fsp.p, type="I")
       fsp.p2<- predictSurfaceSE(fspmodel)
       surface(fsp.p, type="C")
