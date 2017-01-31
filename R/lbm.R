@@ -579,6 +579,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
     gc()
   }
+  
+ p <<- p  # push to parent in case a manual restart is possible
 
 
   # to view maps from an external R session:
@@ -643,6 +645,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     gc()
   }
 
+ p <<- p  # push to parent in case a manual restart is possible
 
   if ( "stage3" %in% tasks) {
     timei3 =  Sys.time()
