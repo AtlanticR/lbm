@@ -1,15 +1,15 @@
 
-lbm__LaplacesDemon = function( p, x, pa ) {
+lbm__LaplacesDemon = function( p, dat, pa ) {
    #\\ this is the core engine of lbm .. localised space-time habiat modelling
  
     if ( exists("lbm_local_model_distanceweighted", p) ) {
       if (p$lbm_local_model_distanceweighted) {
-        Hmodel = try( gam( p$lbm_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
+        Hmodel = try( gam( p$lbm_local_modelformula, data=dat, weights=weights, optimizer=c("outer","optim")  ) )
       } else {
-        Hmodel = try( gam( p$lbm_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
+        Hmodel = try( gam( p$lbm_local_modelformula, data=dat, optimizer=c("outer","optim")  ) )
       }
     } else {
-        Hmodel = try( gam( p$lbm_local_modelformula, data=x ) )
+        Hmodel = try( gam( p$lbm_local_modelformula, data=dat ) )
     } 
     if ( "try-error" %in% class(Hmodel) ) return( NULL )
 
@@ -22,7 +22,7 @@ lbm__LaplacesDemon = function( p, x, pa ) {
     newdata$sd = as.vector(out$se.fit) # this is correct: se.fit== stdev of the mean fit: eg:  https://stat.ethz.ch/pipermail/r-help/2005-July/075856.html
 
     if (exists( "lbm_quantile_bounds", p)) {
-      tq = quantile( x[,p$variables$Y], probs=p$lbm_quantile_bounds, na.rm=TRUE  )
+      tq = quantile( dat[,p$variables$Y], probs=p$lbm_quantile_bounds, na.rm=TRUE  )
       bad = which( newdata$mean < tq[1] | newdata$mean > tq[2]  )
       if (length( bad) > 0) {
         newdata$mean[ bad] = NA

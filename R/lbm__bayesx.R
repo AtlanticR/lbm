@@ -1,5 +1,5 @@
 
-lbm__bayesx = function( p, x, pa ) {
+lbm__bayesx = function( p, dat, pa ) {
   #\\ this is the core engine of lbm .. localised space-time modelling interpolation and prediction .. using bayesx 
    
   # EG: see: bayesx.term.options( bs="kr", method="REML" )  
@@ -9,13 +9,13 @@ lbm__bayesx = function( p, x, pa ) {
   if ( !exists( "lbm_local_model_bayesxmethod", p) ) p$lbm_local_model_bayesxmethod="MCMC"  # slightly more smoothing than the REML method
   if ( !exists( "lbm_local_family_bayesx", p) ) p$lbm_local_family_bayesx="gaussian"
 
-  hmod = try( bayesx( p$lbm_local_modelformula, data=x, method=p$lbm_local_model_bayesxmethod, 
+  hmod = try( bayesx( p$lbm_local_modelformula, data=dat, method=p$lbm_local_model_bayesxmethod, 
                      family=p$lbm_local_family_bayesx ) )
 
   if ( "try-error" %in% class(hmod) ) return( NULL )
 
   px = predict(hmod)
-  ss = summary(lm( px ~ x[, p$variables$Y ], na.action="na.omit" ))
+  ss = summary(lm( px ~ dat[, p$variables$Y ], na.action="na.omit" ))
   if (ss$r.squared < p$lbm_rsquared_threshold ) return(NULL)
     
   out = try( predict( hmod, newdata=pa, type="response" ) ) 
@@ -36,7 +36,7 @@ lbm__bayesx = function( p, x, pa ) {
   # range = geoR::practicalRange("matern", phi=phi, kappa=nu  )
   range = distance_matern(phi=phi, nu=nu  )
 
-  lbm_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=ss$r.squared, ndata=nrow(x),
+  lbm_stats = list( sdTotal=sd(dat[,p$variable$Y], na.rm=T), rsquared=ss$r.squared, ndata=nrow(dat),
     sdSpatial=sqrt(varSpatial), sdObs=sqrt(varObs), phi=phi, nu=nu, range=range ) 
 
   # lattice::levelplot( mean ~ plon + plat, data=pa[pa$tiyr==2012.05,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )

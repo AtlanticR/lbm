@@ -1,7 +1,7 @@
 
 # NOTE:: not finishe porting fully ... only designed for xy data right no .. no time .. needs more testing
 
-lbm__inla = function( p, x, pa ) {
+lbm__inla = function( p, dat, pa ) {
   #\\ generic spatial and space-time interpolator using inla
   #\\ parameter and data requirements can be seen in bathymetry\src\bathymetry.r
 
@@ -42,10 +42,10 @@ lbm__inla = function( p, x, pa ) {
     }
   }
 
-  locs_noise = runif( nrow(x)*2, min=-p$pres*p$lbm_eps, max=p$pres*p$lbm_eps ) # add  noise  to prevent a race condition
+  locs_noise = runif( nrow(dat)*2, min=-p$pres*p$lbm_eps, max=p$pres*p$lbm_eps ) # add  noise  to prevent a race condition
 
   # also sending direct distances rather than proportion seems to cause issues..
-  MESH = lbm_mesh_inla( locs=x[,p$variables$LOC] + locs_noise,
+  MESH = lbm_mesh_inla( locs=dat[,p$variables$LOC] + locs_noise,
     # lengthscale=p$lbm_distance_prediction*2,  
     # max.edge=p$inla.mesh.max.edge * p$lbm_distance_prediction*2,
     bnd.offset=p$inla.mesh.offset,
@@ -71,16 +71,16 @@ lbm__inla = function( p, x, pa ) {
   obs_eff = list()
   obs_eff[["spde"]] = c( obs_index, list(intercept=1) )
   if ( exists( "COV", p$variables) ) {
-    covar = as.data.frame( x[, p$variables$COV ] ) 
+    covar = as.data.frame( dat[, p$variables$COV ] ) 
     colnames( covar ) = p$variables$COV
     obs_eff[["covar"]] = as.list(covar)
-    obs_A = list( inla.spde.make.A( mesh=MESH, loc=as.matrix(x[, p$variables$LOC ]) ), 1 )
+    obs_A = list( inla.spde.make.A( mesh=MESH, loc=as.matrix(dat[, p$variables$LOC ]) ), 1 )
   } else {
-    obs_A = list( inla.spde.make.A( mesh=MESH, loc=as.matrix(x[, p$variables$LOC ]) ) ) # no effects
+    obs_A = list( inla.spde.make.A( mesh=MESH, loc=as.matrix(dat[, p$variables$LOC ]) ) ) # no effects
   }
 
   obs_ydata = list()
-  obs_ydata[[ p$variables$Y ]] = x[, p$variables$Y ]
+  obs_ydata[[ p$variables$Y ]] = dat[, p$variables$Y ]
   
   DATA = inla.stack( tag="obs", data=obs_ydata, A=obs_A, effects=obs_eff, remove.unused=FALSE )
   rm ( obs_index, obs_eff, obs_ydata, obs_A )
@@ -181,9 +181,9 @@ lbm__inla = function( p, x, pa ) {
   inla.summary = lbm_summary_inla_spde2 ( RES, SPDE )
   # save statistics last as this is an indicator of completion of all tasks .. restarts would be broken otherwise
   stats = list()
-  stats$sdTotal=sd(x[,p$variable$Y], na.rm=T)
+  stats$sdTotal=sd(dat[,p$variable$Y], na.rm=T)
   stats$rsquared=NA
-  stats$ndata=nrow(x)
+  stats$ndata=nrow(dat)
   stats$sdSpatial = sqrt(inla.summary[["spatial error", "mode"]])
   stats$sdObs = sqrt(inla.summary[["observation error", "mode"]])
   stats$nu = p$inla.alpha - 1

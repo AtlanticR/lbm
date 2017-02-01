@@ -1,5 +1,5 @@
 
-lbm__habitat = function( p, x, pa ) {
+lbm__habitat = function( p, dat, pa ) {
    #\\ this is the core engine of lbm .. localised space-time habiat modelling
  
   if (0) {
@@ -9,32 +9,32 @@ lbm__habitat = function( p, x, pa ) {
 
   if ( exists("lbm_local_model_distanceweighted", p) ) {
     if (p$lbm_local_model_distanceweighted) {
-      Hmodel = try( gam( p$lbm_local_modelformula, data=x, family=binomial, weights=weights, optimizer=c("outer","optim")  ) )
+      Hmodel = try( gam( p$lbm_local_modelformula, data=dat, family=binomial, weights=weights, optimizer=c("outer","optim")  ) )
     } else {
-      Hmodel = try( gam( p$lbm_local_modelformula, data=x, family=binomial, optimizer=c("outer","optim")  ) )
+      Hmodel = try( gam( p$lbm_local_modelformula, data=dat, family=binomial, optimizer=c("outer","optim")  ) )
     }
   } else {
-      Hmodel = try( gam( p$lbm_local_modelformula, data=x, family=binomial ) )
+      Hmodel = try( gam( p$lbm_local_modelformula, data=dat, family=binomial ) )
   } 
   if ( "try-error" %in% class(Hmodel) ) return( NULL )
 
 
   if ( exists("lbm_local_model_distanceweighted", p) ) {
     if (p$lbm_local_model_distanceweighted) {
-      Amodel = try( gam( p$lbm_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
+      Amodel = try( gam( p$lbm_local_modelformula, data=dat, weights=weights, optimizer=c("outer","optim")  ) )
     } else {
-      Amodel = try( gam( p$lbm_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
+      Amodel = try( gam( p$lbm_local_modelformula, data=dat, optimizer=c("outer","optim")  ) )
     }
   } else {
-      Amodel = try( gam( p$lbm_local_modelformula, data=x ) )
+      Amodel = try( gam( p$lbm_local_modelformula, data=dat ) )
   } 
   if ( "try-error" %in% class(Amodel) ) return( NULL )
 
-  x$P = try( predict( Hmodel, newdata=x, type="response", se.fit=FALSE ) ) 
-  x$A = try( predict( Amodel, newdata=x, type="response", se.fit=FALSE ) ) 
-  x$Yhat = x$P * x$A
+  dat$P = try( predict( Hmodel, newdata=dat, type="response", se.fit=FALSE ) ) 
+  dat$A = try( predict( Amodel, newdata=dat, type="response", se.fit=FALSE ) ) 
+  dat$Yhat = dat$P * dat$A
 
-  rsq = cor( x$Yhat, x[,p$variables$Y], use="pairwise.complete.obs" )^2
+  rsq = cor( dat$Yhat, dat[,p$variables$Y], use="pairwise.complete.obs" )^2
   if (rsq < p$lbm_rsquared_threshold ) return(NULL)
 
   Hmodel.coef = mvtnorm::rmvnorm(p$nsims, coef(Hmodel), Hmodel$Vp, method="chol")
@@ -69,7 +69,7 @@ lbm__habitat = function( p, x, pa ) {
   # iHabitat = which( pa$logitmean > p$habitat.threshold.quantile & (pa$logitmean - 2 * pa$logitsd) > 0 )
 
   ss = summary(hmod)
-  lbm_stats = list( sdTotal=sd(Y[], na.rm=T), rsquared=rsq, ndata=nrow(x) ) # must be same order as p$statsvars
+  lbm_stats = list( sdTotal=sd(Y[], na.rm=T), rsquared=rsq, ndata=nrow(dat) ) # must be same order as p$statsvars
 
   return( list( predictions=pa, lbm_stats=lbm_stats ) )  
 

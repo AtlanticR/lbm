@@ -1,5 +1,5 @@
 
-lbm__gaussianprocess2Dt = function( p, x, pa ) {
+lbm__gaussianprocess2Dt = function( p, dat, pa ) {
   #\\ this is the core engine of lbm .. localised space (no-time) modelling interpolation 
   # \ as a 2D gaussian process (basically, simple krigimg or TPS -- time is treated as being independent)
   #\\ note: time is not being modelled and treated independently 
@@ -12,20 +12,20 @@ lbm__gaussianprocess2Dt = function( p, x, pa ) {
   }
   if (!exists("fields.Covariance", p)) p$fields.Covariance="Exponential" # note that "Rad.cov" is TPS
   
-  x$mean = NA
+  dat$mean = NA
   pa$mean = NA
   pa$sd = NA
 
   for ( ti in 1:p$nt ) {
     
     if ( exists("TIME", p$variables) ) {
-      xi = which( x[ , p$variables$TIME ] == p$prediction.ts[ti] )
+      xi = which( dat[ , p$variables$TIME ] == p$prediction.ts[ti] )
     } else {
-      xi = 1:nrow(x) # all data as p$nt==1
+      xi = 1:nrow(dat) # all data as p$nt==1
     }
 
-    xy = x[xi, p$variables$LOCS]
-    z = x[xi, p$variables$Y]
+    xy = dat[xi, p$variables$LOCS]
+    z = dat[xi, p$variables$Y]
     
     fsp = try( MLESpatialProcess(xy, z, cov.function=p$fields.cov.function, cov.args=p$fields.cov.args ,
       theta.grid=p$phi.grid, lambda.grid=p$lambda.grid, ngrid = 10, niter = 15, tol = 0.01, 
@@ -38,8 +38,8 @@ lbm__gaussianprocess2Dt = function( p, x, pa ) {
       theta=fsp$pars["theta"], lambda=fsp$pars["lambda"] ) )
     if (inherits(fspmodel, "try-error") )  next()
 
-    x$mean[xi] = as.vector( predict(fspmodel, x=x[xi, p$variables$LOCS] ) )
-    ss = lm( x$mean[xi] ~ x[xi,p$variables$Y], na.action=na.omit)
+    dat$mean[xi] = as.vector( predict(fspmodel, x=dat[xi, p$variables$LOCS] ) )
+    ss = lm( dat$mean[xi] ~ dat[xi,p$variables$Y], na.action=na.omit)
     if ( "try-error" %in% class( ss ) ) next()
     rsquared = summary(ss)$r.squared
     if (rsquared < p$lbm_rsquared_threshold ) next()
@@ -64,15 +64,15 @@ lbm__gaussianprocess2Dt = function( p, x, pa ) {
  
   }
 
-  # plot(pred ~ z , x)
-  ss = lm( x$mean ~ x[,p$variables$Y], na.action=na.omit)
+  # plot(pred ~ z , dat)
+  ss = lm( dat$mean ~ dat[,p$variables$Y], na.action=na.omit)
   if ( "try-error" %in% class( ss ) ) return( NULL )
   rsquared = summary(ss)$r.squared
   if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
   # TODO:: add some more stats: eg. range estimates, nugget/sill, etc..
 
-  lbm_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
+  lbm_stats = list( sdTotal=sd(dat[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 

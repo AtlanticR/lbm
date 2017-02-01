@@ -1,5 +1,5 @@
 
-lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
+lbm__fft = function( p, dat, pa, nu=NULL, phi=NULL ) {
 
   #\\ this is the core engine of lbm .. localised space (no-time) modelling interpolation 
   #\\ note: time is not being modelled and treated independently 
@@ -7,8 +7,8 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   #\\ first a low-pass filter as defined by p$lbm_lowpass_nu, p$lbm_lowpass_phi, then a simple covariance filter determined by nu,phi
   # varObs=varObs, varSpatial=varSpatial
 
-  x_r = range(x[,p$variables$LOCS[1]])
-  x_c = range(x[,p$variables$LOCS[2]])
+  x_r = range(dat[,p$variables$LOCS[1]])
+  x_c = range(dat[,p$variables$LOCS[2]])
 
   pa_r = range(pa[,p$variables$LOCS[1]])
   pa_c = range(pa[,p$variables$LOCS[2]])
@@ -24,9 +24,9 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   names( x_locs ) = p$variables$LOCS
 
 
-  sdTotal = sd(x[,p$variable$Y], na.rm=T)
+  sdTotal = sd(dat[,p$variable$Y], na.rm=T)
 
-  x$mean = NA
+  dat$mean = NA
   pa$mean = NA
   pa$sd = sdTotal  # this is ignored with fft
 
@@ -68,20 +68,20 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
   sp.covar = sp.covar2 = sp.covar.surf = sp.covar.surf2 = dgrid = center = mC = NULL
   gc()
 
-  xi =1:nrow(x) 
+  xi =1:nrow(dat) 
   pa_i = 1:nrow(pa)
   origin=c(x_r[1], x_c[1])
   res=c(p$pres, p$pres)
 
   for ( ti in 1:p$nt ) {
 
-    if ( exists("TIME", p$variables)) xi = which( x[, p$variables$TIME]==p$prediction.ts[ti] ) 
+    if ( exists("TIME", p$variables)) xi = which( dat[, p$variables$TIME]==p$prediction.ts[ti] ) 
     
     # map of row, col indices of input data in the new (output) coordinate system
     
-    x_id = array_map( "xy->2", coords=x[xi,p$variables$LOCS], origin=origin, res=res )
+    x_id = array_map( "xy->2", coords=dat[xi,p$variables$LOCS], origin=origin, res=res )
     
-    u = as.image( x[xi,p$variables$Y], ind=as.matrix( x_id), na.rm=TRUE, nx=nr, ny=nc )
+    u = as.image( dat[xi,p$variables$Y], ind=as.matrix( x_id), na.rm=TRUE, nx=nr, ny=nc )
     
     mN = matrix(0, nrow = nr2, ncol = nc2)
     mN[1:nr,1:nc] = u$weights
@@ -120,13 +120,13 @@ lbm__fft = function( p, x, pa, nu=NULL, phi=NULL ) {
     
   }
 
-  # plot(mean ~ z , x)
-  ss = lm( x$mean ~ x[,p$variables$Y], na.action=na.omit )
+  # plot(mean ~ z , dat)
+  ss = lm( dat$mean ~ dat[,p$variables$Y], na.action=na.omit )
   if ( "try-error" %in% class( ss ) ) return( NULL )
   rsquared = summary(ss)$r.squared
   if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-  lbm_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
+  lbm_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 

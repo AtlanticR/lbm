@@ -1,11 +1,13 @@
 
-lbm__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
+lbm__spate = function( p, dat, pa, sloc, px=NULL, ws=NULL ) {
   #\\ SPDE solution via FFT using the spate library
   # require(spate)
   # based upon two-step process
 
+  message( "This is not yet finished/debugged .. ")
+  
   # step 1 -- timeseries modelling
-  # use all available data in 'x' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
+  # use all available data in 'dat' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
   # currently only a GAM is enable for the TS component
 
   #  ws= round( lbm_distance_cur / p$pres )
@@ -13,12 +15,12 @@ lbm__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
 
   if ( exists("lbm_local_model_distanceweighted", p) ) {
     if (p$lbm_local_model_distanceweighted) {
-      hmod = try( gam( p$lbm_local_modelformula, data=x, weights=weights, optimizer=c("outer","optim")  ) )
+      hmod = try( gam( p$lbm_local_modelformula, data=dat, weights=weights, optimizer=c("outer","optim")  ) )
     } else {
-      hmod = try( gam( p$lbm_local_modelformula, data=x, optimizer=c("outer","optim")  ) )
+      hmod = try( gam( p$lbm_local_modelformula, data=dat, optimizer=c("outer","optim")  ) )
     }
   } else {
-      hmod = try( gam( p$lbm_local_modelformula, data=x ) )
+      hmod = try( gam( p$lbm_local_modelformula, data=dat ) )
   } 
 
   if ( "try-error" %in% class(hmod) ) return( NULL )
@@ -80,13 +82,13 @@ lbm__spate = function( p, x, pa, sloc, px=NULL, ws=NULL ) {
   Pmean <- apply(predict, c(1,2), mean)
   Psd <- apply(predict, c(1,2), sd)
 
-  # plot(mean ~ z , x)
-  ss = lm( x$mean ~ x[,p$variables$Y], na.action=na.omit )
+  # plot(mean ~ z , dat)
+  ss = lm( dat$mean ~ dat[,p$variables$Y], na.action=na.omit )
   if ( "try-error" %in% class( ss ) ) return( NULL )
   rsquared = summary(ss)$r.squared
   if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-  lbm_stats = list( sdTotal=sd(x[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(x) ) # must be same order as p$statsvars
+  lbm_stats = list( sdTotal=sd(dat[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 
