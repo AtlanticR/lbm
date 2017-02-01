@@ -348,17 +348,10 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       if ("sin.w3" %in% p$variables$local_all) dat$sin.w3 = sin( 3*dat[,p$variables$TIME] )
     }
 
-  # use a larger data grid to interpolate.. right now too slow to use so skip this step
     if (p$lbm_local_modelengine %in% c( "spate", "twostep", "lbm_local_modelengine_userdefined", "fft" ) ) {
-      # some methods require a uniform prediction grid based upon all dat locations (and time) 
-      # begin with "dat"    
+      # some methods require a uniform (temporal with associated covariates) prediction grid based upon all dat locations 
+
       px = dat # only the static parts .. time has to be a uniform grid so reconstruct below
-      # px$plat = grid.internal( px$plat, p$plats )
-      # px$plon = grid.internal( px$plon, p$plons )
-
-      # ids = paste(px[,p$variables$LOCS[1] ], px[,p$variables$LOCS[2] ] ) 
-      # test which is faster ... remove non-unique?
-
       ids = array_map( "xy->1", px[, c("plon", "plat")], gridparams=p$gridparams ) # 100X faster than paste / merge
       todrop = which(duplicated( ids) )
       if (length(todrop>0)) px = px[-todrop,]
