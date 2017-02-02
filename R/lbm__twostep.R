@@ -21,9 +21,9 @@ lbm__twostep = function( p, dat, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, 
   # if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
   # if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
  
-  px = ts_gam$predictions
-  names(px)[which(names(px)=="mean")] = p$variables$Y
-  names(px)[which(names(px)=="sd")] = paste(p$variables$Y, "sd", sep=".")
+  pxts = ts_gam$predictions
+  names(pxts)[which(names(pxts)=="mean")] = p$variables$Y
+  names(pxts)[which(names(pxts)=="sd")] = paste(p$variables$Y, "sd", sep=".")
   
   ts_gam = NULL
   gc()
@@ -34,22 +34,22 @@ lbm__twostep = function( p, dat, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, 
   if (!exists( "lbm_twostep_space", p)) p$lbm_twostep_space="krige" # default
   
   if ( p$lbm_twostep_space == "krige" ) {
-    out = lbm__krige( p, x=px, pa=pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ) 
+    out = lbm__krige( p, dat=pxts, pa=pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ) 
     if (is.null( out)) return(NULL)
   }
 
   if ( p$lbm_twostep_space == "gstat" ) {
-    out = lbm__gstat( p, x=px, pa=pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ) 
+    out = lbm__gstat( p, dat=pxts, pa=pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ) 
     if (is.null( out)) return(NULL)
   }
 
   if (p$lbm_twostep_space %in% c("tps") ) {
-    out = lbm__tps( p, x=px, pa=pa, phi=phi, lambda=varObs/varSpatial  )  
+    out = lbm__tps( p, dat=pxts, pa=pa, phi=phi, lambda=varObs/varSpatial  )  
     if (is.null( out)) return(NULL)
   }
 
   if (p$lbm_twostep_space %in% c("fft", "lowpass", "spatial.process", "lowpass_spatial.process") ) {
-    out = lbm__fft( p, x=px, pa=pa, nu=nu, phi=phi )  ## px vs pa ... fix this
+    out = lbm__fft( p, dat=pxts, pa=pa, nu=nu, phi=phi )  
     if (is.null( out)) return(NULL)
   }
 
