@@ -20,13 +20,7 @@ lbm__twostep = function( p, dat, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, 
   # toolarge = which( ts_gam$predictions$mean > rY[2] )
   # if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
   # if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
-  browser()
-  
-  if (0) {
-    um = which( !is.finite(px))
-    
-  }
-
+ 
   px = ts_gam$predictions
   names(px)[which(names(px)=="mean")] = p$variables$Y
   names(px)[which(names(px)=="sd")] = paste(p$variables$Y, "sd", sep=".")
