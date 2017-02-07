@@ -19,8 +19,6 @@
       p$cache$Yloc =  file.path( p$stloc, "input.Yloc.cache" )
       p$cache$Yi =    file.path( p$stloc, "input.Yi.cache" ) # index of useable data
       
-      p$cache$Ylogit = file.path( p$stloc, "Ylogit.cache" )
-
       p$cache$P =     file.path( p$stloc, "predictions.cache" )
       p$cache$Psd =   file.path( p$stloc, "predictions_sd.cache" )
       p$cache$Pn =    file.path( p$stloc, "predictions_n.cache" )
@@ -41,9 +39,6 @@
         p$cache$P0 = file.path( p$stloc, "P0.cache" )
         p$cache$P0sd = file.path( p$stloc, "P0sd.cache" )
       }
-
-      p$cache$Plogit = file.path( p$stloc, "Plogit.cache" )
-      p$cache$Plogitsd = file.path( p$stloc, "Plogitsd.cache" )
 
       p$cache$S =     file.path( p$stloc, "statistics.cache" )
       p$cache$Sloc =  file.path( p$stloc, "statistics_loc.cache" )

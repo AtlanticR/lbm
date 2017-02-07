@@ -7,7 +7,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   #\\ speed ratings: bigmemory.ram (1), ff (2), bigmemory.filebacked (3)
 
   # TODO: splancs::kernel3d as a method ? .. for count data?
-  # TODO: habitat methods
   # TODO: gaussian process // see lbm_interpolate_xy_simple
   #       .. the convoSPAT seems almost fast enough
   # TODO: LaplacesDemon method
@@ -231,24 +230,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       p$qs = quantile( Y[], probs=p$lbm_quantile_bounds, na.rm=TRUE  )
 
 
-      if (p$lbm_local_modelengine == "habitat") {
-        logitY = lbm_db( p=p, DS="presence.absense" )
-          if (p$storage.backend == "bigmemory.ram" ) {
-            if (!exists("habitat.threshold.quantile", p)) p$habitat.threshold.quantile = 0.01
-            p$bm$Ylogit = big.matrix( nrow=nrow(logitY), ncol=1, type="double" )
-            p$bm$Ylogit[] = logitY
-            p$ptr$Ylogit  = bigmemory::describe( p$bm$Ylogit )
-          }
-          if (p$storage.backend == "bigmemory.filebacked" ) {
-            p$ptr$Ylogit  = p$cache$Ylogit
-            bigmemory::as.big.matrix( logitY, type="double", backingfile=basename(p$bm$Ylogit), descriptorfile=basename(p$cache$Ylogit), backingpath=p$stloc )
-          }
-          if (p$storage.backend == "ff" ) {
-            p$ptr$Ylogit = ff( Ylogit, dim=dim(logitY), file=p$cache$Ylogit, overwrite=TRUE )
-          }
-        rm(logitY)
-      }
-
 
      # data coordinates
       Yloc = as.matrix( DATA$input[, p$variables$LOCS ])
@@ -374,34 +355,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
           p$ptr$Psd = ff( P, dim=dim(P), file=p$cache$Psd, overwrite=TRUE )
         }
 
-
-        if (p$lbm_local_modelengine == "habitat") {
-          if (p$storage.backend == "bigmemory.ram" ) {
-            p$bm$Plogit= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
-            p$bm$Plogit[] = P
-            p$ptr$Plogit = bigmemory::describe(p$bm$Plogit )
-          }
-          if (p$storage.backend == "bigmemory.filebacked" ) {
-            p$ptr$Plogit  = p$cache$Plogit
-            bigmemory::as.big.matrix( P, type="double", backingfile=basename(p$bm$Plogit), descriptorfile=basename(p$cache$Plogit), backingpath=p$stloc )
-          }
-          if (p$storage.backend == "ff" ) {
-            p$ptr$Plogit = ff( P, dim=dim(P), file=p$cache$Plogit, overwrite=TRUE )
-          }
-
-          if (p$storage.backend == "bigmemory.ram" ) {
-            p$bm$Plogitsd= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
-            p$bm$Plogitsd[] = P
-            p$ptr$Plogitsd = bigmemory::describe(p$bm$Plogitsd )
-          }
-          if (p$storage.backend == "bigmemory.filebacked" ) {
-            p$ptr$Plogitsd  = p$cache$Plogitsd
-            bigmemory::as.big.matrix( P, type="double", backingfile=basename(p$bm$Plogitsd), descriptorfile=basename(p$cache$Plogitsd), backingpath=p$stloc )
-          }
-          if (p$storage.backend == "ff" ) {
-            p$ptr$Plogitsd = ff( P, dim=dim(P), file=p$cache$Plogitsd, overwrite=TRUE )
-          }
-        }
 
       # prediction coordinates
       Ploc = as.matrix( DATA$output$LOCS )

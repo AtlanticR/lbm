@@ -40,12 +40,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     # Y = Y[]
   }
 
-  if (p$lbm_local_modelengine=="habitat") {
-    Ylogit = lbm_attach( p$storage.backend, p$ptr$Ylogit )
-    Plogit = lbm_attach( p$storage.backend, p$ptr$Plogit )
-    Plogitsd = lbm_attach( p$storage.backend, p$ptr$Plogitsd )
-  }
-
   Yi = lbm_attach( p$storage.backend, p$ptr$Yi )
   # Yi = as.vector(Yi[])  #force copy to RAM as a vector
 
@@ -323,9 +317,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     dat = data.frame( Y[YiU] )
     names(dat) = p$variables$Y
     dat[, p$variables$Y] = p$lbm_local_family$linkfun ( dat[, p$variables$Y] ) 
-    if (p$lbm_local_modelengine=="habitat") {
-      dat[, p$variables$Ylogit ] = p$lbm_local_family_logit$linkfun ( dat[, p$variables$Ylogit] ) ### -- need to conform with data structure ... check once ready
-    }
     dat$plon = Yloc[YiU,1]
     dat$plat = Yloc[YiU,2]
     dat$weights = 1 / (( Sloc[Si,1] - dat$plat)**2 + (Sloc[Si,2] - dat$plon)**2 )# weight data in space: inverse distance squared
@@ -473,11 +464,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
 
     res$predictions$mean = p$lbm_local_family$linkinv( res$predictions$mean )
     # res$predictions$sd   = p$lbm_local_family$linkinv( res$predictions$sd )
-    if (p$lbm_local_modelengine=="habitat") {
-      res$predictions$logitmean = p$lbm_local_family_logit$linkinv( res$predictions$logitmean )
-      # res$predictions$logitsd   = p$lbm_local_family_logit$linkinv( res$predictions$logitsd )
-    }
- 
+
     if (exists( "lbm_quantile_bounds", p)) {
       tq = quantile( Y[YiU], probs=p$lbm_quantile_bounds, na.rm=TRUE  )
       toolow  = which( res$predictions$mean < tq[1] )
@@ -590,18 +577,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         stdev_update = NULL
         means_update = NULL
 
-        if (p$lbm_local_modelengine=="habitat") {
-          logit_stdev_update =  Plogitsd[ui] + ( res$predictions$logitsd[u] -  Plogitsd[ui] ) / Pn[ui]
-          logit_means_update = ( Plogit[ui] / Plogitsd[ui]^2 + res$predictions$logitmean[u] / res$predictions$logitsd[u]^2 ) / ( Plogitsd[ui]^(-2) + res$predictions$logitsd[u]^(-2) )
-          mm = which(is.finite( logit_means_update + logit_stdev_update ))
-          if( length(mm)> 0) {
-            iumm = ui[mm]
-            Plogitsd[iumm] = logit_stdev_update[mm]
-            Plogit  [iumm] = logit_means_update[mm]
-          }
-          logit_stdev_update = NULL
-          logit_means_update = NULL
-        }
         rm(ui, mm, iumm)
       }
 
@@ -612,10 +587,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         Pn [vi] = 1
         P  [vi] = res$predictions$mean[v]
         Psd[vi] = res$predictions$sd[v]
-        if (p$lbm_local_modelengine=="habitat") {
-          Plogit  [vi] = res$predictions$logitmean[v]
-          Plogitsd[vi] = res$predictions$logitsd[v]
-        }
       }
     }
 
@@ -647,21 +618,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         } 
         stdev_update = NULL
         means_update = NULL
-        if (p$lbm_local_modelengine=="habitat") {
-          logit_stdev_update =  Plogitsd[ui,] + ( res$predictions$logitsd[u] -  Plogitsd[ui,] ) / Pn[ui]
-          logit_means_update = ( Plogit[ui,] / Plogitsd[ui,]^2 + res$predictions$logitmean[u] / res$predictions$logitsd[u]^2 ) / ( Plogitsd[ui,]^(-2) + res$predictions$logitsd[u]^(-2) )
-          updates = logit_means_update + logit_stdev_update
-          if (!is.matrix(updates)) next()
-          mm = which( is.finite( rowSums(updates)))  # created when preds go outside quantile bounds .. this removes 
-          if( length(mm)> 0) {
-            iumm = ui[mm]
-            Plogitsd[iumm,] = logit_stdev_update[mm,]
-            Plogit  [iumm,] = logit_means_update[mm,]
-            iumm = NULL
-          } 
-          logit_stdev_update = NULL
-          logit_means_update = NULL
-        }
         rm(ui, mm)
 
       }
@@ -674,14 +630,9 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         Pn [vi,] = 1
         P  [vi,] = res$predictions$mean[v]
         Psd[vi,] = res$predictions$sd[v]
-        if (p$lbm_local_modelengine=="habitat") {
-          Plogit  [vi,] = res$predictions$logitmean[v]
-          Plogitsd[vi,] = res$predictions$logitsd[v]
-        }
         rm(vi)
       } 
     }
-
 
     # save stats
     for ( k in 1: length(p$statsvars) ) {
