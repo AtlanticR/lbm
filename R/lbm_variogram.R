@@ -155,9 +155,12 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
         }
       } else {
         out = try( lbm_variogram( xy=xy, z=z, methods="fast.rf") )
-        if (!inherits(out, "try-error") )
-        out$fast =out$fast.rf
-        out$fast.rf =NULL
+        if (!inherits(out, "try-error") ) {
+          if (exists( "fast.rf", out)) {
+            out$fast =out$fast.rf
+            out$fast.rf =NULL
+          }
+        }
         return(out)
       }
     }
@@ -221,9 +224,12 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
         }
       } else {
         out = try( lbm_variogram( xy=xy, z=z, methods="gstat") )
-        if (!inherits(out, "try-error") )
-        out$fast.rf =out$gstat
-        out$gstat =NULL
+        if (!inherits(out, "try-error") ) {
+          if (exists("gstat", out)) {
+            out$fast.rf =out$gstat
+            out$gstat =NULL
+          }
+        }
         return(out)
       }
     }
