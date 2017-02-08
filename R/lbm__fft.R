@@ -6,6 +6,10 @@ lbm__fft = function( p, dat, pa, nu=NULL, phi=NULL ) {
   #\\      .. you had better have enough data in each time slice
   #\\ first a low-pass filter as defined by p$lbm_lowpass_nu, p$lbm_lowpass_phi, then a simple covariance filter determined by nu,phi
   # varObs=varObs, varSpatial=varSpatial
+  
+  sdTotal=sd(dat[,p$variable$Y], na.rm=T)
+
+  dat[, p$variables$Y] = p$lbm_local_family$linkfun ( dat[, p$variables$Y] ) 
 
   x_r = range(dat[,p$variables$LOCS[1]])
   x_c = range(dat[,p$variables$LOCS[2]])
@@ -22,9 +26,6 @@ lbm__fft = function( p, dat, pa, nu=NULL, phi=NULL ) {
   x_locs = expand.grid( x_plons, x_plats ) # final output grid
   attr( x_locs , "out.attrs") = NULL
   names( x_locs ) = p$variables$LOCS
-
-
-  sdTotal = sd(dat[,p$variable$Y], na.rm=T)
 
   dat$mean = NA
   pa$mean = NA
@@ -115,18 +116,21 @@ lbm__fft = function( p, dat, pa, nu=NULL, phi=NULL ) {
       pa$mean[pa_i] = Z[Z_i]
     }
 
+    pa$mean[pa_i] = p$lbm_local_family$linkinv( pa$mean[pa_i] )
+    # pa$sd[pa_i]   = p$lbm_local_family$linkinv( pa$sd[pa_i] )
+
     # pa$sd[pa_i] = NA  ## fix as NA
     Z = NULL
     
   }
 
   # plot(mean ~ z , dat)
-  ss = lm( dat$mean ~ dat[,p$variables$Y], na.action=na.omit )
-  if ( "try-error" %in% class( ss ) ) return( NULL )
-  rsquared = summary(ss)$r.squared
-  if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
+  #ss = lm( dat$mean ~ p$lbm_local_family$linkinv( dat[,p$variables$Y]), na.action=na.omit )
+  #if ( "try-error" %in% class( ss ) ) return( NULL )
+  #rsquared = summary(ss)$r.squared
+  #if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-  lbm_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
+  lbm_stats = list( sdTotal=sdTotal, rsquared=NA, ndata=nrow(dat) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 

@@ -253,6 +253,7 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
 
 
   # ------------------------
+  
   if ("fields" %in% methods){
     require(fields)
     vg = vgram( xy, z, N=nbreaks, dmax=out$maxdist * 3 )

@@ -200,6 +200,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     # So, YiU and p$lbm_distance_prediction determine the data entering into local model construction
     # dist_model = lbm_distance_cur
 
+    # determine prediction locations and time slices
     iwplon = round( (Sloc[Si,1]-p$origin[1])/p$pres + 1 + pa_w )
     iwplat = round( (Sloc[Si,2]-p$origin[2])/p$pres + 1 + pa_w )
     
@@ -242,11 +243,9 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         points( grids$plats[pa$iplat] ~ grids$plons[ pa$iplon] , col="cyan", pch=20, cex=0.01 ) # check on Proc iplat indexing
         points( Ploc[pa$i,2] ~ Ploc[ pa$i, 1] , col="black", pch=20, cex=0.7 ) # check on pa$i indexing -- prediction locations
       }
-
    
     pa$plon = Ploc[ pa$i, 1]
     pa$plat = Ploc[ pa$i, 2]
-
  
     # prediction covariates i.e., independent variables/ covariates
     pvars = c("plon", "plat", "i")
@@ -303,7 +302,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
             pa$iy = pa$yr - p$yrs[1] + 1 #yr index
             pa[,vn] = pu[ cbind(pa$i, pa$iy) ]  
             message("Need to check that data order is correct")
-           } else if ( nts == p$nt) {
+          } else if ( nts == p$nt) {
             pa$it = p$nw*(pa$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
             pa[,vn] = pu[ cbind(pa$i, pa$it) ]  
             message("Need to check that data order is correct")
@@ -314,9 +313,8 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     
     # prep dependent data 
     # reconstruct data for modelling (dat) and data for prediction purposes (pa)
-    dat = data.frame( Y[YiU] )
+    dat = data.frame( Y[YiU] ) # these are residuals if there is a global model
     names(dat) = p$variables$Y
-    dat[, p$variables$Y] = p$lbm_local_family$linkfun ( dat[, p$variables$Y] ) 
     dat$plon = Yloc[YiU,1]
     dat$plat = Yloc[YiU,2]
     dat$weights = 1 / (( Sloc[Si,1] - dat$plat)**2 + (Sloc[Si,2] - dat$plon)**2 )# weight data in space: inverse distance squared
@@ -460,10 +458,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       dat = pa = px = res = NULL
       next()
     }
-
-
-    res$predictions$mean = p$lbm_local_family$linkinv( res$predictions$mean )
-    # res$predictions$sd   = p$lbm_local_family$linkinv( res$predictions$sd )
 
     if (exists( "lbm_quantile_bounds", p)) {
       tq = quantile( Y[YiU], probs=p$lbm_quantile_bounds, na.rm=TRUE  )

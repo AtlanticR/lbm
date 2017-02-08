@@ -7,31 +7,20 @@ lbm__habitat = function( p, dat, pa ) {
     if (!exists("habitat.threshold.quantile", p)) p$habitat.threshold.quantile = 0.05 # quantile at which to consider zero-valued abundance
   }
 
+  sdTotal=sd(dat[,p$variables$Y], na.rm=T)
+
   if ( exists("lbm_local_model_distanceweighted", p) ) {
     if (p$lbm_local_model_distanceweighted) {
-      Hmodel = try( gam( p$lbm_local_modelformula, data=dat, family=binomial, weights=weights, optimizer=c("outer","optim")  ) )
+      Hmodel = try( gam( p$lbm_local_modelformula, data=dat, family=binomial(), weights=weights, optimizer=c("outer","optim")  ) )
     } else {
-      Hmodel = try( gam( p$lbm_local_modelformula, data=dat, family=binomial, optimizer=c("outer","optim")  ) )
+      Hmodel = try( gam( p$lbm_local_modelformula, data=dat, family=binomial(), optimizer=c("outer","optim")  ) )
     }
   } else {
-      Hmodel = try( gam( p$lbm_local_modelformula, data=dat, family=binomial ) )
+      Hmodel = try( gam( p$lbm_local_modelformula, data=dat, family=binomial() ) )
   } 
   if ( "try-error" %in% class(Hmodel) ) return( NULL )
 
-
-  if ( exists("lbm_local_model_distanceweighted", p) ) {
-    if (p$lbm_local_model_distanceweighted) {
-      Amodel = try( gam( p$lbm_local_modelformula, data=dat, weights=weights, optimizer=c("outer","optim")  ) )
-    } else {
-      Amodel = try( gam( p$lbm_local_modelformula, data=dat, optimizer=c("outer","optim")  ) )
-    }
-  } else {
-      Amodel = try( gam( p$lbm_local_modelformula, data=dat ) )
-  } 
-  if ( "try-error" %in% class(Amodel) ) return( NULL )
-
   dat$P = try( predict( Hmodel, newdata=dat, type="response", se.fit=FALSE ) ) 
-  dat$A = try( predict( Amodel, newdata=dat, type="response", se.fit=FALSE ) ) 
   dat$Yhat = dat$P * dat$A
 
   rsq = cor( dat$Yhat, dat[,p$variables$Y], use="pairwise.complete.obs" )^2
@@ -69,7 +58,7 @@ lbm__habitat = function( p, dat, pa ) {
   # iHabitat = which( pa$logitmean > p$habitat.threshold.quantile & (pa$logitmean - 2 * pa$logitsd) > 0 )
 
   ss = summary(hmod)
-  lbm_stats = list( sdTotal=sd(Y[], na.rm=T), rsquared=rsq, ndata=nrow(dat) ) # must be same order as p$statsvars
+  lbm_stats = list( sdTotal=sdTotal, rsquared=rsq, ndata=nrow(dat) ) # must be same order as p$statsvars
 
   return( list( predictions=pa, lbm_stats=lbm_stats ) )  
 

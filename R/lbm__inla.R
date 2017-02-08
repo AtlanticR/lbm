@@ -5,6 +5,9 @@ lbm__inla = function( p, dat, pa ) {
   #\\ generic spatial and space-time interpolator using inla
   #\\ parameter and data requirements can be seen in bathymetry\src\bathymetry.r
 
+  sdTotal=sd(dat[,p$variable$Y], na.rm=T)
+  dat[, p$variables$Y] = p$lbm_local_family$linkfun ( dat[, p$variables$Y] ) 
+
   # the following parameters are for inside and outside ... do not make them exact multiples as this seems to make things hang ..
   if ( !exists("inla.mesh.max.edge", p))  p$inla.mesh.max.edge = c(  0.025,   0.04 )    # proportion of 2*p$lbm_distance_scale or equivalent: c(inside,outside) -- must be positive valued
   if ( !exists("inla.mesh.offset", p))  p$inla.mesh.offset   = c( - 0.025,  - 0.05 )   # how much to extend inside and outside of boundary: proportion of lbm_distance_scale .. neg val = proportion
@@ -168,6 +171,9 @@ lbm__inla = function( p, dat, pa ) {
     }
     pa$mean = c( inla.mesh.project( pG, field=apply( posterior, 1, mean, na.rm=TRUE )  ))
     pa$sd   = c( inla.mesh.project( pG, field=apply( posterior, 1, sd, na.rm=TRUE )  ))
+
+    pa$mean = p$lbm_local_family$linkinv( pa$mean )
+ 
   }
 
   if (0) {
@@ -181,7 +187,7 @@ lbm__inla = function( p, dat, pa ) {
   inla.summary = lbm_summary_inla_spde2 ( RES, SPDE )
   # save statistics last as this is an indicator of completion of all tasks .. restarts would be broken otherwise
   stats = list()
-  stats$sdTotal=sd(dat[,p$variable$Y], na.rm=T)
+  stats$sdTotal=sdTotal
   stats$rsquared=NA
   stats$ndata=nrow(dat)
   stats$sdSpatial = sqrt(inla.summary[["spatial error", "mode"]])

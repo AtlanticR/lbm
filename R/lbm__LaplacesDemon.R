@@ -1,40 +1,9 @@
 
 lbm__LaplacesDemon = function( p, dat, pa ) {
    #\\ this is the core engine of lbm .. localised space-time habiat modelling
- 
-    if ( exists("lbm_local_model_distanceweighted", p) ) {
-      if (p$lbm_local_model_distanceweighted) {
-        Hmodel = try( gam( p$lbm_local_modelformula, data=dat, weights=weights, optimizer=c("outer","optim")  ) )
-      } else {
-        Hmodel = try( gam( p$lbm_local_modelformula, data=dat, optimizer=c("outer","optim")  ) )
-      }
-    } else {
-        Hmodel = try( gam( p$lbm_local_modelformula, data=dat ) )
-    } 
-    if ( "try-error" %in% class(Hmodel) ) return( NULL )
 
-
-    out = try( predict( Hmodel, newdata=newdata, type="response", se.fit=T ) )
-
-    if ( "try-error" %in% class( out ) ) return( NULL )
-
-    newdata$mean = as.vector(out$fit)
-    newdata$sd = as.vector(out$se.fit) # this is correct: se.fit== stdev of the mean fit: eg:  https://stat.ethz.ch/pipermail/r-help/2005-July/075856.html
-
-    if (exists( "lbm_quantile_bounds", p)) {
-      tq = quantile( dat[,p$variables$Y], probs=p$lbm_quantile_bounds, na.rm=TRUE  )
-      bad = which( newdata$mean < tq[1] | newdata$mean > tq[2]  )
-      if (length( bad) > 0) {
-        newdata$mean[ bad] = NA
-        newdata$sd[ bad] = NA
-      }
-    }
-
-    ss = summary(Hmodel)
-    lbm_stats = list( sdTotal=sd(Y[], na.rm=T), rsquared=ss$r.sq, ndata=ss$n ) # must be same order as p$statsvars
-
-    return( list( predictions=newdata, lbm_stats=lbm_stats ) )
-
+    sdTotal = sd(dat[, p$variables$Y], na.rm=T) 
+    dat[, p$variables$Y] = p$lbm_local_family$linkfun ( dat[, p$variables$Y] ) 
 
     if(0) {
 
@@ -151,8 +120,15 @@ lbm__LaplacesDemon = function( p, dat, pa ) {
           abline( v=out$LaplacesDemon$range, col="red"  )
         }
 
-      return(out)
-
       }
+    
+    pa$mean = p$lbm_local_family$linkinv( pa$mean )
+    # pa$sd   = p$lbm_local_family$linkinv( pa$sd )
+
+
+    ss = summary(Hmodel)
+    lbm_stats = list( sdTotal=sdTotal, rsquared=ss$r.sq, ndata=ss$n ) # must be same order as p$statsvars
+
+    return( list( predictions=newdata, lbm_stats=lbm_stats ) )
 
 }

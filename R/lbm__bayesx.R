@@ -6,11 +6,12 @@ lbm__bayesx = function( p, dat, pa ) {
   #  logzinc ~  sx( x,y, nu=1.5, bs="kr")  # "kr" is perhaps overly smooth  ..  ie guassian process  .. kriging
   #  logzinc ~  sx( x,y, bs="te")  # more detail .. "te" is preferred
 
-  if ( !exists( "lbm_local_model_bayesxmethod", p) ) p$lbm_local_model_bayesxmethod="MCMC"  # slightly more smoothing than the REML method
-  if ( !exists( "lbm_local_family_bayesx", p) ) p$lbm_local_family_bayesx="gaussian"
+  sdTotal=sd(dat[,p$variable$Y], na.rm=T)
 
+  if ( !exists( "lbm_local_model_bayesxmethod", p) ) p$lbm_local_model_bayesxmethod="MCMC"  # slightly more smoothing than the REML method
+ 
   hmod = try( bayesx( p$lbm_local_modelformula, data=dat, method=p$lbm_local_model_bayesxmethod, 
-                     family=p$lbm_local_family_bayesx ) )
+                     family=p$lbm_local_family ) )
 
   if ( "try-error" %in% class(hmod) ) return( NULL )
 
@@ -19,7 +20,6 @@ lbm__bayesx = function( p, dat, pa ) {
   if (ss$r.squared < p$lbm_rsquared_threshold ) return(NULL)
     
   out = try( predict( hmod, newdata=pa, type="response" ) ) 
-
 
   # plot( hmod, term = "sx(x,y)", image=TRUE)
   # summary(hmod)
@@ -36,7 +36,7 @@ lbm__bayesx = function( p, dat, pa ) {
   # range = geoR::practicalRange("matern", phi=phi, kappa=nu  )
   range = distance_matern(phi=phi, nu=nu  )
 
-  lbm_stats = list( sdTotal=sd(dat[,p$variable$Y], na.rm=T), rsquared=ss$r.squared, ndata=nrow(dat),
+  lbm_stats = list( sdTotal=sdTotal, rsquared=ss$r.squared, ndata=nrow(dat),
     sdSpatial=sqrt(varSpatial), sdObs=sqrt(varObs), phi=phi, nu=nu, range=range ) 
 
   # lattice::levelplot( mean ~ plon + plat, data=pa[pa$tiyr==2012.05,], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )

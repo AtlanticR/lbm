@@ -10,69 +10,64 @@ lbm__spate = function( p, dat, pa, sloc, px=NULL, ws=NULL ) {
   # use all available data in 'dat' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
   # currently only a GAM is enable for the TS component
 
+  # ws =  p$lbm_distance_prediction
   #  ws= round( lbm_distance_cur / p$pres )
   #  sloc=Sloc[Si,]
 
-  if ( exists("lbm_local_model_distanceweighted", p) ) {
-    if (p$lbm_local_model_distanceweighted) {
-      hmod = try( gam( p$lbm_local_modelformula, data=dat, weights=weights, optimizer=c("outer","optim")  ) )
-    } else {
-      hmod = try( gam( p$lbm_local_modelformula, data=dat, optimizer=c("outer","optim")  ) )
-    }
-  } else {
-      hmod = try( gam( p$lbm_local_modelformula, data=dat ) )
-  } 
-
-  if ( "try-error" %in% class(hmod) ) return( NULL )
-
-  ss = summary(hmod)
-  if (ss$r.sq < p$lbm_rsquared_threshold ) return(NULL)
+  sdTotal=sd(dat[,p$variable$Y], na.rm=T)
 
   if (is.null(px)) {
     px = pa
     ws = lbm_distance_cur
   }
 
-  # ws =  p$lbm_distance_prediction
+  ts_gam = lbm__gam( p, dat, px ) # currently only a GAM is enabled for the TS component
 
-  preds = try( predict( hmod, newdata=px, type="response", se.fit=TRUE ) ) # should already be in the fit so just take the fitted values?
+  if (is.null( ts_gam)) return(NULL)
+  if (ts_gam$lbm_stats$rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-  reject = which( preds$se.fit > quantile( preds$se.fit, probs= p$lbm_quantile_bounds[2], na.rm=TRUE ) 
-                | preds$fit > p$qs[2] 
-                | preds$fit < p$qs[1] )
+  # range checks
+  # rY = range( dat[,p$variables$Y], na.rm=TRUE)
+  # toosmall = which( ts_gam$predictions$mean < rY[1] )
+  # toolarge = which( ts_gam$predictions$mean > rY[2] )
+  # if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
+  # if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
+ 
+  pxts = ts_gam$predictions
+  names(pxts)[which(names(pxts)=="mean")] = p$variables$Y
+  names(pxts)[which(names(pxts)=="sd")] = paste(p$variables$Y, "sd", sep=".")
+  
+  ts_gam = NULL
+  gc()
 
-  preds$fit[reject] = NA
-
-  px$mean = as.vector( preds$fit )
-  px$sd = as.vector( preds$se.fit )
-
+  pxts = pxtsts
   nsq = 2*ws +1 
   adims = c(p$nt, nsq, nsq ) 
 
   xM = array( NA, dim=adims )
-  px_id = cbind( 
-    round( ( px[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1,
-    round( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
-    round( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1 
+  pxts_id = cbind( 
+    round( ( pxts[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1,
+    round( ws + (pxts[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
+    round( ws + (pxts[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1 
   )
-  xM[px_id] = px[,"mean"]  
+  xM[pxts_id] = pxts[,"mean"]  
   xM2 = matrix( xM, nrow=p$nt )
   g = spate.mcmc( y=xM2, n=nsq-1 ) 
   # plot(g, postProcess=TRUE)
 
 
-  px_id = array_map( "3->1", m=round( cbind( 
-    ( ws + (px[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
-    ( ws + (px[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1, 
-    round( ( px[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 )),
+  pxts_id = array_map( "3->1", m=round( cbind( 
+    ( ws + (pxts[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
+    ( ws + (pxts[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1, 
+    round( ( pxts[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 )),
     n=adims )
   
   xM = array( NA, dim=adims )
-  xM[px_id] = px[,"mean"]  # this needs to be an even matrix ???
+  xM[pxts_id] = pxts[,"mean"]  # this needs to be an even matrix ???
 
-  mm = array_map( "1->2" , px_id, n )
+  mm = array_map( "1->2" , pxts_id, n )
   xM2 = array( NA, dims=c(nsq^2, p$nt))
-  xM2[mm] = xM[px_id] 
+  xM2[mm] = xM[pxts_id] 
 
   g = spate.mcmc( y=xM2, n=nsq ) 
 
@@ -88,7 +83,7 @@ lbm__spate = function( p, dat, pa, sloc, px=NULL, ws=NULL ) {
   rsquared = summary(ss)$r.squared
   if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-  lbm_stats = list( sdTotal=sd(dat[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
+  lbm_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 

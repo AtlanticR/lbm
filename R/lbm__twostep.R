@@ -13,13 +13,12 @@ lbm__twostep = function( p, dat, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, 
   if (is.null( ts_gam)) return(NULL)
   if (ts_gam$lbm_stats$rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-
   # range checks
-  # rY = range( dat[,p$variables$Y], na.rm=TRUE)
-  # toosmall = which( ts_gam$predictions$mean < rY[1] )
-  # toolarge = which( ts_gam$predictions$mean > rY[2] )
-  # if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
-  # if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
+  rY = range( dat[,p$variables$Y], na.rm=TRUE)
+  toosmall = which( ts_gam$predictions$mean < rY[1] )
+  toolarge = which( ts_gam$predictions$mean > rY[2] )
+  if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
+  if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
  
   pxts = ts_gam$predictions
   names(pxts)[which(names(pxts)=="mean")] = p$variables$Y

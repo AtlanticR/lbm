@@ -12,6 +12,9 @@ lbm__gaussianprocess2Dt = function( p, dat, pa ) {
   }
   if (!exists("fields.Covariance", p)) p$fields.Covariance="Exponential" # note that "Rad.cov" is TPS
   
+  sdTotal=sd(dat[,p$variable$Y], na.rm=TRUE)
+  dat[, p$variables$Y] = p$lbm_local_family$linkfun ( dat[, p$variables$Y] ) 
+
   dat$mean = NA
   pa$mean = NA
   pa$sd = NA
@@ -52,7 +55,10 @@ lbm__gaussianprocess2Dt = function( p, dat, pa ) {
 
     pa$mean[pa_i] = predict(fspmodel, x=pa[pa_, p$variables$LOCS] )
     pa$sd[pa_i]   = predictSE(fspmodel, x=pa[pa_, p$variables$LOCS] )
-
+ 
+    pa$mean[pa_i] = p$lbm_local_family$linkinv( pa$mean[pa_i] )
+  # pa$sd[pa_i]   = p$lbm_local_family$linkinv( pa$sd[pa_i] )
+ 
     if ( 0 ){
       # debugging plots
       surface(fspmodel)
@@ -72,7 +78,7 @@ lbm__gaussianprocess2Dt = function( p, dat, pa ) {
 
   # TODO:: add some more stats: eg. range estimates, nugget/sill, etc..
 
-  lbm_stats = list( sdTotal=sd(dat[,p$variable$Y], na.rm=T), rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
+  lbm_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 

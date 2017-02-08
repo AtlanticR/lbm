@@ -204,7 +204,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
    
         covmodel = lbm_db( p=p, DS="global_model")
         if (!is.null(covmodel)) {
-          Ydata = predict(covmodel, type="response", se.fit=FALSE )
+          Ydata = predict(covmodel, type="response", se.fit=FALSE )  ## TODO .. keep track of the SE 
           Ydata = Yraw[] - Ydata
         }
         covmodel =NULL; gc()
@@ -582,13 +582,15 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     timei2 =  Sys.time()
     message("---")
     message( "Starting stage 2: more permisssive/relaxed distance settings (spatial extent) " )
-    currentstatus = lbm_db(p=p, DS="statistics.status.reset" ) 
-    if (length(currentstatus$todo) > 0) {
-      p$lbm_distance_prediction = p$lbm_distance_prediction *  p$lbm_multiplier_stage2
-      p$lbm_distance_max = p$lbm_distance_max *  p$lbm_multiplier_stage2
-      p$lbm_distance_scale = p$lbm_distance_scale* p$lbm_multiplier_stage2 # km ... approx guess of 95% AC range 
-      p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
-      parallel.run( lbm_interpolate, p=p )
+    for ( mult in p$lbm_multiplier_stage2 ) { 
+      currentstatus = lbm_db(p=p, DS="statistics.status.reset" ) 
+      if (length(currentstatus$todo) > 0) {
+        p$lbm_distance_prediction = p$lbm_distance_prediction * mult
+        p$lbm_distance_max = p$lbm_distance_max * mult
+        p$lbm_distance_scale = p$lbm_distance_scale*mult # km ... approx guess of 95% AC range 
+        p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
+        parallel.run( lbm_interpolate, p=p )
+      }
     }
     p$time_stage2 = round( difftime( Sys.time(), timei2, units="hours" ), 3)
     message("---")
@@ -598,7 +600,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     gc()
   }
 
- p <<- p  # push to parent in case a manual restart is possible
+  p <<- p  # push to parent in case a manual restart is possible
+
 
   if ( "stage3" %in% tasks) {
     timei3 =  Sys.time()

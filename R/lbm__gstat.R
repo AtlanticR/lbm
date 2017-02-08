@@ -6,9 +6,11 @@ lbm__gstat = function( p, dat, pa, nu, phi, varObs, varSpatial ) {
   
   if (!exists( "lbm_gstat_formula", p)) p$lbm_gstat_formula = formula( paste( p$variables$Y, "~ 1 ")) 
 
+  sdTotal = sd(dat[,p$variable$Y], na.rm=T)
+  dat[, p$variables$Y] = p$lbm_local_family$linkfun ( dat[, p$variables$Y] ) 
+
   approx_range = phi*sqrt( 8*nu)
 
-  sdTotal = sd(dat[,p$variable$Y], na.rm=T)
 
   dat$mean = NA
   pa$mean = NA
@@ -38,6 +40,9 @@ lbm__gstat = function( p, dat, pa, nu, phi, varObs, varSpatial ) {
     gsp = predict(gs, newdata=pa[pa_i,] ) # slow for large n
     pa$mean[pa_i] = as.vector(gsp[,1] )
     pa$sd[pa_i]   = as.vector(gsp[,2] )
+
+    pa$mean[pa_i] = p$lbm_local_family$linkinv( pa$mean[pa_i] )
+    # pa$sd[pa_i]   = p$lbm_local_family$linkinv( pa$sd[pa_i] )
 
   }
 

@@ -4,7 +4,9 @@ lbm__tps = function( p, dat, pa, phi ) {
   # \ as a 2D gaussian process (basically, simple krigimg or TPS -- time is treated as being independent)
   #\\ note: time is not being modelled and treated independently 
   #\\      .. you had better have enough data in each time slice ..  essentially this is kriging 
+
   sdTotal = sd(dat[,p$variable$Y], na.rm=T)
+  dat[, p$variables$Y] = p$lbm_local_family$linkfun ( dat[, p$variables$Y] ) 
 
   dat$mean = NA
   pa$mean = NA
@@ -29,6 +31,10 @@ lbm__tps = function( p, dat, pa, phi ) {
     if (rsquared < p$lbm_rsquared_threshold ) next()
     pa$mean[pa_i] = predict(ftpsmodel, x=pa[pa_i, p$variables$LOCS] )
     pa$sd[pa_i]   = predictSE(ftpsmodel, x=pa[pa_i, p$variables$LOCS] ) # SE estimates are slooow
+
+    pa$mean[pa_i] = p$lbm_local_family$linkinv( pa$mean[pa_i] )
+    # pa$sd[pa_i]   = p$lbm_local_family$linkinv( pa$sd[pa_i] )
+
     if ( 0 ){
       # debugging plots
       surface(ftpsmodel)
