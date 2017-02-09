@@ -43,7 +43,7 @@ lbm__twostep = function( p, dat, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, 
   }
 
   if (p$lbm_twostep_space %in% c("tps") ) {
-    out = lbm__tps( p, dat=pxts, pa=pa, theta=phi, lambda=varObs/varSpatial  )  
+    out = lbm__tps( p, dat=pxts, pa=pa, lambda=varObs/varSpatial  )  
     if (is.null( out)) return(NULL)
   }
 

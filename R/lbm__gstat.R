@@ -25,8 +25,7 @@ lbm__gstat = function( p, dat, pa, nu, phi, varObs, varSpatial ) {
       xi = 1:nrow(dat) # all data as p$nt==1
       pa_i = 1:nrow(pa)
     }
-    xy = dat[xi, p$variables$LOCS]
-    z = dat[xi, p$variables$Y]
+    xy = dat[xi, c( p$variables$LOCS, p$variables$Y) ]
 
     vMod0 = vgm(psill=varSpatial, model="Mat", range=phi, nugget=varObs, kappa=nu ) # starting model parameters
     gs = gstat(id = "hmk", formula=p$lbm_gstat_formula, locations=~plon+plat, data=xy[xi,], maxdist=approx_range, nmin=p$n.min, nmax=p$n.max, force=TRUE, model=vMod0 )
