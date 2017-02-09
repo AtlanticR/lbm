@@ -544,7 +544,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     gc()
   }
   
- p <<- p  # push to parent in case a manual restart is possible
+  
+  p <<- p  # push to parent in case a manual restart is possible
 
 
   # to view maps from an external R session:
@@ -668,6 +669,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   message("---")
   message( paste( "Time taken for full analysis (hours):", p$time_total, "" ) )
 
-  return( p )
+  return( "" )
 }
 
