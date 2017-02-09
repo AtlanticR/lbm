@@ -14,11 +14,11 @@ lbm__twostep = function( p, dat, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, 
   if (ts_gam$lbm_stats$rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
   # range checks
-  rY = range( dat[,p$variables$Y], na.rm=TRUE)
-  toosmall = which( ts_gam$predictions$mean < rY[1] )
-  toolarge = which( ts_gam$predictions$mean > rY[2] )
-  if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
-  if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
+  # rY = range( dat[,p$variables$Y], na.rm=TRUE)
+  # toosmall = which( ts_gam$predictions$mean < rY[1] )
+  # toolarge = which( ts_gam$predictions$mean > rY[2] )
+  # if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] = NA   # permit space modelling to fill this in
+  # if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] = NA   
  
   pxts = ts_gam$predictions
   names(pxts)[which(names(pxts)=="mean")] = p$variables$Y
@@ -43,7 +43,7 @@ lbm__twostep = function( p, dat, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, 
   }
 
   if (p$lbm_twostep_space %in% c("tps") ) {
-    out = lbm__tps( p, dat=pxts, pa=pa, phi=phi, lambda=varObs/varSpatial  )  
+    out = lbm__tps( p, dat=pxts, pa=pa, theta=phi, lambda=varObs/varSpatial  )  
     if (is.null( out)) return(NULL)
   }
 

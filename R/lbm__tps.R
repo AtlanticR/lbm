@@ -1,5 +1,5 @@
 
-lbm__tps = function( p, dat, pa, phi ) {
+lbm__tps = function( p, dat, pa, lambda ) {
   #\\ this is the core engine of lbm .. localised space (no-time) modelling interpolation 
   # \ as a 2D gaussian process (basically, simple krigimg or TPS -- time is treated as being independent)
   #\\ note: time is not being modelled and treated independently 
@@ -22,7 +22,7 @@ lbm__tps = function( p, dat, pa, phi ) {
       pa_i = 1:nrow(pa)
     }
 
-    ftpsmodel = try( Tps(x=dat[xi, p$variables$LOCS], Y=dat[xi, p$variables$Y], theta=theta, lambda=lambda ) )
+    ftpsmodel = try( Tps(x=dat[xi, p$variables$LOCS], Y=dat[xi, p$variables$Y], lambda=lambda ) )
     if (inherits(ftpsmodel, "try-error") )  next()
     dat$mean[xi] = ftpsmodel$fitted.values 
     ss = lm( dat$mean[xi] ~ dat[xi,p$variables$Y], na.action=na.omit)
@@ -38,10 +38,6 @@ lbm__tps = function( p, dat, pa, phi ) {
     if ( 0 ){
       # debugging plots
       surface(ftpsmodel)
-      fsp.p<- predictSurface(ftpsmodel, lambda=fsp$pars["lambda"], nx=200, ny=200 )
-      surface(fsp.p, type="I")
-      fsp.p2<- predictSurfaceSE(ftpsmodel)
-      surface(fsp.p, type="C")
     }
   }
 
