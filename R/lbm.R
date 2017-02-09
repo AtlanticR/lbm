@@ -201,13 +201,24 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       if (exists("lbm_global_modelengine", p)) {
         # to add global covariate model ??  .. simplistic this way but faster
         if (p$lbm_global_modelengine=="gam") require(mgcv)
-   
-        covmodel = lbm_db( p=p, DS="global_model")
-        if (!is.null(covmodel)) {
-          Ydata = predict(covmodel, type="response", se.fit=FALSE )  ## TODO .. keep track of the SE 
-          Ydata = Yraw[] - Ydata
+        
+        if ( "family" %in%  class(p$lbm_global_family) ) {
+          if (p$lbm_global_family$family == "binomial" ) {
+            covmodel = lbm_db( p=p, DS="global_model")
+            if (!is.null(covmodel)) {
+              Ypreds = predict(covmodel, type="link", se.fit=FALSE )  ## TODO .. keep track of the SE 
+              Ydata  = residuals(covmodel)
+              Yraw[] = Ypreds[] + Ydata[]  # overwrite with logit
+            }  
+          }
+        } else {
+          covmodel = lbm_db( p=p, DS="global_model")
+          if (!is.null(covmodel)) {
+            Ydata = predict(covmodel, type="response", se.fit=FALSE )  ## TODO .. keep track of the SE 
+            Ydata = Yraw[] - Ydata
+          }
+          covmodel =NULL; gc()
         }
-        covmodel =NULL; gc()
       }
 
       # data to be worked upon .. either the raw data or covariate-residuals

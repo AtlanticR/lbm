@@ -1,5 +1,5 @@
 
-lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast"), maxdist=NA, nbreaks = 15, functionalform="matern", eps=1e-6 ) {
+lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast"), maxdist=NA, nbreaks = 15, functionalform="matern", eps=1e-6, family=NULL ) {
 
   #\\ estimate empirical variograms (actually correlation functions) and then model them using a number of different approaches .. mostly using Matern as basis
   #\\ returns empirical variogram and parameter estimates, and the models themselves
@@ -12,81 +12,10 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
   # -------------------------
 
   # TODO --- directly via FFT
-  
 
-  if ( 0 ) {
-   # just for debugging / testing ... and example of access method:
-   bioLibrary("bio.utilities", "bio.spacetime", "lbm")
-   require(sp)
-   data(meuse)
-    xy = meuse[, c("x", "y")]
-    mz = log( meuse$zinc )
-    mm = lm( mz ~ sqrt( meuse$dist ) )
-    z = residuals( mm)
-
-    plotdata=TRUE
-    maxdist = NA
-    edge=c(1/3, 1)
-    nbreaks = 15
-
-        # tests
-    gr = lbm_variogram( xy, z, methods="geoR" )
-    gs = lbm_variogram( xy, z, methods="gstat" )
-    grf = lbm_variogram( xy, z, methods="RandomFields" )
-    gsp = lbm_variogram( xy, z, methods="spBayes" )
-    ginla = lbm_variogram( xy, z, methods="inla" )
-
-    # tests:
-    out = gsp
-    nd = nrow(out$spBayes$recover$p.theta.samples)
-    rr = rep(NA, nd )
-    for (i in 1:nd) rr[i] = geoR::practicalRange("matern", phi=1/out$spBayes$recover$p.theta.samples[i,3], kappa=out$spBayes$recover$p.theta.samples[i,4] )
-#  range = distance_matern(phi=phi, nu=nu)
-
-    hist(rr)  # range estimate
-
-    hist( out$spBayes$recover$p.theta.samples[,1] ) #"sigma.sq"
-    hist( out$spBayes$recover$p.theta.samples[,2] ) # "tau.sq"
-    hist( out$spBayes$recover$p.theta.samples[,3] ) # 1/phi
-    hist( out$spBayes$recover$p.theta.samples[,4] ) # nu
-
-    out = lbm_variogram( xy, z )
-    (out$geoR$range)
-    out = lbm_variogram( xy, z, nbreaks=30 )
-    (out$geoR$range)
-
-    out = lbm_variogram( xy, log(z), nbreaks=30 )
-    (out$geoR$range)
-    out = lbm_variogram( xy, log(z) )
-    (out$geoR$range)
-    require(mgcv)
-    og = gam( log(z) ~ s( x) + s(y) + s(x,y), data=xy )
-    zr = residuals(og)
-    out = lbm_variogram( xy, zr )  # remove spatial trend results in no variogram, as would be expected
-    (out$geoR$range)
-    og = gam( log(z) ~ s( elev ) , data=meuse )
-    zr = residuals(og)
-    out = lbm_variogram( xy, zr )  # remove spatial trend results in no variogram, as would be expected
-    (out$geoR$range)
-
-    require(geoR)
-    # plot( out$geoR$vgm )
-    # lines( out$geoR$fit, lwd=2, col="slateblue" )
-    xRange = c( 0, max(out$geoR$range*2.1 ) )
-    yRange = c( 0, max(out$geoR$vgm$v )*1.05 )
-    plot ( out$geoR$vgm$v ~ out$geoR$vgm$u, pch=20, xlim=xRange, ylim=yRange, ylab="Semivariance", xlab="Distance" )
-      abline( h=0,  col="gray", lwd=2 )
-      abline( h= (out$geoR$varSpatial + out$geoR$varObs), lty="dashed", col="slategray"  )
-      abline( h=  out$geoR$varObs , lty="dashed", col="slategray")
-      abline( v=out$geoR$range, lty="dotted", col="slateblue" )
-      abline( v=0,  col="gray", lwd=2 )
-      x = seq( 0, 2*out$geoR$range, length.out=100 )
-      acor = geoR::matern( x, phi=out$geoR$phi, kappa=out$geoR$kappa  )
-      acov = out$geoR$varObs +  out$geoR$varSpatial * (1- acor)
-      lines( acov ~ x , col="blue", lwd=2 )
-  } 
-
-
+  if (!is.null(family)) {
+    if (family$family != "binomial" ) z = family$linkfun(z)  
+  }
 
   nc_max = 5  # max number of iterations
 
@@ -116,6 +45,135 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
   xy$plat = xy$plat + runif(xy_n, -derr, derr)
 
 
+  if (!is.null(family)) {
+    if (family$family == "binomial" ) {
+      require( CompRandFld ) 
+
+      # gstat seems to work well .. TODO 
+
+      vario = EVariogram( data=z, coordx=as.matrix(xy), maxdist=out$maxdist, numbins=nbreaks, type="lorelogram" ) 
+  
+      varmax = max(vario$variograms, na.rm=TRUE)
+    
+      vg = vario$variograms
+      vx = vario$centers
+      mvg = max(vg, na.rm=TRUE)
+      mvx = max(vx, na.rm=TRUE)
+      eps = 1e-6
+      lower =c(0, eps, mvx/20, 0.02 )
+      upper =c(mvg, mvg, mvx*1.5, 2)
+      #nonlinear est
+      par = c(tau.sq=varmax*0.05, sigma.sq=varmax*0.95, phi=mvx/10, nu=0.5) 
+      o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", lower=lower, upper=upper,
+        control=list(maxit=200, factr=1e-9),
+        fn=function(par, vg, vx){ 
+          vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
+          dy = sum( (vg - vgm)^2) # vario normal errors, no weights , etc.. just the line
+        } ) 
+      )
+      
+      if ( !inherits(o, "try-error")) { 
+        if ( o$convergence==0 ) {
+          par = o$par 
+          out$CompRandFld = list( fit=o, vgm=vario, range=NA, nu=par["nu"], phi=par["phi"],
+            varSpatial=par["sigma.sq"], varObs=par["tau.sq"] ) 
+          #rg = try(geoR::practicalRange("matern", phi=out$CompRandFld$phi, kappa=out$CompRandFld$nu ))
+           rg=  distance_matern(phi=out$CompRandFld$phi, nu=out$CompRandFld$nu)
+
+          if (! inherits(rg, "try-error") ) {
+            out$CompRandFld$range = rg
+          } else {
+            out$CompRandFld$range = 0
+          }
+        } else {
+          out = try( lbm_variogram( xy=xy, z=z, methods="fast") )
+          if (!inherits(out, "try-error") ) {
+            if (exists( "fast", out)) {
+              out$CompRandFld =out$fast
+              out$fast =NULL
+            }
+          }
+          return(out)
+        }
+      }
+   
+    
+      if( 0) {
+        plot( vario$centers, vario$variograms,  col="green" )
+        ds = seq( 0, mvx, length.out=100 )
+        ac = out$CompRandFld$varObs + out$CompRandFld$varSpatial*(1 - Matern( ds, range=out$CompRandFld$phi,  nu=out$CompRandFld$nu ) )
+        lines( ds, ac )
+      }
+    }
+  }
+
+
+  if ( "CompRandFld" %in% methods)  {
+    require( CompRandFld )
+    vario = EVariogram( data=z, coordx=as.matrix(xy), maxdist=out$maxdist, numbins=nbreaks, type="variogram" ) 
+
+    varmax = var(z, na.rm=TRUE)
+  
+    vg = vario$variograms
+    vx = vario$centers
+    mvg = max(vg, na.rm=TRUE)
+    mvx = max(vx, na.rm=TRUE)
+    eps = 1e-6
+    lower =c(0, eps, mvx/20, 0.02 )
+    upper =c(mvg, mvg, mvx*1.5, 2)
+    #nonlinear est
+    par = c(tau.sq=varmax*0.05, sigma.sq=varmax*0.95, phi=mvx/10, nu=0.5) 
+    o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", lower=lower, upper=upper,
+      control=list(maxit=200, factr=1e-9),
+      fn=function(par, vg, vx){ 
+        vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
+        dy = sum( (vg - vgm)^2) # vario normal errors, no weights , etc.. just the line
+      } ) 
+    )
+    
+    if ( !inherits(o, "try-error")) { 
+      if ( o$convergence==0 ) {
+        par = o$par 
+        out$CompRandFld = list( fit=o, vgm=vario, range=NA, nu=par["nu"], phi=par["phi"],
+          varSpatial=par["sigma.sq"], varObs=par["tau.sq"] ) 
+        #rg = try(geoR::practicalRange("matern", phi=out$CompRandFld$phi, kappa=out$CompRandFld$nu ))
+         rg=  distance_matern(phi=out$CompRandFld$phi, nu=out$CompRandFld$nu)
+
+        if (! inherits(rg, "try-error") ) {
+          out$CompRandFld$range = rg
+        } else {
+          out$CompRandFld$range = 0
+        }
+      } else {
+        out = try( lbm_variogram( xy=xy, z=z, methods="fast") )
+        if (!inherits(out, "try-error") ) {
+          if (exists( "fast", out)) {
+            out$CompRandFld =out$fast
+            out$fast =NULL
+          }
+        }
+        return(out)
+      }
+    }
+ 
+  
+    if( 0) {
+      plot( vario$centers, vario$variograms,  col="green" )
+      ds = seq( 0, mvx, length.out=100 )
+      ac = out$CompRandFld$varObs + out$CompRandFld$varSpatial*(1 - Matern( ds, range=out$CompRandFld$phi,  nu=out$CompRandFld$nu ) )
+      lines( ds, ac )
+    }
+
+
+
+    if (0) {
+       plot(vario$centers, vario$variograms, xlab='h', ylab=expression(gamma(h)),
+          ylim=c(0, max(vario$variograms)), xlim=c(0, vario$srange[2]), pch=20,
+          main="variogram")
+    }
+  
+
+  }
 
   if ( "fast" %in% methods)  {
     # gives a fast stable empirical variogram
@@ -954,6 +1012,80 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
   return(out)
   
   }
+
+
+  if ( 0 ) {
+   # just for debugging / testing ... and example of access method:
+   bioLibrary("bio.utilities", "bio.spacetime", "lbm")
+   require(sp)
+   data(meuse)
+    xy = meuse[, c("x", "y")]
+    mz = log( meuse$zinc )
+    mm = lm( mz ~ sqrt( meuse$dist ) )
+    z = residuals( mm)
+
+    plotdata=TRUE
+    maxdist = NA
+    edge=c(1/3, 1)
+    nbreaks = 15
+
+        # tests
+    gr = lbm_variogram( xy, z, methods="geoR" )
+    gs = lbm_variogram( xy, z, methods="gstat" )
+    grf = lbm_variogram( xy, z, methods="RandomFields" )
+    gsp = lbm_variogram( xy, z, methods="spBayes" )
+    ginla = lbm_variogram( xy, z, methods="inla" )
+
+    # tests:
+    out = gsp
+    nd = nrow(out$spBayes$recover$p.theta.samples)
+    rr = rep(NA, nd )
+    for (i in 1:nd) rr[i] = geoR::practicalRange("matern", phi=1/out$spBayes$recover$p.theta.samples[i,3], kappa=out$spBayes$recover$p.theta.samples[i,4] )
+#  range = distance_matern(phi=phi, nu=nu)
+
+    hist(rr)  # range estimate
+
+    hist( out$spBayes$recover$p.theta.samples[,1] ) #"sigma.sq"
+    hist( out$spBayes$recover$p.theta.samples[,2] ) # "tau.sq"
+    hist( out$spBayes$recover$p.theta.samples[,3] ) # 1/phi
+    hist( out$spBayes$recover$p.theta.samples[,4] ) # nu
+
+    out = lbm_variogram( xy, z )
+    (out$geoR$range)
+    out = lbm_variogram( xy, z, nbreaks=30 )
+    (out$geoR$range)
+
+    out = lbm_variogram( xy, log(z), nbreaks=30 )
+    (out$geoR$range)
+    out = lbm_variogram( xy, log(z) )
+    (out$geoR$range)
+    require(mgcv)
+    og = gam( log(z) ~ s( x) + s(y) + s(x,y), data=xy )
+    zr = residuals(og)
+    out = lbm_variogram( xy, zr )  # remove spatial trend results in no variogram, as would be expected
+    (out$geoR$range)
+    og = gam( log(z) ~ s( elev ) , data=meuse )
+    zr = residuals(og)
+    out = lbm_variogram( xy, zr )  # remove spatial trend results in no variogram, as would be expected
+    (out$geoR$range)
+
+    require(geoR)
+    # plot( out$geoR$vgm )
+    # lines( out$geoR$fit, lwd=2, col="slateblue" )
+    xRange = c( 0, max(out$geoR$range*2.1 ) )
+    yRange = c( 0, max(out$geoR$vgm$v )*1.05 )
+    plot ( out$geoR$vgm$v ~ out$geoR$vgm$u, pch=20, xlim=xRange, ylim=yRange, ylab="Semivariance", xlab="Distance" )
+      abline( h=0,  col="gray", lwd=2 )
+      abline( h= (out$geoR$varSpatial + out$geoR$varObs), lty="dashed", col="slategray"  )
+      abline( h=  out$geoR$varObs , lty="dashed", col="slategray")
+      abline( v=out$geoR$range, lty="dotted", col="slateblue" )
+      abline( v=0,  col="gray", lwd=2 )
+      x = seq( 0, 2*out$geoR$range, length.out=100 )
+      acor = geoR::matern( x, phi=out$geoR$phi, kappa=out$geoR$kappa  )
+      acov = out$geoR$varObs +  out$geoR$varSpatial * (1- acor)
+      lines( acov ~ x , col="blue", lwd=2 )
+  } 
+
 
 }
 

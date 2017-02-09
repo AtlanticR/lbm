@@ -8,8 +8,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
 
   #---------------------
   # data for modelling
-  # dependent vars # already link-transformed in lbm_db("dependent")
-  
   S = lbm_attach( p$storage.backend, p$ptr$S )
   Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
   
@@ -154,8 +152,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
 
    if (ndata < p$n.min)  next() # check in case a fault in logic, above
 
-    o = try( lbm_variogram( xy=Yloc[U,], z=p$lbm_local_family$linkfun(Y[U]), 
-      methods=p$lbm_variogram_method ) )
+    o = try( lbm_variogram( xy=Yloc[U,], z=Y[U], methods=p$lbm_variogram_method, family=p$lbm_local_family ) )
       if ( !is.null(o)) {
         if (!inherits(o, "try-error")) {
           if (exists(p$lbm_variogram_method, o)) {
