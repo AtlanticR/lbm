@@ -416,14 +416,14 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       gam = lbm__gam( p, dat, pa ), 
       gaussianprocess2Dt = lbm__gaussianprocess2Dt( p, dat, pa ), 
       gaussianprocess = lbm__gaussianprocess( p, dat, pa ),  # TODO
-      glm = lbm__glm( p, dat, pa, nu=nu, phi=phi ), 
+      glm = lbm__glm( p, dat, pa), 
       gstat = lbm__gstat( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), 
       krige = lbm__krige( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), 
       LaplacesDemon = lbm__LaplacesDemon( p, dat, pa ),
       splancs = lbm__splancs( p, dat, pa ), # TODO
       spate = lbm__spate( p, dat, pa, sloc=Sloc[Si,], px=px, pa_w_n=pa_w_n  ), 
       fft = lbm__fft( p, dat, pa, nu=nu, phi=phi ), 
-      tps = lbm__tps( p, dat, pa, phi=phi, lambda=varObs/varSpatial ), 
+      tps = lbm__tps( p, dat, pa, lambda=varObs/varSpatial ), 
       twostep = lbm__twostep( p, dat, pa, px=px, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), # slow ...!
       lbm_local_modelengine_userdefined = p$lbm_local_modelengine_userdefined( p, dat, pa)
     ) )

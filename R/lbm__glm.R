@@ -7,12 +7,12 @@ lbm__glm = function( p, dat, pa ) {
 
   if ( exists("lbm_local_model_distanceweighted", p) ) {
     if (p$lbm_local_model_distanceweighted) {
-      hmod = try( glm( p$lbm_local_modelformula, data=dat, family=p$p$lbm_local_family, weights=Y_wgt  ) ) 
+      hmod = try( glm( p$lbm_local_modelformula, data=dat, family=p$lbm_local_family, weights=Y_wgt  ) ) 
     } else {
-      hmod = try( glm( p$lbm_local_modelformula, data=dat, family=p$p$lbm_local_family ) ) 
+      hmod = try( glm( p$lbm_local_modelformula, data=dat, family=p$lbm_local_family ) ) 
     }
   } else {
-      hmod = try( glm( p$lbm_local_modelformula, data=dat, family=p$p$lbm_local_family  ) ) 
+      hmod = try( glm( p$lbm_local_modelformula, data=dat, family=p$lbm_local_family  ) ) 
   } 
 
   if ( "try-error" %in% class(hmod) ) return( NULL )
