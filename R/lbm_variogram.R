@@ -68,7 +68,7 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
         control=list(maxit=200, factr=1e-9),
         fn=function(par, vg, vx){ 
           vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
-          dy = sum( (vg - vgm)^2) # vario normal errors, no weights , etc.. just the line
+          dy = sum( (vg - vgm)^2, na.rm=TRUE) # vario normal errors, no weights , etc.. just the line
         } ) 
       )
       
@@ -179,8 +179,8 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
     # gives a fast stable empirical variogram
 
     require( fields ) 
-    varmax = var(z, na.rm=TRUE)
     vario = vgram( xy, z, dmax=out$maxdist, N=nbreaks)
+    varmax = max(vario$vgram, na.rm=TRUE)
     vg = vario$stats["mean",]
     vx = vario$centers
     mvg = max(vg, na.rm=TRUE)
@@ -194,7 +194,7 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
       control=list(maxit=200, factr=1e-9),
       fn=function(par, vg, vx){ 
         vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
-        dy = sum( (vg - vgm)^2) # vario normal errors, no weights , etc.. just the line
+        dy = sum( (vg - vgm)^2, na.rm=TRUE) # vario normal errors, no weights , etc.. just the line
       } ) 
     )
     
@@ -263,7 +263,7 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
       control=list(maxit=100),
       fn=function(par, vg, vx){ 
         vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
-        dy = sum( (vg - vgm)^2) # vario normal errors, no weights , etc.. just the line
+        dy = sum( (vg - vgm)^2, na.rm=TRUE) # vario normal errors, no weights , etc.. just the line
       } ) 
     )
     
