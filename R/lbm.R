@@ -665,6 +665,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   p <<- p  # push to parent in case a manual restart is possible
 
-  return( "" )
+  invisible()
 }
 

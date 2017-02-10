@@ -357,6 +357,8 @@
             pa = cbind( pa, pu[,iy] ) # ie., annual data (space.annual)
           } else if ( nc == p$nt) {
             pa = cbind( pa, pu[,it] ) # ie. same time dimension as predictive data (space.annual.seasonal)
+          } else {
+            stop( "Erroneous data dimension")
           }
         }
         pa = as.data.frame( pa )
