@@ -221,7 +221,11 @@
     if (DS== "flag.incomplete.predictions") {
       # statistics locations where estimations need to be redone 
       P = lbm_attach( p$storage.backend, p$ptr$P )
-      noP = which( !is.finite( P[]) )
+      if (ncol(P) == 1 ) {
+        noP = which( !is.finite( P[]) )
+      } else {
+        noP = which( !is.finite( rowSums( P[])) )
+      }
       uP = NULL
       if( length(noP)>0 ) {
         Sloc = lbm_attach( p$storage.backend, p$ptr$Sloc )
@@ -345,13 +349,13 @@
         pa = NULL # construct prediction surface
         for (i in p$variables$COV ) {
           pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[i]] )
-          ncpu = ncol(pu)
-          if ( ncpu== 1 ) {
+          nc = ncol(pu)
+          if ( nc== 1 ) {
             pa = cbind( pa, pu[] ) # ie. a static variable (space)
-          } else if( ncpu == p$ny )  {
+          } else if( nc == p$ny )  {
             iy = round( (it-1) / p$nw ) + 1
             pa = cbind( pa, pu[,iy] ) # ie., annual data (space.annual)
-          } else if ( ncpu == p$nt) {
+          } else if ( nc == p$nt) {
             pa = cbind( pa, pu[,it] ) # ie. same time dimension as predictive data (space.annual.seasonal)
           }
         }
@@ -435,7 +439,8 @@
       if ( exists("depth.filter", p) && is.finite( p$depth.filter) ) {
         if ( "z" %in% p$variables$COV ){
           depths = lbm_attach( p$storage.backend, p$ptr$Pcov[["z"]] )
-          shallower = which( depths[] < p$depth.filter )
+          ii = which( depths[] < p$depth.filter )
+          if (length(ii) > 0) shallower = ii
           rm(depths)
         }
       }
@@ -470,7 +475,7 @@
             if ( is.vector(P) ) {
               P[shallower] = NA
               V[shallower] = NA
-              } else {
+            } else {
               P[shallower,] = NA
               V[shallower,] = NA
             }

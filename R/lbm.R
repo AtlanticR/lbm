@@ -427,16 +427,10 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
           nc_cov = c( nc_cov,  ncol(pu) )
         }
         p$all.covars.static = ifelse( any(nc_cov > 1),  FALSE, TRUE )
-        if (p$all.covars.static) {
-          p = make.list( list( tindex=1:p$nt) , Y=p ) # takes about 28 GB per run .. adjust cluster number temporarily
-          lbm_db( p=p, DS="global.prediction.surface" )
-        } else {
-          p$clusters0 = p$clusters
-          if (exists("clusters.covars", p) ) p$clusters = p$clusters.covars
-          p = make.list( list( tindex=1:p$nt) , Y=p ) # takes about 28 GB per run .. adjust cluster number temporarily
-          parallel.run( lbm_db, p=p, DS="global.prediction.surface" )
-          p$clusters= p$clusters0
-        }
+        pc = p # copy
+        if (!pc$all.covars.static) if (exists("clusters.covars", pc) ) pc$clusters = pc$clusters.covars
+        pc = make.list( list( tindex=1:pc$nt) , Y=pc ) # takes about 28 GB per run .. adjust cluster number temporarily
+        parallel.run( lbm_db, p=pc, DS="global.prediction.surface" )
         p$time_covariates = round(difftime( Sys.time(), p$timec_covariates_0 , units="hours"), 3)
         message( paste( "Time taken to predict covariate surface (hours):", p$time_covariates ) )
     }
@@ -668,6 +662,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   p$time_total = round( difftime( Sys.time(), p$time.start, units="hours" ),3)
   message("---")
   message( paste( "Time taken for full analysis (hours):", p$time_total, "" ) )
+
+  p <<- p  # push to parent in case a manual restart is possible
 
   return( "" )
 }
