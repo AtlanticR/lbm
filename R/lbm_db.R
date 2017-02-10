@@ -481,6 +481,12 @@
             }
           }
           
+          if ( "family" %in% class(p$lbm_global_family) ) {
+            if (  p$lbm_global_family$family == "binomial" ) {
+              P = bio.snowcrab::inverse.logit( P )
+              V = bio.snowcrab::inverse.logit( V )
+            }
+          }
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
           print ( paste("Year:", y)  )
@@ -502,15 +508,25 @@
             P[shallower,] = NA
             V[shallower,] = NA
           }
+          
+          if ( "family" %in% class(p$lbm_global_family) ) {
+            if (  p$lbm_global_family$family == "binomial" ) {
+              P = bio.snowcrab::inverse.logit( P )
+              V = bio.snowcrab::inverse.logit( V )
+            }
+          }
+
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
       }
     }
     
     if(0) {
-      i = 100
-      Z = smooth.2d( Y=P[,i], x=Ploc[], ncol=p$nplats, nrow=p$nplons, cov.function=stationary.cov, Covariance="Matern", range=p$lbm_lowpass_phi, nu=p$lbm_lowpass_nu )
-      lattice::levelplot( P[,i] ~ Ploc[,1] + Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
+      i = 1
+      Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
+     
+      Z = smooth.2d( Y=P[], x=Ploc[], ncol=p$nplats, nrow=p$nplons, cov.function=stationary.cov, Covariance="Matern", range=p$lbm_lowpass_phi, nu=p$lbm_lowpass_nu )
+      lattice::levelplot( P[] ~ Ploc[,1] + Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
     }
     # 
 
