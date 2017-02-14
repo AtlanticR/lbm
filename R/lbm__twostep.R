@@ -21,15 +21,20 @@ lbm__twostep = function( p, dat, pa, px=NULL, nu=NULL, phi=NULL, varObs=varObs, 
   if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] =  rY[2]
  
   pxts = ts_gam$predictions
+  # revert to response scale as the following expects this:
+  pxts$mean = p$lbm_local_family$linkinv( pxts$mean )
+  pxts$sd = p$lbm_local_family$linkinv( pxts$sd )
+
   names(pxts)[which(names(pxts)=="mean")] = p$variables$Y
   names(pxts)[which(names(pxts)=="sd")] = paste(p$variables$Y, "sd", sep=".")
-  
+
   ts_gam = NULL
   gc()
 
   out = NULL
 
   # step 2 :: spatial modelling .. essentially a time-space separable solution
+
   if (!exists( "lbm_twostep_space", p)) p$lbm_twostep_space="krige" # default
   
   if ( p$lbm_twostep_space == "krige" ) {
