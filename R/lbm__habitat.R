@@ -28,7 +28,7 @@ lbm__habitat = function( p, dat, pa ) {
 
   Hmodel.coef = mvtnorm::rmvnorm(p$nsims, coef(Hmodel), Hmodel$Vp, method="chol")
   rm( Hmodel); gc()
-  Hsim = family(M)$linkinv( predict(Hmodel, newdata=pa, type="lpmatrix") %*% t(Hmodel.coef) )
+  Hsim =  predict(Hmodel, newdata=pa, type="lpmatrix") %*% t(Hmodel.coef) 
   rm( Hmodel.coef); gc()
   oops = which( is.na(Hsim) )
   if (length(oops) > 0)  Hsim[oops ] = 0  # assume to be zero
@@ -38,7 +38,7 @@ lbm__habitat = function( p, dat, pa ) {
 
   Amodel.coef = mvtnorm::rmvnorm(p$nsims, coef(Amodel), Amodel$Vp, method="chol")
   rm(Amodel); gc()
-  Asim = family(M)$linkinv( predict(Amodel, newdata=pa, type="lpmatrix") %*% t(Amodel.coef) )
+  Asim =  predict(Amodel, newdata=pa, type="lpmatrix") %*% t(Amodel.coef) 
   rm (Amodel.coef); gc()
   oops = which( is.na(Asim) )
   if (length(oops) > 0)  Asim[oops ] = 0  # assume to be zero

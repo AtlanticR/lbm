@@ -15,10 +15,7 @@ lbm__gaussianprocess = function( p, dat, pa ) {
 
   lbm_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
   
-  pa$mean = p$lbm_local_family$linkinv( pa$mean )
-  # pa$sd   = p$lbm_local_family$linkinv( pa$sd )
  
-
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 
   return( list( predictions=pa, lbm_stats=lbm_stats ) )  

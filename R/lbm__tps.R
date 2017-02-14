@@ -32,9 +32,6 @@ lbm__tps = function( p, dat, pa, lambda ) {
     pa$mean[pa_i] = predict(ftpsmodel, x=pa[pa_i, p$variables$LOCS] )
     pa$sd[pa_i]   = predictSE(ftpsmodel, x=pa[pa_i, p$variables$LOCS] ) # SE estimates are slooow
 
-    pa$mean[pa_i] = p$lbm_local_family$linkinv( pa$mean[pa_i] )
-    # pa$sd[pa_i]   = p$lbm_local_family$linkinv( pa$sd[pa_i] )
-
     if ( 0 ){
       # debugging plots
       surface(ftpsmodel)

@@ -482,7 +482,11 @@
               V[shallower,] = NA
             }
           }
+          # return to user scale (that of Y)
+          P = p$lbm_local_family$linkinv( P )
+          V = p$lbm_local_family$linkinv( V )
           
+          # for binomial .. convert from logit to probability scale (local is gaussian)
           if ( "family" %in% class(p$lbm_global_family) ) {
             if (  p$lbm_global_family$family == "binomial" ) {
               P = bio.snowcrab::inverse.logit( P )
@@ -510,6 +514,10 @@
             P[shallower,] = NA
             V[shallower,] = NA
           }
+
+          # return to user scale
+          P = p$lbm_local_family$linkinv( P )
+          V = p$lbm_local_family$linkinv( V )
           
           if ( "family" %in% class(p$lbm_global_family) ) {
             if (  p$lbm_global_family$family == "binomial" ) {

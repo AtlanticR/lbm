@@ -34,9 +34,7 @@ lbm__krige = function( p, dat, pa, nu, phi, varObs, varSpatial ) {
     if (rsquared < p$lbm_rsquared_threshold ) next()
     pa$mean[pa_i] = predict(fspmodel, x=pa[pa_i, p$variables$LOCS] )
     # pa$sd[pa_i]   = predictSE(fspmodel, x=pa[pa_i, p$variables$LOCS] ) # SE estimates are slooow
-    pa$mean[pa_i] = p$lbm_local_family$linkinv( pa$mean[pa_i] )
-  # pa$sd   = p$lbm_local_family$linkinv( pa$sd )
-
+ 
     if ( 0 ){
       # debugging plots
       surface(fspmodel)

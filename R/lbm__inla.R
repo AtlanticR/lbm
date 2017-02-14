@@ -172,8 +172,7 @@ lbm__inla = function( p, dat, pa ) {
     pa$mean = c( inla.mesh.project( pG, field=apply( posterior, 1, mean, na.rm=TRUE )  ))
     pa$sd   = c( inla.mesh.project( pG, field=apply( posterior, 1, sd, na.rm=TRUE )  ))
 
-    pa$mean = p$lbm_local_family$linkinv( pa$mean )
- 
+  
   }
 
   if (0) {

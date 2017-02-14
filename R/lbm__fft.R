@@ -116,9 +116,6 @@ lbm__fft = function( p, dat, pa, nu=NULL, phi=NULL ) {
       pa$mean[pa_i] = Z[Z_i]
     }
 
-    pa$mean[pa_i] = p$lbm_local_family$linkinv( pa$mean[pa_i] )
-    # pa$sd[pa_i]   = p$lbm_local_family$linkinv( pa$sd[pa_i] )
-
     # pa$sd[pa_i] = NA  ## fix as NA
     Z = NULL
     

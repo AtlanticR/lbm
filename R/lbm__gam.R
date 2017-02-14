@@ -23,7 +23,7 @@ lbm__gam = function( p, dat, pa ) {
   ss = summary(hmod)
   if (ss$r.sq < p$lbm_rsquared_threshold ) return(NULL)
     
-  out = try( predict( hmod, newdata=pa, type="response", se.fit=T ) ) 
+  out = try( predict( hmod, newdata=pa, type="link", se.fit=T ) ) 
 
   if ( "try-error" %in% class( out ) ) return( NULL )
 

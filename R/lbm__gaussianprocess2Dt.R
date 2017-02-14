@@ -56,9 +56,7 @@ lbm__gaussianprocess2Dt = function( p, dat, pa ) {
     pa$mean[pa_i] = predict(fspmodel, x=pa[pa_, p$variables$LOCS] )
     pa$sd[pa_i]   = predictSE(fspmodel, x=pa[pa_, p$variables$LOCS] )
  
-    pa$mean[pa_i] = p$lbm_local_family$linkinv( pa$mean[pa_i] )
-  # pa$sd[pa_i]   = p$lbm_local_family$linkinv( pa$sd[pa_i] )
- 
+   
     if ( 0 ){
       # debugging plots
       surface(fspmodel)

@@ -122,9 +122,6 @@ lbm__LaplacesDemon = function( p, dat, pa ) {
 
       }
     
-    pa$mean = p$lbm_local_family$linkinv( pa$mean )
-    # pa$sd   = p$lbm_local_family$linkinv( pa$sd )
-
 
     ss = summary(Hmodel)
     lbm_stats = list( sdTotal=sdTotal, rsquared=ss$r.sq, ndata=ss$n ) # must be same order as p$statsvars

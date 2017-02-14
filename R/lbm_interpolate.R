@@ -405,7 +405,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     if (is.null(varSpatial)) varSpatial =0.5 * var(dat[, p$variables$Y], na.rm=TRUE)
     if (is.null(varObs)) varObs = varSpatial
     
-    # model and prediction 
+    # model and prediction .. outputs are in scale of the link (and not response)
     # the following permits user-defined models (might want to use compiler::cmpfun )
     gc()
     res =NULL
@@ -428,7 +428,10 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       lbm_local_modelengine_userdefined = p$lbm_local_modelengine_userdefined( p, dat, pa)
     ) )
 
-  
+    ### from here on predictions and sd are scaled by family p$lbm_local_family$linkfun ( ) 
+    ## must return to response scale with p$lbm_local_family$linkinv( ) in parent call
+
+
     if (debug) {
       print( str(res))
     }

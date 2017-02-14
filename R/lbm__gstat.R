@@ -40,9 +40,6 @@ lbm__gstat = function( p, dat, pa, nu, phi, varObs, varSpatial ) {
     pa$mean[pa_i] = as.vector(gsp[,1] )
     pa$sd[pa_i]   = as.vector(gsp[,2] )
 
-    pa$mean[pa_i] = p$lbm_local_family$linkinv( pa$mean[pa_i] )
-    # pa$sd[pa_i]   = p$lbm_local_family$linkinv( pa$sd[pa_i] )
-
   }
 
   # plot(pred ~ z , dat)
