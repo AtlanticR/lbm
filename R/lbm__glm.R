@@ -21,7 +21,7 @@ lbm__glm = function( p, dat, pa ) {
   rsq = 1 - (ss$deviance/ss$null.deviance)
   if ( rsq < p$lbm_rsquared_threshold ) return(NULL)
   
-  out = try( predict( hmod, newdata=pa, type="link", se.fit=TRUE ) ) 
+  out = try( predict( hmod, newdata=pa, type="link", se.fit=TRUE ) )  # return on link scale
 
   if ( "try-error" %in% class( out ) ) return( NULL )
 

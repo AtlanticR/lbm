@@ -498,8 +498,8 @@
           }
 
           # global bounds .. strictly do not extrapolate
-          toolow  = which( res$predictions$mean < globalrange[1] )
-          toohigh = which( res$predictions$mean > globalrange[2] )
+          toolow  = which( P < globalrange[1] )
+          toohigh = which( P > globalrange[2] )
           if (length( toolow) > 0)  res$predictions$mean[ toolow] = globalrange[1]
           if (length( toohigh) > 0) res$predictions$mean[ toohigh] = globalrange[2]
 
@@ -537,8 +537,8 @@
           }
     
         # global bounds .. strictly do not extrapolate
-          toolow  = which( res$predictions$mean < globalrange[1] )
-          toohigh = which( res$predictions$mean > globalrange[2] )
+          toolow  = which( P < globalrange[1] )
+          toohigh = which( P > globalrange[2] )
           if (length( toolow) > 0)  res$predictions$mean[ toolow] = globalrange[1]
           if (length( toohigh) > 0) res$predictions$mean[ toohigh] = globalrange[2]
 
