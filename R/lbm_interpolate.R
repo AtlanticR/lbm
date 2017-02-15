@@ -63,7 +63,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
 # main loop over each output location in S (stats output locations)
   for ( iip in ip ) {
     localcount = localcount + 1 
-    if (( localcount %% 100 )== 0) {
+    if (( localcount %% 37 )== 0) {
       varstoout = c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outsidepreddomain", "n.outside", "n.complete", "prop_incomp" )
       header = paste( c( varstoout) )
       currentstatus = lbm_db( p=p, DS="statistics.status" )
