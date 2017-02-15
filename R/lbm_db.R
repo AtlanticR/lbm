@@ -430,6 +430,9 @@
         if (ret=="sd") return( V)
       }
 
+      Yraw = lbm_attach( p$storage.backend, p$ptr$Yraw )
+      globalrange = range( Yraw[], na.rm=TRUE )
+
       PP = lbm_attach( p$storage.backend, p$ptr$P )
       PPsd = lbm_attach( p$storage.backend, p$ptr$Psd )
       if (exists("lbm_global_modelengine", p)) {
@@ -493,6 +496,13 @@
               V = bio.snowcrab::inverse.logit( V )
             }
           }
+
+          # global bounds .. strictly do not extrapolate
+          toolow  = which( res$predictions$mean < globalrange[1] )
+          toohigh = which( res$predictions$mean > globalrange[2] )
+          if (length( toolow) > 0)  res$predictions$mean[ toolow] = globalrange[1]
+          if (length( toohigh) > 0) res$predictions$mean[ toohigh] = globalrange[2]
+
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
           print ( paste("Year:", y)  )
@@ -525,6 +535,12 @@
               V = bio.snowcrab::inverse.logit( V )
             }
           }
+    
+        # global bounds .. strictly do not extrapolate
+          toolow  = which( res$predictions$mean < globalrange[1] )
+          toohigh = which( res$predictions$mean > globalrange[2] )
+          if (length( toolow) > 0)  res$predictions$mean[ toolow] = globalrange[1]
+          if (length( toohigh) > 0) res$predictions$mean[ toohigh] = globalrange[2]
 
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )

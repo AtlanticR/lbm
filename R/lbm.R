@@ -190,13 +190,12 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         if (p$storage.backend == "ff" ) {
           p$ptr$Yraw = ff( Yraw, dim=dim(Yraw), file=p$cache$Yraw, overwrite=TRUE )
         }
+ 
       rm(Yraw)
 
       # limits based on quantiles to permit in predictions
+      # default just copy Yraw ... but if covars are modelled then overwrite with residuals (below)
       Yraw = lbm_attach( p$storage.backend, p$ptr$Yraw )
-      p$qs0 = quantile( Yraw[], probs=p$lbm_quantile_bounds, na.rm=TRUE  )
-
-     # default just copy Yraw ... but if covars are modelled then overwrite with residuals (below)
       Ydata = Yraw[]
       if (exists("lbm_global_modelengine", p)) {
         # to add global covariate model ??  .. simplistic this way but faster
@@ -235,12 +234,10 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         if (p$storage.backend == "ff" ) {
           p$ptr$Y = ff( Ydata, dim=dim(Ydata), file=p$cache$Y, overwrite=TRUE )
         }
+
       rm(Ydata)
 
       Y = lbm_attach( p$storage.backend, p$ptr$Y )
-      p$qs = quantile( Y[], probs=p$lbm_quantile_bounds, na.rm=TRUE  )
-
-
 
      # data coordinates
       Yloc = as.matrix( DATA$input[, p$variables$LOCS ])

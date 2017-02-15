@@ -402,7 +402,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
   
     if (is.null(nu)) nu = p$lbm_lowpass_nu
     if (is.null(phi)) phi = lbm_distance_cur/sqrt( 8*nu) # crude estimate of phi based upon current scaling  distance approximates the range at 90% autocorrelation(e.g., see Lindgren et al. 2011)
-    if (is.null(varSpatial)) varSpatial =0.5 * var(dat[, p$variables$Y], na.rm=TRUE)
+    if (is.null(varSpatial)) varSpatial =0.5 * var( p$lbm_local_family$linkfun(dat[, p$variables$Y]), na.rm=TRUE)
     if (is.null(varObs)) varObs = varSpatial
     
     # model and prediction .. outputs are in scale of the link (and not response)
@@ -460,7 +460,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     }
 
     if (exists( "lbm_quantile_bounds", p)) {
-      tq = quantile( Y[YiU], probs=p$lbm_quantile_bounds, na.rm=TRUE  )
+      tq = quantile( p$lbm_local_family$linkfun(Y[YiU]), probs=p$lbm_quantile_bounds, na.rm=TRUE  )
       toolow  = which( res$predictions$mean < tq[1] )
       toohigh = which( res$predictions$mean > tq[2] )
       if (length( toolow) > 0)  res$predictions$mean[ toolow] = tq[1]
