@@ -114,8 +114,8 @@
         }
       }
 
-      out$prop_incomp=out$n.todo / ( out$n.todo + out$n.complete)
-      message( paste("Proportion to do:", round(out$prop_incomp, 3), "\n" )) 
+      out$prop_incomp=round( out$n.todo / ( out$n.todo + out$n.complete), 3)
+      message( paste("Proportion to do:", out$prop_incomp, "\n" )) 
       return( out )
   
       if (0) {
@@ -352,10 +352,12 @@
           nc = ncol(pu)
           if ( nc== 1 ) {
             pa = cbind( pa, pu[] ) # ie. a static variable (space)
-          } else if( nc == p$ny )  {
+          } else if ( nc == p$nt & nc == p$ny) {
+            pa = cbind( pa, pu[,it] ) # ie. same time dimension as predictive data (space.annual.seasonal)
+          } else if ( nc == p$ny & p$nt > p$ny)  {
             iy = round( (it-1) / p$nw ) + 1
             pa = cbind( pa, pu[,iy] ) # ie., annual data (space.annual)
-          } else if ( nc == p$nt) {
+          } else if ( nc == p$nt & p$nt > p$ny) {
             pa = cbind( pa, pu[,it] ) # ie. same time dimension as predictive data (space.annual.seasonal)
           } else {
             stop( "Erroneous data dimension")
@@ -433,6 +435,8 @@
       Yraw = lbm_attach( p$storage.backend, p$ptr$Yraw )
       globalrange = range( Yraw[], na.rm=TRUE )
 
+      sdmax = sd( Yraw[], na.rm=TRUE )
+
       PP = lbm_attach( p$storage.backend, p$ptr$P )
       PPsd = lbm_attach( p$storage.backend, p$ptr$Psd )
       if (exists("lbm_global_modelengine", p)) {
@@ -500,8 +504,11 @@
           # global bounds .. strictly do not extrapolate
           toolow  = which( P < globalrange[1] )
           toohigh = which( P > globalrange[2] )
-          if (length( toolow) > 0)  res$predictions$mean[ toolow] = globalrange[1]
-          if (length( toohigh) > 0) res$predictions$mean[ toohigh] = globalrange[2]
+          if (length( toolow) > 0)  P[ toolow] = globalrange[1]
+          if (length( toohigh) > 0) P[ toohigh] = globalrange[2]
+
+          toohigh  = which( V > sdmax )
+          if (length( toohigh) > 0) V[ toohigh] = sdmax
 
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
@@ -539,8 +546,11 @@
         # global bounds .. strictly do not extrapolate
           toolow  = which( P < globalrange[1] )
           toohigh = which( P > globalrange[2] )
-          if (length( toolow) > 0)  res$predictions$mean[ toolow] = globalrange[1]
-          if (length( toohigh) > 0) res$predictions$mean[ toohigh] = globalrange[2]
+          if (length( toolow) > 0)  P[ toolow] = globalrange[1]
+          if (length( toohigh) > 0) P[ toohigh] = globalrange[2]
+
+          toohigh  = which( V > sdmax )
+          if (length( toohigh) > 0) V[ toohigh] = sdmax
 
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
