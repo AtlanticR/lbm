@@ -3,7 +3,7 @@
 lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
   #\\ core function to intepolate (model and predict) in parllel
 
-  if (exists( "libs", p)) RLibrary( p$libs )
+  if (exists( "libs", p)) suppressMessages( RLibrary( p$libs ) ) 
   if (is.null(ip)) if( exists( "nruns", p ) ) ip = 1:p$nruns
 
   #---------------------

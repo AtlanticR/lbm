@@ -18,7 +18,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   if ( "continue" %in% tasks) {
     message( "||| lbm: Continuing from an interrupted start" ) 
     p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
-    RLibrary( p$libs )
+    suppressMessages( RLibrary( p$libs ) )
     lbm_db(p=p, DS="statistics.status.reset" )
   } 
 
@@ -54,7 +54,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     if (p$lbm_local_modelengine %in% c("gstat") ) p$libs = c( p$libs, "gstat" )
  
     p$libs = unique( p$libs )
-    RLibrary( p$libs )
+    suppressMessages( RLibrary( p$libs ) )
 
     if (p$storage.backend=="bigmemory.ram") {
       if ( length( unique(p$clusters)) > 1 ) stop( "||| lbm: More than one unique cluster server was specified .. the RAM-based method only works within one server." )
@@ -549,7 +549,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   if ( "debug_pred_static_map" %in% tasks) {  
       p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
-      RLibrary( p$libs )
+      suppressMessages( RLibrary( p$libs ) )
       Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
       P = lbm_attach( p$storage.backend, p$ptr$P )
       lattice::levelplot( (P[,vindex])~Ploc[,1]+Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
@@ -557,7 +557,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   if ( "debug_pred_static_log_map" %in% tasks) {  
       p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
-      RLibrary( p$libs )
+      suppressMessages( RLibrary( p$libs ) )
       Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
       P = lbm_attach( p$storage.backend, p$ptr$P )
       lattice::levelplot( log(P[,vindex])~Ploc[,1]+Ploc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")
@@ -565,7 +565,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   if ( "debug_pred_dynamic_map" %in% tasks) {  
       p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
-      RLibrary( p$libs )
+      suppressMessages( RLibrary( p$libs ) )
       Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
       P = lbm_attach( p$storage.backend, p$ptr$P )
       for (i in 1:p$nt) {
@@ -575,7 +575,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   if ( "debug_stats_map" %in% tasks) {  
       p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
-      RLibrary( p$libs )
+      suppressMessages( RLibrary( p$libs ) )
       Sloc = lbm_attach( p$storage.backend, p$ptr$Sloc )
       S = lbm_attach( p$storage.backend, p$ptr$S )
       lattice::levelplot(S[,vindex]~Sloc[,1]+Sloc[,2], col.regions=heat.colors(100), scale=list(draw=FALSE), aspect="iso")

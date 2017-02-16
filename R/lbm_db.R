@@ -336,7 +336,7 @@
     # -----
 
     if (DS %in% c("global.prediction.surface") ) {
-      if (exists( "libs", p)) RLibrary( p$libs )
+      if (exists( "libs", p)) suppressMessages( RLibrary( p$libs ) )
       if (is.null(ip)) if( exists( "nruns", p ) ) ip = 1:p$nruns
       global_model = lbm_db( p=p, DS="global_model") 
       if (is.null(global_model)) stop("Covariate model not found.")
