@@ -427,7 +427,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         pc = p # copy
         if (!pc$all.covars.static) if (exists("clusters.covars", pc) ) pc$clusters = pc$clusters.covars
         pc = make.list( list( tindex=1:pc$nt) , Y=pc ) # takes about 28 GB per run .. adjust cluster number temporarily
-        parallel.run( lbm_db, p=pc, DS="global.prediction.surface" )
+        suppressMessages( parallel.run( lbm_db, p=pc, DS="global.prediction.surface" ) )
         p$time_covariates = round(difftime( Sys.time(), p$timec_covariates_0 , units="hours"), 3)
         message( paste( "||| lbm: Time taken to predict covariate surface (hours):", p$time_covariates ) )
     }
@@ -527,7 +527,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     # currentstatus = lbm_db(p=p, DS="statistics.status.reset" )
     p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
     # lbm_interpolate (p=p )
-    parallel.run( lbm_interpolate, p=p )
+    suppressMessages( parallel.run( lbm_interpolate, p=p ) )
     p$time_stage1 = round( difftime( Sys.time(), timei1, units="hours" ), 3 )
     message("||| lbm: ")
     message( paste( "||| lbm: Time taken for main stage 1, interpolations (hours):", p$time_stage1, "" ) )
@@ -592,7 +592,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         p$lbm_distance_max = p$lbm_distance_max * mult
         p$lbm_distance_scale = p$lbm_distance_scale*mult # km ... approx guess of 95% AC range 
         p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
-        parallel.run( lbm_interpolate, p=p )
+        suppressMessages( parallel.run( lbm_interpolate, p=p ) )
       }
     }
     p$time_stage2 = round( difftime( Sys.time(), timei2, units="hours" ), 3)
