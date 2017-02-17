@@ -213,13 +213,14 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         } else {
           covmodel = lbm_db( p=p, DS="global_model")
           if (!is.null(covmodel)) {
-            Ydata = predict(covmodel, type="response", se.fit=FALSE )  ## TODO .. keep track of the SE 
-            Ydata = Yraw[] - Ydata
+            Ypreds = predict(covmodel, type="response", se.fit=FALSE )  ## TODO .. keep track of the SE 
+            Ydata = Yraw[] - Ypreds  # ie, residuals
           }
           covmodel =NULL; gc()
         }
       }
-
+      Ypreds = NULL
+      
       # data to be worked upon .. either the raw data or covariate-residuals
       Ydata = as.matrix( Ydata )
         if (p$storage.backend == "bigmemory.ram" ) {

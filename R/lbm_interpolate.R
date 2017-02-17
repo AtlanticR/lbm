@@ -299,7 +299,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
             pa$iy = pa$yr - p$yrs[1] + 1 #yr index
             pa[,vn] = pu[ cbind(pa$i, pa$iy) ]  
             message("Need to check that data order is correct")
-          } else if ( nts == p$nt) {
+          } else if ( nts == p$nt ) {
             pa$it = p$nw*(pa$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
             pa[,vn] = pu[ cbind(pa$i, pa$it) ]  
             message("Need to check that data order is correct")
@@ -314,12 +314,12 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     names(dat) = p$variables$Y
     dat$plon = Yloc[YiU,1]
     dat$plat = Yloc[YiU,2]
-    dat$weights = 1 / (( Sloc[Si,1] - dat$plat)**2 + (Sloc[Si,2] - dat$plon)**2 )# weight data in space: inverse distance squared
-    dat$weights[ which( dat$weights < 1e-3 ) ] = 1e-3
+    dat$weights = 1 / (( Sloc[Si,2] - dat$plat)**2 + (Sloc[Si,1] - dat$plon)**2 )# weight data in space: inverse distance squared
+    dat$weights[ which( dat$weights < 1e-4 ) ] = 1e-4
     dat$weights[ which( dat$weights > 1 ) ] = 1
     
     if (nloccov > 0) {
-      for (i in 1:nloccov) dat[, p$variables$local_cov[i] ] = Ycov[YiU,i]
+      for (i in 1:nloccov) dat[, p$variables$local_cov[i] ] = Ycov[YiU,i] # no need for other dim checks as this is user provided 
     }
      
     if (exists("TIME", p$variables)) {
