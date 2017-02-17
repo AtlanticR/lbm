@@ -501,14 +501,14 @@
             }
           }
 
-          # global bounds .. strictly do not extrapolate
-          toolow  = which( P < globalrange[1] )
-          toohigh = which( P > globalrange[2] )
-          if (length( toolow) > 0)  P[ toolow] = globalrange[1]
-          if (length( toohigh) > 0) P[ toohigh] = globalrange[2]
+          # # global bounds .. strictly do not extrapolate
+          # toolow  = which( P < globalrange[1] )
+          # toohigh = which( P > globalrange[2] )
+          # if (length( toolow) > 0)  P[ toolow] = globalrange[1]
+          # if (length( toohigh) > 0) P[ toohigh] = globalrange[2]
 
-          toohigh  = which( V > sdmax )
-          if (length( toohigh) > 0) V[ toohigh] = sdmax
+          # toohigh  = which( V > sdmax )
+          # if (length( toohigh) > 0) V[ toohigh] = sdmax
 
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
@@ -543,14 +543,14 @@
             }
           }
     
-        # global bounds .. strictly do not extrapolate
-          toolow  = which( P < globalrange[1] )
-          toohigh = which( P > globalrange[2] )
-          if (length( toolow) > 0)  P[ toolow] = globalrange[1]
-          if (length( toohigh) > 0) P[ toohigh] = globalrange[2]
+        # # global bounds .. strictly do not extrapolate
+        #   toolow  = which( P < globalrange[1] )
+        #   toohigh = which( P > globalrange[2] )
+        #   if (length( toolow) > 0)  P[ toolow] = globalrange[1]
+        #   if (length( toohigh) > 0) P[ toohigh] = globalrange[2]
 
-          toohigh  = which( V > sdmax )
-          if (length( toohigh) > 0) V[ toohigh] = sdmax
+        #   toohigh  = which( V > sdmax )
+        #   if (length( toohigh) > 0) V[ toohigh] = sdmax
 
           save( P, file=fn1, compress=T )
           save( V, file=fn2, compress=T )
