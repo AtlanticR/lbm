@@ -16,7 +16,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   p$time.start = Sys.time()
 
   if ( "continue" %in% tasks) {
-    message( "<<< lbm >>> Continuing from an interrupted start" ) 
+    message( "||| lbm: Continuing from an interrupted start" ) 
     p = lbm_db( p=p, DS="load.parameters" )  # ie. restart with saved parameters
     suppressMessages( RLibrary( p$libs ) )
     lbm_db(p=p, DS="statistics.status.reset" )
@@ -26,13 +26,13 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   if ( "initiate" %in% tasks) {
 
     p$savedir = file.path(p$project.root, "modelled", p$variables$Y, p$spatial.domain )
-    message( paste( "<<< lbm >>> In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
+    message( paste( "||| lbm: In case something should go wrong, intermediary outputs will be placed at:", p$savedir ) )
     if ( !file.exists(p$savedir)) dir.create( p$savedir, recursive=TRUE, showWarnings=FALSE )
     
     p$lbm_current_status = file.path( p$savedir, "lbm_current_status" ) 
 
     p$stloc = file.path( p$project.root, "lbm", p$spatial.domain, "tmp" )
-    message( paste( "<<< lbm >>> Temporary files are being created at:", p$stloc ) )
+    message( paste( "||| lbm: Temporary files are being created at:", p$stloc ) )
     if ( !file.exists(p$stloc)) dir.create( p$stloc, recursive=TRUE, showWarnings=FALSE )
 
     p$libs = unique( c( p$libs, "sp", "rgdal", "parallel", "RandomFields", "geoR" ) )
@@ -57,7 +57,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     suppressMessages( RLibrary( p$libs ) )
 
     if (p$storage.backend=="bigmemory.ram") {
-      if ( length( unique(p$clusters)) > 1 ) stop( "<<< lbm >>> More than one unique cluster server was specified .. the RAM-based method only works within one server." )
+      if ( length( unique(p$clusters)) > 1 ) stop( "||| lbm: More than one unique cluster server was specified .. the RAM-based method only works within one server." )
     }
 
     p = lbm_parameters(p=p) # fill in parameters with defaults where possible
@@ -106,9 +106,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     if (exists("TIME", p$variables) )  othervars = c( "ar_timerange", "ar_1" )
     p$statsvars = unique( c( "sdTotal", "rsquared", "ndata", "sdSpatial", "sdObs", "range", "phi", "nu", othervars ) )
 
-    message("<<< lbm >>> ")
-    message( "<<< lbm >>> Initializing temporary storage of data and outputs files... ")
-    message( "<<< lbm >>> These are large files (4 to 6 X 5GB), it will take a minute ... ")
+    message("||| lbm: ")
+    message( "||| lbm: Initializing temporary storage of data and outputs files... ")
+    message( "||| lbm: These are large files (4 to 6 X 5GB), it will take a minute ... ")
     lbm_db( p=p, DS="cleanup" )
 
     
@@ -415,9 +415,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         P=NULL; gc()
 
         # test to see if all covars are static as this can speed up the initial predictions
-        message("<<< lbm >>> ")
-        message( "<<< lbm >>> Predicting global effect of covariates at each prediction location ... ")
-        message( "<<< lbm >>> depending upon the size of the prediction grid and number of cpus (~1hr?).. ")
+        message("||| lbm: ")
+        message( "||| lbm: Predicting global effect of covariates at each prediction location ... ")
+        message( "||| lbm: depending upon the size of the prediction grid and number of cpus (~1hr?).. ")
 
         p$timec_covariates_0 =  Sys.time()
         nc_cov =NULL
@@ -431,7 +431,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         pc = make.list( list( tindex=1:pc$nt) , Y=pc ) # takes about 28 GB per run .. adjust cluster number temporarily
         suppressMessages( parallel.run( lbm_db, p=pc, DS="global.prediction.surface" ) )
         p$time_covariates = round(difftime( Sys.time(), p$timec_covariates_0 , units="hours"), 3)
-        message( paste( "<<< lbm >>> Time taken to predict covariate surface (hours):", p$time_covariates ) )
+        message( paste( "||| lbm: Time taken to predict covariate surface (hours):", p$time_covariates ) )
     }
 
     P = NULL; gc() # yes, repeat in case covs are not modelled
@@ -489,8 +489,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     if ( !exists("lbm_distance_scale", p)) {
       Yloc = lbm_attach( p$storage.backend, p$ptr$Yloc )
       p$lbm_distance_scale = min( diff(range( Yloc[,1]) ), diff(range( Yloc[,2]) ) ) / 10
-      message("<<< lbm >>> ")
-      message( paste( "<<< lbm >>> Crude distance scale:", p$lbm_distance_scale, "" ) )
+      message( paste( "||| lbm: Crude distance scale:", p$lbm_distance_scale, "" ) )
     }
     if ( !exists("lbm_distance_min", p)) p$lbm_distance_min = mean( c(p$lbm_distance_prediction, p$lbm_distance_scale /20 ) )
     if ( !exists("lbm_distance_max", p)) p$lbm_distance_max = mean( c(p$lbm_distance_prediction*10, p$lbm_distance_scale * 2 ) )
@@ -501,7 +500,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     }
    
     lbm_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
-    message( "<<< lbm >>> Finished. Moving onto analysis... ")
+    message( "||| lbm: Finished. Moving onto analysis... ")
     p <<- p  # push to parent in case a manual restart is needed
     gc()
   } 
@@ -509,9 +508,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   # -------------------------------------
   # localized space-time modelling/interpolation/prediction
-  message("<<< lbm >>> Monitor the status of modelling by looking at the output of the following file:")
-  message("<<< lbm >>> (e.g., in linux: 'watch -n 60 cat {directory}/lbm_current_status' " )
-  message ( paste( "<<< lbm >>> ", p$lbm_current_status ) )
+  message("||| lbm: Monitor the status of modelling by looking at the output of the following file:")
+  message("||| lbm: (e.g., in linux: 'watch -n 60 cat {directory}/lbm_current_status' " )
+  message ( paste( "||| lbm: ", p$lbm_current_status ) )
   
 
   if ("stage0" %in% tasks) {
@@ -531,8 +530,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     # lbm_interpolate (p=p )
     suppressMessages( parallel.run( lbm_interpolate, p=p ) )
     p$time_stage1 = round( difftime( Sys.time(), timei1, units="hours" ), 3 )
-    message("<<< lbm >>> ")
-    message( paste( "<<< lbm >>> Time taken for main stage 1, interpolations (hours):", p$time_stage1, "" ) )
+    message("||| lbm: ")
+    message( paste( "||| lbm: Time taken for main stage 1, interpolations (hours):", p$time_stage1, "" ) )
     currentstatus = lbm_db( p=p, DS="statistics.status" )
     print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
     gc()
@@ -586,8 +585,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   if ( "stage2" %in% tasks) {
     timei2 =  Sys.time()
-    message("<<< lbm >>> ")
-    message( "<<< lbm >>> Starting stage 2: more permisssive/relaxed distance settings (spatial extent) " )
+    message("||| lbm: ")
+    message( "||| lbm: Starting stage 2: more permisssive/relaxed distance settings (spatial extent) " )
     for ( mult in p$lbm_multiplier_stage2 ) { 
       currentstatus = lbm_db(p=p, DS="statistics.status.reset" ) 
       if (length(currentstatus$todo) > 0) {
@@ -598,8 +597,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       }
     }
     p$time_stage2 = round( difftime( Sys.time(), timei2, units="hours" ), 3)
-    message("<<< lbm >>> ---")
-    message( paste( "<<< lbm >>> Time taken to stage 2 interpolations (hours):", p$time_stage2, "" ) )
+    message("||| lbm: ---")
+    message( paste( "||| lbm: Time taken to stage 2 interpolations (hours):", p$time_stage2, "" ) )
     currentstatus = lbm_db( p=p, DS="statistics.status" )
     print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
     gc()
@@ -610,8 +609,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   if ( "stage3" %in% tasks) {
     timei3 =  Sys.time()
-    message("<<< lbm >>> ---")
-    message( "<<< lbm >>> Starting stage 3: simple TPS-based failsafe method to interpolate all the remaining locations " )
+    message("||| lbm: ---")
+    message( "||| lbm: Starting stage 3: simple TPS-based failsafe method to interpolate all the remaining locations " )
     toredo = lbm_db( p=p, DS="flag.incomplete.predictions" )
     if ( !is.null(toredo) && length(toredo) > 0) { 
       Sflag = lbm_attach( p$storage.backend, p$ptr$Sflag )
@@ -622,7 +621,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       parallel.run( lbm_interpolate, p=p )
     }
     p$time_stage3 = round( difftime( Sys.time(), timei3, units="hours" ), 3)
-    message( paste( "<<< lbm >>> Time taken to stage 3 interpolations (hours):", p$time_stage3, "" ) )
+    message( paste( "||| lbm: Time taken to stage 3 interpolations (hours):", p$time_stage3, "" ) )
     currentstatus = lbm_db( p=p, DS="statistics.status" )
     print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
     gc()
@@ -637,30 +636,30 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
   if ("save" %in% tasks) {
     # save solutions to disk (again .. overwrite)
-    message("<<< lbm >>> ")
-    message( "<<< lbm >>> Saving predictions to disk .. " )
+    message("||| lbm: ")
+    message( "||| lbm: Saving predictions to disk .. " )
     lbm_db( p=p, DS="lbm.prediction.redo" ) # save to disk for use outside lbm*
  
-    message( "<<< lbm >>> Saving statistics to disk .. " )
+    message( "||| lbm: Saving statistics to disk .. " )
     lbm_db( p=p, DS="stats.to.prediction.grid.redo") # save to disk for use outside lbm*
 
-    message ("<<< lbm >>> Finished! ")
+    message ("||| lbm: Finished! ")
   }
 
   if ( p$storage.backend !="bigmemory.ram" ) {
-    resp = readline( "<<< lbm >>> To delete temporary files, type <YES>:  ")
+    resp = readline( "||| lbm: To delete temporary files, type <YES>:  ")
     if (resp=="YES") {
       lbm_db( p=p, DS="cleanup" )
     } else {
-      message("<<< lbm >>> ")
-      message( "<<< lbm >>> Leaving temporary files alone in case you need to examine them or restart a process. ")
-      message( "<<< lbm >>> You can delete them by running: lbm_db( p=p, DS='cleanup' ), once you are done. ")
+      message("||| lbm: ")
+      message( "||| lbm: Leaving temporary files alone in case you need to examine them or restart a process. ")
+      message( "||| lbm: You can delete them by running: lbm_db( p=p, DS='cleanup' ), once you are done. ")
     }
   }
 
   p$time_total = round( difftime( Sys.time(), p$time.start, units="hours" ),3)
-  message("<<< lbm >>> ")
-  message( paste( "<<< lbm >>> Time taken for full analysis (hours):", p$time_total, "" ) )
+  message("||| lbm: ")
+  message( paste( "||| lbm: Time taken for full analysis (hours):", p$time_total, "" ) )
 
   p <<- p  # push to parent in case a manual restart is possible
 

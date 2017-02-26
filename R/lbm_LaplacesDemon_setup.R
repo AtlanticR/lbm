@@ -5,7 +5,7 @@ lbm_LaplacesDemon_setup = function(DS="example.data", Data=NULL) {
 
     require(sp)
     data(meuse)
-    meuse =meuse[ sample.int(nrow(meuse), 50),]
+#     meuse =meuse[ sample.int(nrow(meuse),),]
     nKs = nrow( meuse  )  # knots 
     xrange = range (c(meuse$x))
     yrange = range (c(meuse$y))
