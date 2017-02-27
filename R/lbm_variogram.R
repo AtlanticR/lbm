@@ -14,7 +14,7 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
   # TODO --- directly via FFT
 
   if (!is.null(family)) {
-    if (family$family != "binomial" ) z = family$linkfun(z)  
+    if (exists("family", family)) if (family$family != "binomial" ) z = family$linkfun(z)  
   }
 
   nc_max = 5  # max number of iterations
@@ -46,63 +46,65 @@ lbm_variogram = function( xy, z, plotdata=FALSE, edge=c(1/3, 1), methods=c("fast
 
 
   if (!is.null(family)) {
-    if (family$family == "binomial" ) {
-      require( CompRandFld ) 
+    if (exists("family", family)) {
+      if (family$family == "binomial" ) {
+        require( CompRandFld ) 
 
-      # gstat seems to work well .. TODO 
+        # gstat seems to work well .. TODO 
 
-      vario = EVariogram( data=z, coordx=as.matrix(xy), maxdist=out$maxdist, numbins=nbreaks, type="lorelogram" ) 
-  
-      varmax = max(vario$variograms, na.rm=TRUE)
+        vario = EVariogram( data=z, coordx=as.matrix(xy), maxdist=out$maxdist, numbins=nbreaks, type="lorelogram" ) 
     
-      vg = vario$variograms
-      vx = vario$centers
-      mvg = max(vg, na.rm=TRUE)
-      mvx = max(vx, na.rm=TRUE)
-      eps = 1e-6
-      lower =c(0, eps, mvx/20, 0.02 )
-      upper =c(mvg, mvg, mvx*1.5, 2)
-      #nonlinear est
-      par = c(tau.sq=varmax*0.05, sigma.sq=varmax*0.95, phi=mvx/10, nu=0.5) 
-      o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", lower=lower, upper=upper,
-        control=list(maxit=200, factr=1e-9),
-        fn=function(par, vg, vx){ 
-          vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
-          dy = sum( (vg - vgm)^2, na.rm=TRUE) # vario normal errors, no weights , etc.. just the line
-        } ) 
-      )
+        varmax = max(vario$variograms, na.rm=TRUE)
       
-      if ( !inherits(o, "try-error")) { 
-        if ( o$convergence==0 ) {
-          par = o$par 
-          out$CompRandFld = list( fit=o, vgm=vario, range=NA, nu=par["nu"], phi=par["phi"],
-            varSpatial=par["sigma.sq"], varObs=par["tau.sq"] ) 
-          #rg = try(geoR::practicalRange("matern", phi=out$CompRandFld$phi, kappa=out$CompRandFld$nu ))
-           rg=  distance_matern(phi=out$CompRandFld$phi, nu=out$CompRandFld$nu)
+        vg = vario$variograms
+        vx = vario$centers
+        mvg = max(vg, na.rm=TRUE)
+        mvx = max(vx, na.rm=TRUE)
+        eps = 1e-6
+        lower =c(0, eps, mvx/20, 0.02 )
+        upper =c(mvg, mvg, mvx*1.5, 2)
+        #nonlinear est
+        par = c(tau.sq=varmax*0.05, sigma.sq=varmax*0.95, phi=mvx/10, nu=0.5) 
+        o = try( optim( par=par, vg=vg, vx=vx, method="L-BFGS-B", lower=lower, upper=upper,
+          control=list(maxit=200, factr=1e-9),
+          fn=function(par, vg, vx){ 
+            vgm = par["tau.sq"] + par["sigma.sq"]*(1-fields::Matern(d=vx, range=par["phi"], smoothness=par["nu"]) )
+            dy = sum( (vg - vgm)^2, na.rm=TRUE) # vario normal errors, no weights , etc.. just the line
+          } ) 
+        )
+        
+        if ( !inherits(o, "try-error")) { 
+          if ( o$convergence==0 ) {
+            par = o$par 
+            out$CompRandFld = list( fit=o, vgm=vario, range=NA, nu=par["nu"], phi=par["phi"],
+              varSpatial=par["sigma.sq"], varObs=par["tau.sq"] ) 
+            #rg = try(geoR::practicalRange("matern", phi=out$CompRandFld$phi, kappa=out$CompRandFld$nu ))
+             rg=  distance_matern(phi=out$CompRandFld$phi, nu=out$CompRandFld$nu)
 
-          if (! inherits(rg, "try-error") ) {
-            out$CompRandFld$range = rg
-          } else {
-            out$CompRandFld$range = 0
-          }
-        } else {
-          out = try( lbm_variogram( xy=xy, z=z, methods="fast") )
-          if (!inherits(out, "try-error") ) {
-            if (exists( "fast", out)) {
-              out$CompRandFld =out$fast
-              out$fast =NULL
+            if (! inherits(rg, "try-error") ) {
+              out$CompRandFld$range = rg
+            } else {
+              out$CompRandFld$range = 0
             }
+          } else {
+            out = try( lbm_variogram( xy=xy, z=z, methods="fast") )
+            if (!inherits(out, "try-error") ) {
+              if (exists( "fast", out)) {
+                out$CompRandFld =out$fast
+                out$fast =NULL
+              }
+            }
+            return(out)
           }
-          return(out)
         }
-      }
-   
-    
-      if( 0) {
-        plot( vario$centers, vario$variograms,  col="green" )
-        ds = seq( 0, mvx, length.out=100 )
-        ac = out$CompRandFld$varObs + out$CompRandFld$varSpatial*(1 - Matern( ds, range=out$CompRandFld$phi,  nu=out$CompRandFld$nu ) )
-        lines( ds, ac )
+     
+      
+        if( 0) {
+          plot( vario$centers, vario$variograms,  col="green" )
+          ds = seq( 0, mvx, length.out=100 )
+          ac = out$CompRandFld$varObs + out$CompRandFld$varSpatial*(1 - Matern( ds, range=out$CompRandFld$phi,  nu=out$CompRandFld$nu ) )
+          lines( ds, ac )
+        }
       }
     }
   }

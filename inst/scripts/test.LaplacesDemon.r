@@ -8,70 +8,21 @@ library(gstat)
 data(meuse)
 coordinates(meuse) = ~x+y
 # local universal kriging
-gmeuse = gstat(id = "log_zinc", formula = log(zinc)~dist, data = meuse)
+gmeuse = gstat(id = "log_zinc", formula = log(zinc)~1, data = meuse)
 vmeuse.res = fit.variogram(variogram(gmeuse), vgm(1, "Exp", 300, 1)) # variogram of residuals
 # prediction from local neighbourhoods within radius of 170 m or at least 10 points
-gmeuse = gstat(id = "log_zinc", formula = log(zinc)~sqrt(dist),
-data = meuse, maxdist=170, nmin=10, force=TRUE, model=vmeuse.res)
+gmeuse = gstat(id = "log_zinc", formula = log(zinc)~1, 
+  data = meuse, maxdist=170, nmin=10, force=TRUE, model=vmeuse.res)
 
-data(meuse.grid)
-gridded(meuse.grid) = ~x+y
-predmeuse = predict(gmeuse, meuse.grid)
-spplot(predmeuse)
+gstat.pred = predict(gmeuse, newdata=meuse)
+plot( gstat.pred$log_zinc.pred ~ log(meuse$zinc) )
 
 
+# data(meuse.grid)
+# gridded(meuse.grid) = ~x+y
+# predmeuse = predict(gmeuse, meuse.grid)
+# spplot(predmeuse)
 
-# ----------------------------
-
-library(spBayes)
-
-data(meuse)
-coordinates(meuse) = ~x+y
-
-##Collect samples
-y = log(meuse$zinc)
-x = meuse$dist
-fit <- glm( y~x-1, family="gaussian")
-beta.starting <- coefficients(fit)
-beta.tuning <- t(chol(vcov(fit)))
-
-
-coords = coordinates(meuse)
-
-m.1 <- spLM( y~1, coords=coords, knots=c(6,6),
-             starting=list("beta"=beta.starting, "phi"=0.06,"sigma.sq"=1, "w"=0),
-             tuning=list("beta"=beta.tuning, "phi"=0.5, "sigma.sq"=0.5, "w"=0.5),
-             priors=list("beta.Normal"=list(0,10), "phi.Unif"=c(0.03, 0.3), "sigma.sq.IG"=c(2, 1)),
-             amcmc=list("n.batch"=n.batch, "batch.length"=batch.length, "accept.rate"=0.43),
-             cov.model="exponential", verbose=TRUE, n.report=10)
-
-burn.in <- 0.9*n.samples
-sub.samps <- burn.in:n.samples
-
-print(summary(window(m.1$p.beta.theta.samples, start=burn.in)))
-
-beta.hat <- m.1$p.beta.theta.samples[sub.samps,"(Intercept)"]
-w.hat <- m.1$p.w.samples[,sub.samps]
-
-p.hat <- 1/(1+exp(-(x%*%beta.hat+w.hat)))
-
-y.hat <- apply(p.hat, 2, function(x){rbinom(n, size=weights, prob=p)})
-
-y.hat.mu <- apply(y.hat, 1, mean)
-y.hat.var <- apply(y.hat, 1, var)
-
-##Take a look
-par(mfrow=c(1,2))
-surf <- mba.surf(cbind(coords,y.hat.mu),no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(surf, main="Interpolated mean of posterior rate\n(observed rate)")
-contour(surf, add=TRUE)
-text(coords, label=paste("(",y,")",sep=""))
-
-surf <- mba.surf(cbind(coords,y.hat.var),no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(surf, main="Interpolated variance of posterior rate\n(observed #
-of trials)")
-contour(surf, add=TRUE)
-text(coords, label=paste("(",weights,")",sep=""))
 
 # ---------------------------------------------------
 # Universal Kriging with prediction via LaplacesDemon
@@ -82,17 +33,28 @@ require(LaplacesDemonCpp)
 Data = lbm_LaplacesDemon_setup( DS="spatial.test", Data ) # spatial + intercept
 
 
-# maximum likelihood solution
-f.ml = optim( par=Data$PGF(Data), fn=Data$Model.ML, Data=Data, control=list(maxit=5000, trace=1), method="BFGS"  )
-names(f.ml$par ) = Data$parm.names
+# maximum likelihood solution .. kind of slow
+# f.ml = optim( par=Data$PGF(Data), fn=Data$Model.ML, Data=Data, control=list(maxit=5000, trace=1), method="BFGS"  )
+# names(f.ml$par ) = Data$parm.names
 
 # penalized maximum likelihood .. better but still a little unstable depending on algorithm
 f.pml = optim( par=Data$PGF(Data), fn=Data$Model.PML, Data=Data,  control=list(maxit=5000, trace=1), method="BFGS" , hessian=TRUE )
 names(f.pml$par ) = Data$parm.names
 #print(sqrt( diag( solve(f.pml$hessian) )) ) # assymptotic standard errors
 
+f.pml.pred = f.pml$par[1:155]
+
+
+plot( f.pml.pred ~ gstat.pred$log_zinc.pred )
+
 
 f = LaplacesDemon(Data$Model, Data=Data, Initial.Values=Data$PGF(Data), Iterations=100, Status=10, Thinning=1 )
+
+plot( f$Summary1[1:155, "Mean"] ~ gstat.pred$log_zinc.pred )
+
+
+
+
 f = LaplacesDemon(Data$Model, Data=Data, Initial.Values=as.initial.values(f), Iterations=100, Status=10, Thinning=1 )
 
 f <- LaplacesDemon(Data$Model, Data=Data, Initial.Values=as.initial.values(f), Covar=NULL, Iterations=5000, Status=100, Thinning=25,
@@ -402,4 +364,61 @@ f = LaplacesDemon(Model, Data=Data, Initial.Values=as.initial.values(f), Iterati
 f = VariationalBayes(Model, Data=Data, parm=as.initial.values(f), Iterations=10000, Samples=1000, CPUs=5 )
 f = IterativeQuadrature(Model, Data=Data, parm=as.initial.values(f), Iterations=1000, Algorithm="AGH",
  Specs=list(N=5, Nmax=7, Packages=NULL, Dyn.libs=NULL) )
+
+
+
+
+
+
+# ----------------------------
+
+library(spBayes)
+
+data(meuse)
+coordinates(meuse) = ~x+y
+
+##Collect samples
+y = log(meuse$zinc)
+x = meuse$dist
+fit <- glm( y~x-1, family="gaussian")
+beta.starting <- coefficients(fit)
+beta.tuning <- t(chol(vcov(fit)))
+
+
+coords = coordinates(meuse)
+
+m.1 <- spLM( y~1, coords=coords, knots=c(6,6),
+             starting=list("beta"=beta.starting, "phi"=0.06,"sigma.sq"=1, "w"=0),
+             tuning=list("beta"=beta.tuning, "phi"=0.5, "sigma.sq"=0.5, "w"=0.5),
+             priors=list("beta.Normal"=list(0,10), "phi.Unif"=c(0.03, 0.3), "sigma.sq.IG"=c(2, 1)),
+             amcmc=list("n.batch"=n.batch, "batch.length"=batch.length, "accept.rate"=0.43),
+             cov.model="exponential", verbose=TRUE, n.report=10)
+
+burn.in <- 0.9*n.samples
+sub.samps <- burn.in:n.samples
+
+print(summary(window(m.1$p.beta.theta.samples, start=burn.in)))
+
+beta.hat <- m.1$p.beta.theta.samples[sub.samps,"(Intercept)"]
+w.hat <- m.1$p.w.samples[,sub.samps]
+
+p.hat <- 1/(1+exp(-(x%*%beta.hat+w.hat)))
+
+y.hat <- apply(p.hat, 2, function(x){rbinom(n, size=weights, prob=p)})
+
+y.hat.mu <- apply(y.hat, 1, mean)
+y.hat.var <- apply(y.hat, 1, var)
+
+##Take a look
+par(mfrow=c(1,2))
+surf <- mba.surf(cbind(coords,y.hat.mu),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image(surf, main="Interpolated mean of posterior rate\n(observed rate)")
+contour(surf, add=TRUE)
+text(coords, label=paste("(",y,")",sep=""))
+
+surf <- mba.surf(cbind(coords,y.hat.var),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image(surf, main="Interpolated variance of posterior rate\n(observed #
+of trials)")
+contour(surf, add=TRUE)
+text(coords, label=paste("(",weights,")",sep=""))
 
