@@ -21,19 +21,21 @@ lbm_LaplacesDemon_setup = function(DS="example.data", Data=NULL) {
       dKK=dKK,
       y=y  
     )
-
+    Data$eps = 1e-4
     Data$mon.names = c( "LP" )
-    Data$parm.names = as.parm.names(list(muKs=rep(0,Data$nKs), sigma=rep(0,2), phi=0 ))
+    Data$parm.names = as.parm.names(list(muKs=rep(0,Data$nKs), tau=0, sigma=0, phi=0 ))
     Data$pos = list(
       muKs = grep("muKs", Data$parm.names),
+      tau = grep("tau", Data$parm.names),
       sigma = grep("sigma", Data$parm.names),
       phi = grep("phi", Data$parm.names)
     )
     Data$PGF = function(Data) {
-      sigma = runif(2,0.1,10)
-      phi = runif(1,1,5)
-      muKs = mvnfast::rmvn(1, rep(0,Data$nKs), sigma[2]*sigma[2]*exp(-phi*Data$dKK ) )
-      return(c(muKs, sigma, phi))
+      tau = runif(1,Data$eps,10)
+      sigma = runif(1,Data$eps,10)
+      phi = runif(1,Data$eps,5)
+      muKs = mvnfast::rmvn(1, rep(0,Data$nKs), sigma*sigma*exp(-Data$dKK/phi ) )
+      return(c(muKs, tau, sigma, phi))
     }
     Data$PGF  = compiler::cmpfun(Data$PGF)
 
@@ -41,26 +43,23 @@ lbm_LaplacesDemon_setup = function(DS="example.data", Data=NULL) {
       muKs = parm[Data$pos$muKs]
       # parm[Data$pos$kappa] = kappa = LaplacesDemonCpp::interval(parm[Data$pos$kappa], 1e-9, Inf)
       # parm[Data$pos$kappa] = kappa = 1
-      parm[Data$pos$sigma] = sigma = LaplacesDemonCpp::interval(parm[Data$pos$sigma], 1e-9, Inf)
-      parm[Data$pos$phi] = phi = LaplacesDemonCpp::interval(parm[Data$pos$phi], 1, 5)
-      # rhoKs = exp(-phi * Data$dKK)^kappa   ## spatial correlation
-      rhoKs = exp(-phi * Data$dKK )  ## spatial correlation
-      
-      covKs = sigma[2]*sigma[2] * rhoKs
-      muKs.prior =  try(mvnfast::dmvn( muKs, rep(0, Data$nKs), sigma=covKs, log=TRUE  ))
-      sigma.prior = sum(dgamma(sigma, 1, 100, log=TRUE))
-      phi.prior = dunif(phi, 1, 5, log=TRUE)
+      parm[Data$pos$tau] = tau = LaplacesDemonCpp::interval(parm[Data$pos$tau], Data$eps, Inf)
+      parm[Data$pos$sigma] = sigma = LaplacesDemonCpp::interval(parm[Data$pos$sigma], Data$eps, Inf)
+      parm[Data$pos$phi] = phi = LaplacesDemonCpp::interval(parm[Data$pos$phi], Data$eps, 5)
+      covKs = sigma*sigma * exp(- Data$dKK/phi ) + diag(Data$nKs)*tau*tau
+      tau.prior = sum(dgamma(tau, Data$eps, 10, log=TRUE))
+      sigma.prior = sum(dgamma(sigma, Data$eps ,10, log=TRUE))      
+      phi.prior = dunif(phi, Data$eps, 5, log=TRUE)
       # kappa.prior = dgamma(kappa, 1, 100 log=TRUE)
 
       ### Interpolation
-      errorSpatialK = rowSums(rhoKs / rowSums(rhoKs) * matrix(muKs, Data$nKs, Data$nKs, byrow=TRUE) ) # cov/cov --> sigmasq cancels leaving rho
-      
-      muK = errorSpatialK
-      yK = rnorm(Data$nKs)*sigma[1] + muK 
-      LL = sum(dnorm(Data$y, muK, sigma[1], log=TRUE))
+      # errorSpatialK = rowSums(covKs / rowSums(covKs) * matrix(muKs, Data$nKs, Data$nKs, byrow=TRUE) )
+      yK = mvnfast::rmvn( 1, muKs, covKs)  
+      LL = mvnfast::dmvn( Data$y, muKs, sigma=covKs, log=TRUE )
+      #LL = sum(dnorm(Data$y, yK, tau, log=TRUE))
       
       ### Log-Posterior
-      LP = LL + muKs.prior + sigma.prior + phi.prior # + kappa.prior
+      LP = LL +  tau.prior + sigma.prior + phi.prior # + kappa.prior
       Modelout = list(LP=LP, Dev=-2*LL, Monitor=c(LP), yhat=yK, parm=parm)
       return(Modelout)
     }

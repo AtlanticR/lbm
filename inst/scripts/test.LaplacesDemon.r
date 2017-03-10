@@ -6,6 +6,8 @@ library(sp)
 library(gstat)
 
 data(meuse)
+meuse =meuse[ sample.int(nrow(meuse),),]
+
 coordinates(meuse) = ~x+y
 # local universal kriging
 gmeuse = gstat(id = "log_zinc", formula = log(zinc)~1, data = meuse)
@@ -30,7 +32,72 @@ bioLibrary( "bio.spacetime", "lbm")
 
 require(LaplacesDemonCpp)
 
-Data = lbm_LaplacesDemon_setup( DS="spatial.test", Data ) # spatial + intercept
+    nKs = nrow( meuse  )  # knots 
+    xrange = range (c(meuse$x))
+    yrange = range (c(meuse$y))
+    dx = diff(xrange)
+    dy = diff(yrange)
+    dd = max( dx, dy )
+    coordsK = data.frame( plon=(meuse$y-yrange[1])/dd, plat=(meuse$x-xrange[1])/dd) 
+    y = log(meuse$zinc)  # LD likes to have a "y" as dep variable
+    dKK = as.matrix(dist( coordsK, diag=TRUE, upper=TRUE)) # distance matrix between knots
+    Data = list(
+      n = nKs,  # required for LaplacesDemon
+      nKs=nKs,
+      dKK=dKK,
+      y=y  
+    )
+    Data$eps = 1e-4
+    Data$mon.names = c( "LP" )
+    Data$parm.names = as.parm.names(list(muKs=rep(0,Data$nKs), tau=0, sigma=0, phi=0 ))
+    Data$pos = list(
+      muKs = grep("muKs", Data$parm.names),
+      tau = grep("tau", Data$parm.names),
+      sigma = grep("sigma", Data$parm.names),
+      phi = grep("phi", Data$parm.names)
+    )
+    Data$PGF = function(Data) {
+      tau = runif(1,Data$eps,10)
+      sigma = runif(1,Data$eps,10)
+      phi = runif(1,Data$eps,5)
+      muKs = mvnfast::rmvn(1, rep(0,Data$nKs), sigma*sigma*exp(-Data$dKK/phi ) )
+      return(c(muKs, tau, sigma, phi))
+    }
+    Data$PGF  = compiler::cmpfun(Data$PGF)
+  
+    Data$Model = function(parm, Data){
+      muKs = parm[Data$pos$muKs]
+      # parm[Data$pos$kappa] = kappa = LaplacesDemonCpp::interval(parm[Data$pos$kappa], 1e-9, Inf)
+      # parm[Data$pos$kappa] = kappa = 1
+      parm[Data$pos$tau] = tau = LaplacesDemonCpp::interval(parm[Data$pos$tau], Data$eps, Inf)
+      parm[Data$pos$sigma] = sigma = LaplacesDemonCpp::interval(parm[Data$pos$sigma], Data$eps, Inf)
+      parm[Data$pos$phi] = phi = LaplacesDemonCpp::interval(parm[Data$pos$phi], Data$eps, 5)
+      covKs = sigma*sigma * exp(- Data$dKK/phi ) + diag(Data$nKs)*tau*tau
+      tau.prior = sum(dgamma(tau, Data$eps, 10, log=TRUE))
+      sigma.prior = sum(dgamma(sigma, Data$eps ,10, log=TRUE))      
+      phi.prior = dunif(phi, Data$eps, 5, log=TRUE)
+      # kappa.prior = dgamma(kappa, 1, 100 log=TRUE)
+
+      ### Interpolation
+      # errorSpatialK = rowSums(covKs / rowSums(covKs) * matrix(muKs, Data$nKs, Data$nKs, byrow=TRUE) )
+      yK = mvnfast::rmvn( 1, muKs, covKs)  
+      LL = mvnfast::dmvn( Data$y, muKs, sigma=covKs, log=TRUE )
+      #LL = sum(dnorm(Data$y, yK, tau, log=TRUE))
+      
+      ### Log-Posterior
+      LP = LL +  tau.prior + sigma.prior + phi.prior # + kappa.prior
+      Modelout = list(LP=LP, Dev=-2*LL, Monitor=c(LP), yhat=yK, parm=parm)
+      return(Modelout)
+    }
+
+    Data$Model.ML  = compiler::cmpfun( function(...) (Data$Model(...)$Dev / 2) )  # i.e. - log likelihood
+    Data$Model.PML = compiler::cmpfun( function(...) (- Data$Model(...)$LP) ) #i.e., - log posterior 
+    Data$Model = compiler::cmpfun(Data$Model) #  byte-compiling for more speed .. use RCPP if you want more speed
+
+    print (Data$Model( parm=Data$PGF(Data), Data ) ) # test to see if return values are sensible
+
+
+# Data = lbm_LaplacesDemon_setup( DS="spatial.test", Data ) # spatial + intercept
 
 
 # maximum likelihood solution .. kind of slow
@@ -38,55 +105,18 @@ Data = lbm_LaplacesDemon_setup( DS="spatial.test", Data ) # spatial + intercept
 # names(f.ml$par ) = Data$parm.names
 
 # penalized maximum likelihood .. better but still a little unstable depending on algorithm
-f.pml = optim( par=Data$PGF(Data), fn=Data$Model.PML, Data=Data,  control=list(maxit=5000, trace=1), method="BFGS" , hessian=TRUE )
+f.pml = optim( par=Data$PGF(Data), fn=Data$Model.PML, Data=Data,  control=list(maxit=1000, trace=1), method="BFGS" , hessian=FALSE )
 names(f.pml$par ) = Data$parm.names
 #print(sqrt( diag( solve(f.pml$hessian) )) ) # assymptotic standard errors
 
 f.pml.pred = f.pml$par[1:155]
 
-
 plot( f.pml.pred ~ gstat.pred$log_zinc.pred )
 
-
-f = LaplacesDemon(Data$Model, Data=Data, Initial.Values=Data$PGF(Data), Iterations=100, Status=10, Thinning=1 )
-
+f <- LaplacesDemon(Data$Model, Data=Data, Initial.Values=f.pml$par, Iterations=2000, Status=100, Thinning=1, Algorithm="CHARM" )
 plot( f$Summary1[1:155, "Mean"] ~ gstat.pred$log_zinc.pred )
 
-
-
-
-f = LaplacesDemon(Data$Model, Data=Data, Initial.Values=as.initial.values(f), Iterations=100, Status=10, Thinning=1 )
-
-f <- LaplacesDemon(Data$Model, Data=Data, Initial.Values=as.initial.values(f), Covar=NULL, Iterations=5000, Status=100, Thinning=25,
-     Algorithm="CHARM", Specs=list(alpha.star=0.44))
-
-f = LaplacesDemon(Data$Model, Data=Data, Initial.Values=as.initial.values(f), Iterations=100, Status=1, Thinning=1, Algorithm="NUTS", Covar=f$Covar, Specs=list(A=10, delta=0.6, epsilon=NULL, Lmax=Inf))  # A=burnin, delta=target acceptance rate
-
-
-f = LaplaceApproximation(Data$Model, Data=Data, parm=as.initial.values(f), Iterations=1000, Method="SPG", CPUs=8 ) # fast inital solution
-f = LaplacesDemon.hpc(Data$Model, Data=Data, Initial.Values=as.initial.values(f), Iterations=1000, Status=10, Thinning=10 )
-
-
-
-
-f = LaplaceApproximation(Data$Model, Data=Data, parm=as.initial.values(f), Method="Roptim", method="BFGS", Stop.Tolerance=1e-9, Iterations = 50  )
-
-
-f = LaplaceApproximation(Data$Model, Data=Data, parm=as.initial.values(f), Iterations=10, Method="LBFGS" ) # refine it
-f = VariationalBayes(Data$Model, Data=Data, parm=as.initial.values(f), Iterations=10, Samples=20, CPUs=5, Covar=f$Covar ) # refine it again
-
-
-f = LaplacesDemon(Data$Model, Data=Data, Initial.Values=as.initial.values(f), Iterations=1000, Status=100, Thinning=10 )
-Initial.Values <- as.initial.values(f)
-f <- LaplacesDemon(Data$Model, Data=Data, Initial.Values,
-     Covar=f$Covar, Iterations=2000, Status=142, Thinning=20,
-     Algorithm="AMWG", Specs=list(Periodicity=21))
-
-
-f = LaplacesDemon(Data$Model, Data=Data, Initial.Values=as.initial.values(f), Iterations=100, Status=1, Thinning=1, Covar=f$Covar )
-f = VariationalBayes(Data$Model, Data=Data, parm=as.initial.values(f), Iterations=100, Samples=10, CPUs=5, Covar=f$Covar )
-f = IterativeQuadrature(Data$Model, Data=Data, parm=as.initial.values(f), Iterations=10, Algorithm="AGH",
- Specs=list(N=5, Nmax=7, Packages=NULL, Dyn.libs=NULL), Covar=f$Covar )
+ plot(f, Style="Covariates", Data=Data)
 
 
 inew = grep( "yP", rownames( f$Summary2 ) )
