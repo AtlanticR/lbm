@@ -194,9 +194,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       rm(Yraw)
 
       # limits based on quantiles to permit in predictions
-      # default just copy Yraw ... but if covars are modelled then overwrite with residuals (below)
-      Yraw = lbm_attach( p$storage.backend, p$ptr$Yraw )
-      Ydata = Yraw[]
+      # default just a copy of Yraw ... but if covars are modelled then overwrite with residuals (below)
+      
+      Ydata = as.matrix(DATA$input[, p$variables$Y ])
       if (exists("lbm_global_modelengine", p)) {
         # to add global covariate model ??  .. simplistic this way but faster
         if (p$lbm_global_modelengine=="gam") require(mgcv)
@@ -208,13 +208,13 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
             if (!is.null(covmodel)) {
               Ypreds = predict(covmodel, type="link", se.fit=FALSE )  ## TODO .. keep track of the SE 
               Ydata  = residuals(covmodel)
+              Yraw = lbm_attach( p$storage.backend, p$ptr$Yraw )
               Yraw[] = Ypreds[] + Ydata[]  # overwrite with logit
             }  
           } else {
             if (!is.null(covmodel)) {
               Ypreds = predict(covmodel, type="response", se.fit=FALSE )  ## TODO .. keep track of the SE 
               Ydata  = residuals(covmodel)
-              # Ydata = Yraw[] - Ypreds  # ie, residuals
             }
           }
           covmodel =NULL; gc()
