@@ -132,9 +132,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       # statistics coordinates
       Sloc = as.matrix( expand.grid( sbox$plons, sbox$plats ))
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$Sloc = big.matrix(nrow=nrow(Sloc), ncol=ncol(Sloc), type="double"  )
-          p$bm$Sloc[] = Sloc
-          p$ptr$Sloc  = bigmemory::describe( p$bm$Sloc  )
+          tmp_Sloc = big.matrix(nrow=nrow(Sloc), ncol=ncol(Sloc), type="double"  )
+          tmp_Sloc[] = Sloc
+          p$ptr$Sloc  = bigmemory::describe( tmp_Sloc  )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$Sloc  = p$cache$Sloc
@@ -147,9 +147,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
       S = matrix( NaN, nrow=nrow(Sloc), ncol=length( p$statsvars ) ) # NA forces into logical
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$S = big.matrix(nrow=nrow(Sloc), ncol=length( p$statsvars ), type="double"  )
-          p$bm$S[] = S
-          p$ptr$S  = bigmemory::describe( p$bm$S )
+          tmp_S = big.matrix(nrow=nrow(Sloc), ncol=length( p$statsvars ), type="double"  )
+          tmp_S[] = S
+          p$ptr$S  = bigmemory::describe( tmp_S )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$S  = p$cache$S
@@ -162,9 +162,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
       Sflag = matrix( 0L, nrow=nrow(Sloc), ncol=1 )  # 0L is the todo flag
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$Sflag = big.matrix(nrow=nrow(Sloc), ncol=1, type="double" )
-          p$bm$Sflag[] = 0L # TODO flag
-          p$ptr$Sflag  = bigmemory::describe( p$bm$Sflag )
+          tmp_Sflag = big.matrix(nrow=nrow(Sloc), ncol=1, type="double" )
+          tmp_Sflag[] = 0L # TODO flag
+          p$ptr$Sflag  = bigmemory::describe( tmp_Sflag )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$Sflag  = p$cache$Sflag
@@ -179,9 +179,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       # dependent variable
       Yraw = as.matrix(DATA$input[, p$variables$Y ])
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$Yraw = big.matrix( nrow=nrow(Yraw), ncol=1, type="double"  )
-          p$bm$Yraw[] = Yraw
-          p$ptr$Yraw  = bigmemory::describe( p$bm$Yraw )
+          tmp_Yraw = big.matrix( nrow=nrow(Yraw), ncol=1, type="double"  )
+          tmp_Yraw[] = Yraw
+          p$ptr$Yraw  = bigmemory::describe( tmp_Yraw )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$Yraw  = p$cache$Yraw
@@ -225,9 +225,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       # data to be worked upon .. either the raw data or covariate-residuals
       Ydata = as.matrix( Ydata )
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$Y = big.matrix( nrow=nrow(Ydata), ncol=1, type="double"  )
-          p$bm$Y[] = Ydata
-          p$ptr$Y  = bigmemory::describe( p$bm$Y )
+          tmp_Y = big.matrix( nrow=nrow(Ydata), ncol=1, type="double"  )
+          tmp_Y[] = Ydata
+          p$ptr$Y  = bigmemory::describe( tmp_Y )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$Y  = p$cache$Y
@@ -244,9 +244,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
      # data coordinates
       Yloc = as.matrix( DATA$input[, p$variables$LOCS ])
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$Yloc = big.matrix( nrow=nrow(Yloc), ncol=ncol(Yloc), type="double" )
-          p$bm$Yloc[] = Yloc
-          p$ptr$Yloc = bigmemory::describe( p$bm$Yloc )
+          tmp_Yloc = big.matrix( nrow=nrow(Yloc), ncol=ncol(Yloc), type="double" )
+          tmp_Yloc[] = Yloc
+          p$ptr$Yloc = bigmemory::describe( tmp_Yloc )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$Yloc  = p$cache$Yloc
@@ -262,9 +262,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       if (exists("COV", p$variables)) {
         Ycov = as.matrix(  DATA$input[ , p$variables$COV ] )
           if (p$storage.backend == "bigmemory.ram" ) {
-            p$bm$Ycov = big.matrix( nrow=nrow(Ycov), ncol=ncol(Ycov), type="double")
-            p$bm$Ycov[] = Ycov
-            p$ptr$Ycov  = bigmemory::describe( p$bm$Ycov )
+            tmp_Ycov = big.matrix( nrow=nrow(Ycov), ncol=ncol(Ycov), type="double")
+            tmp_Ycov[] = Ycov
+            p$ptr$Ycov  = bigmemory::describe( tmp_Ycov )
           }
           if (p$storage.backend == "bigmemory.filebacked" ) {
             p$ptr$Ycov  = p$cache$Ycov
@@ -281,9 +281,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       if ( exists("TIME", p$variables) ) {
         Ytime = as.matrix(  DATA$input[, p$variables$TIME ] )
           if (p$storage.backend == "bigmemory.ram" ) {
-            p$bm$Ytime = big.matrix( nrow=nrow(Ytime), ncol=ncol(Ytime), type="double"  )
-            p$bm$Ytime[] = Ytime
-            p$ptr$Ytime  = bigmemory::describe( p$bm$Ytime )
+            tmp_Ytime = big.matrix( nrow=nrow(Ytime), ncol=ncol(Ytime), type="double"  )
+            tmp_Ytime[] = Ytime
+            p$ptr$Ytime  = bigmemory::describe( tmp_Ytime )
           }
           if (p$storage.backend == "bigmemory.filebacked" ) {
             p$ptr$Ytime  = p$cache$Ytime
@@ -299,15 +299,15 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       if (exists("COV", p$variables)) {
         # this needs to be done as Prediction covars need to be structured as lists
         if (!exists("Pcov", p$ptr) ) p$ptr$Pcov = list()
-        p$bm$Pcov = list()
+        tmp_Pcov = list()
        
         for ( covname in p$variables$COV ) {
           Pcovdata = as.matrix( DATA$output$COV[[covname]] )
           attr( Pcovdata, "dimnames" ) = NULL
           if (p$storage.backend == "bigmemory.ram" ) {
-            p$bm$Pcov[[covname]] = big.matrix( nrow=nrow(Pcovdata), ncol=ncol(Pcovdata), type="double"  )
-            p$bm$Pcov[[covname]][] = Pcovdata
-            p$ptr$Pcov[[covname]]  = bigmemory::describe( p$bm$Pcov[[covname]] )
+            tmp_Pcov[[covname]] = big.matrix( nrow=nrow(Pcovdata), ncol=ncol(Pcovdata), type="double"  )
+            tmp_Pcov[[covname]][] = Pcovdata
+            p$ptr$Pcov[[covname]]  = bigmemory::describe( tmp_Pcov[[covname]] )
           }
           if (p$storage.backend == "bigmemory.filebacked" ) {
             p$ptr$Pcov[[covname]]  = p$cache$Pcov[[covname]]
@@ -325,9 +325,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       P = matrix( NaN, nrow=nrow(DATA$output$LOCS), ncol=p$nt )
         # predictions
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$P = big.matrix( nrow=nrow(P), ncol=ncol(P), type="double" )
-          p$bm$P[] = P
-          p$ptr$P  = bigmemory::describe( p$bm$P )
+          tmp_P = big.matrix( nrow=nrow(P), ncol=ncol(P), type="double" )
+          tmp_P[] = P
+          p$ptr$P  = bigmemory::describe( tmp_P )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$P  = p$cache$P
@@ -339,9 +339,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
       # count of prediction estimates
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$Pn = big.matrix( nrow=nrow(P), ncol=ncol(P), type="double" )
-          p$bm$Pn[] = P
-          p$ptr$Pn = bigmemory::describe( p$bm$Pn )
+          tmp_Pn = big.matrix( nrow=nrow(P), ncol=ncol(P), type="double" )
+          tmp_Pn[] = P
+          p$ptr$Pn = bigmemory::describe( tmp_Pn )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$Pn  = p$cache$Pn
@@ -353,9 +353,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
       # sd of prediction estimates
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$Psd = big.matrix( nrow=nrow(P), ncol=ncol(P), type="double" )
-          p$bm$Psd[] = P
-          p$ptr$Psd =bigmemory::describe( p$bm$Psd )
+          tmp_Psd = big.matrix( nrow=nrow(P), ncol=ncol(P), type="double" )
+          tmp_Psd[] = P
+          p$ptr$Psd =bigmemory::describe( tmp_Psd )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$Psd  = p$cache$Psd
@@ -370,9 +370,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       Ploc = as.matrix( DATA$output$LOCS )
       attr( Ploc, "dimnames" ) = NULL
          if (p$storage.backend == "bigmemory.ram" ) {
-            p$bm$Ploc = big.matrix( nrow=nrow(Ploc), ncol=ncol(Ploc), type="double" )
-            p$bm$Ploc[] = Ploc
-            p$ptr$Ploc  = bigmemory::describe( p$bm$Ploc )
+            tmp_Ploc = big.matrix( nrow=nrow(Ploc), ncol=ncol(Ploc), type="double" )
+            tmp_Ploc[] = Ploc
+            p$ptr$Ploc  = bigmemory::describe( tmp_Ploc )
           }
           if (p$storage.backend == "bigmemory.filebacked" ) {
             p$ptr$Ploc  = p$cache$Ploc
@@ -387,9 +387,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       # create prediction suface with covariate-based additive offsets
 
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$P0= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
-          p$bm$P0[] = P
-          p$ptr$P0 = bigmemory::describe(p$bm$P0 )
+          tmp_P0= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
+          tmp_P0[] = P
+          p$ptr$P0 = bigmemory::describe(tmp_P0 )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$P0  = p$cache$P0
@@ -400,9 +400,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         }
 
         if (p$storage.backend == "bigmemory.ram" ) {
-          p$bm$P0sd= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
-          p$bm$P0sd[] = P
-          p$ptr$P0sd = bigmemory::describe(p$bm$P0sd )
+          tmp_P0sd= big.matrix( nrow=nrow(P), ncol=ncol(P) , type="double" )
+          tmp_P0sd[] = P
+          p$ptr$P0sd = bigmemory::describe(tmp_P0sd )
         }
         if (p$storage.backend == "bigmemory.filebacked" ) {
           p$ptr$P0sd  = p$cache$P0sd
@@ -473,9 +473,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
     Yi = as.matrix(Yi)
       if (p$storage.backend == "bigmemory.ram" ) {
-        p$bm$Yi = big.matrix( nrow=nrow(Yi), ncol=ncol(Yi), type="double" )
-        p$bm$Yi[] = Yi
-        p$ptr$Yi  = bigmemory::describe( p$bm$Yi )
+        tmp_Yi = big.matrix( nrow=nrow(Yi), ncol=ncol(Yi), type="double" )
+        tmp_Yi[] = Yi
+        p$ptr$Yi  = bigmemory::describe( tmp_Yi )
       }
       if (p$storage.backend == "bigmemory.filebacked" ) {
         p$ptr$Yi  = p$cache$Yi
@@ -498,7 +498,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       # fractions of distance scale  to try in local block search
       p$sampling = c( 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.5, 1.75, 2 )
     }
-   
+
+browser()
+
     lbm_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
     message( "||| lbm: Finished. Moving onto analysis... ")
     p <<- p  # push to parent in case a manual restart is needed
