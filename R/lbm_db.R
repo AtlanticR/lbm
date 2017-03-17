@@ -498,8 +498,8 @@
           # for binomial .. convert from logit to probability scale (local is gaussian)
           if ( "family" %in% class(p$lbm_global_family) ) {
             if (  p$lbm_global_family$family == "binomial" ) {
-              P = bio.snowcrab::inverse.logit( P )
-              V = bio.snowcrab::inverse.logit( V )
+              P = 1 / (1 + exp(-P)) # inverse logit
+              V = 1 / (1 + exp(-V))
             }
           }
 
@@ -540,8 +540,8 @@
           
           if ( "family" %in% class(p$lbm_global_family) ) {
             if (  p$lbm_global_family$family == "binomial" ) {
-              P = bio.snowcrab::inverse.logit( P )
-              V = bio.snowcrab::inverse.logit( V )
+              P = 1 / (1 + exp(-P)) # inverse logit
+              V = 1 / (1 + exp(-V))
             }
           }
     

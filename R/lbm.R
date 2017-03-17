@@ -505,6 +505,102 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     message( "||| lbm: Finished. Moving onto analysis... ")
     p <<- p  # push to parent in case a manual restart is needed
     gc()
+
+    # ----------
+
+    if ("restart.from.a.saved.process" %in% tasks) {
+      # in here as it assumes that "initiate" has been processed and "saved" objects are present
+
+      # unwind predictions
+      Yraw = lbm_attach( p$storage.backend, p$ptr$Yraw )
+      PP = lbm_attach( p$storage.backend, p$ptr$P )
+      PPsd = lbm_attach( p$storage.backend, p$ptr$Psd )
+
+      if (exists("lbm_global_modelengine", p)) {
+        P0 = lbm_attach( p$storage.backend, p$ptr$P0 )
+        P0sd = lbm_attach( p$storage.backend, p$ptr$P0sd )
+      }
+
+      if ( exists("TIME", p$variables)) {
+        # outputs are on yearly breakdown
+        for ( r in 1:p$ny ) {
+          y = p$yrs[r]
+          fn1 = file.path( p$savedir, paste("lbm.prediction", "mean", y, "rdata", sep="." ) )
+          fn2 = file.path( p$savedir, paste("lbm.prediction", "sd",   y, "rdata", sep="." ) )
+          if (file.exists(fn1)) load(fn1)
+          if (file.exists(fn2)) load(fn2)
+          # return to user scale (that of Y)
+          P = p$lbm_local_family$linkfun( P )
+          V = p$lbm_local_family$linkfun( V )
+          
+          # for binomial .. convert from logit to probability scale (local is gaussian)
+          if ( "family" %in% class(p$lbm_global_family) ) {
+            if (  p$lbm_global_family$family == "binomial" ) {
+              P = log( P/(1-P) )
+              V = log( V/(1-V) ) # logit tranform
+            }
+          }
+          if (exists("lbm_global_modelengine", p) ) {
+            ## maybe add via simulation ? ... 
+            uu = which(!is.finite(P[]))
+            if (length(uu)>0) P[uu] = 0 # permit covariate-base predictions to pass through .. 
+            P = P[] - P0[,r] 
+            vv = which(!is.finite(V[]))
+            if (length(vv)>0) V[vv] = 0 # permit covariate-base predictions to pass through ..
+            V = sqrt( V[]^2 - P0sd[,r]^2) # simple additive independent errors assumed
+          }
+
+          vv = ncol(PP)
+          if ( vv > p$ny ) {
+            col.ranges = (r-1) * p$nw + (1:p$nw) 
+            PP  [,col.ranges] = P
+            PPsd[,col.ranges] = V # simpleadditive independent errors assumed
+          } else if ( vv==p$ny) {
+            PP[,r] = P
+            PPsd[,r] = V
+          }
+        } 
+
+      } else {
+
+          fn1 = file.path( p$savedir, paste("lbm.prediction", "mean", "rdata", sep="." ) )
+          fn2 = file.path( p$savedir, paste("lbm.prediction", "sd",   "rdata", sep="." ) )
+
+          if (file.exists(fn1)) load(fn1)
+          if (file.exists(fn2)) load(fn2)
+
+          # return to user scale
+          P = p$lbm_local_family$linkfun( P )
+          V = p$lbm_local_family$linkfun( V )
+          
+          if ( "family" %in% class(p$lbm_global_family) ) {
+            if (  p$lbm_global_family$family == "binomial" ) {
+              P = log( P/(1-P) )
+              V = log( V/(1-V) ) # logit tranform
+            }
+          }
+          if (exists("lbm_global_modelengine", p) ) {
+            uu = which(!is.finite(P[]))
+            if (length(uu)>0) P[uu] = 0 # permit covariate-base predictions to pass through ..
+            P = P[] - P0[] 
+            vv = which(!is.finite(V[]))
+            if (length(vv)>0) V[vv] = 0 # permit covariate-base predictions to pass through ..
+            V = sqrt( V[]^2 - P0sd[]^2) # simple additive independent errors assumed
+          }
+
+          PP[] = P
+          PPsd[] = V
+    
+      }
+    }
+    
+    # unwind stats grid      
+
+      fn = file.path( p$savedir, paste( "lbm.statistics", "rdata", sep=".") )
+      if (file.exists(fn)) load(fn)
+      S = lbm_attach( p$storage.backend, p$ptr$S )
+      S[] = stats[]
+
   } 
   
 
@@ -513,7 +609,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   message("||| lbm: Monitor the status of modelling by looking at the output of the following file:")
   message("||| lbm: (e.g., in linux: 'watch -n 60 cat {directory}/lbm_current_status' " )
   message ( paste( "||| lbm: ", p$lbm_current_status ) )
-  
+
+
 
   if ("stage0" %in% tasks) {
     currentstatus = lbm_db( p=p, DS="statistics.status" )
