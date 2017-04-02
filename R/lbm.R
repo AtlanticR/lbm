@@ -441,77 +441,81 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
         suppressMessages( parallel.run( lbm_db, p=pc, DS="global.prediction.surface" ) )
         p$time_covariates = round(difftime( Sys.time(), p$timec_covariates_0 , units="hours"), 3)
         message( paste( "||| lbm: Time taken to predict covariate surface (hours):", p$time_covariates ) )
-    }
-
-    P = NULL; gc() # yes, repeat in case covs are not modelled
-
-  
-    lbm_db( p=p, DS="statistics.Sflag" )
-
-    Y = lbm_attach( p$storage.backend, p$ptr$Y )
-    Yloc = lbm_attach( p$storage.backend, p$ptr$Yloc )
-
-    Yi = 1:length(Y) # index with useable data
-    bad = which( !is.finite( Y[]))
-    if (length(bad)> 0 ) Yi[bad] = NA
-
-    # data locations
-    bad = which( !is.finite( rowSums(Yloc[])))
-    if (length(bad)> 0 ) Yi[bad] = NA
-
-  # data locations
-    if (exists("COV", p$variables)) {
-      Ycov = lbm_attach( p$storage.backend, p$ptr$Ycov )
-      if (length(p$variables$COV)==1) {
-        bad = which( !is.finite( Ycov[] ))
-      } else {
-        bad = which( !is.finite( rowSums(Ycov[])))
       }
-      if (length(bad)> 0 ) Yi[bad] = NA
-      Yi = na.omit(Yi)
-    }
 
-    # data locations
-    if (exists("TIME", p$variables)) {
-      Ytime = lbm_attach( p$storage.backend, p$ptr$Ytime )
-      bad = which( !is.finite( Ytime[] ))
-      if (length(bad)> 0 ) Yi[bad] = NA
-      Yi = na.omit(Yi)
-    }
-    bad = NULL
+      P = NULL; gc() # yes, repeat in case covs are not modelled
+    
+      lbm_db( p=p, DS="statistics.Sflag" )
 
-    Yi = as.matrix(Yi)
-      if (p$storage.backend == "bigmemory.ram" ) {
-        tmp_Yi = big.matrix( nrow=nrow(Yi), ncol=ncol(Yi), type="double" )
-        tmp_Yi[] = Yi
-        p$ptr$Yi  = bigmemory::describe( tmp_Yi )
-      }
-      if (p$storage.backend == "bigmemory.filebacked" ) {
-        p$ptr$Yi  = p$cache$Yi
-        bigmemory::as.big.matrix( Yi, type="double", backingfile=basename(p$bm$Yi), descriptorfile=basename(p$cache$Yi), backingpath=p$stloc )
-      }
-      if (p$storage.backend == "ff" ) {
-        p$ptr$Yi = ff( Yi, dim=dim(Yi), file=p$cache$Yi, overwrite=TRUE )
-      }
-    rm(Yi)
-
-    if ( !exists("lbm_distance_scale", p)) {
+      Y = lbm_attach( p$storage.backend, p$ptr$Y )
       Yloc = lbm_attach( p$storage.backend, p$ptr$Yloc )
-      p$lbm_distance_scale = min( diff(range( Yloc[,1]) ), diff(range( Yloc[,2]) ) ) / 10
-      message( paste( "||| lbm: Crude distance scale:", p$lbm_distance_scale, "" ) )
+
+      Yi = 1:length(Y) # index with useable data
+      bad = which( !is.finite( Y[]))
+      if (length(bad)> 0 ) Yi[bad] = NA
+
+      # data locations
+      bad = which( !is.finite( rowSums(Yloc[])))
+      if (length(bad)> 0 ) Yi[bad] = NA
+
+    # data locations
+      if (exists("COV", p$variables)) {
+        Ycov = lbm_attach( p$storage.backend, p$ptr$Ycov )
+        if (length(p$variables$COV)==1) {
+          bad = which( !is.finite( Ycov[] ))
+        } else {
+          bad = which( !is.finite( rowSums(Ycov[])))
+        }
+        if (length(bad)> 0 ) Yi[bad] = NA
+        Yi = na.omit(Yi)
+      }
+
+      # data locations
+      if (exists("TIME", p$variables)) {
+        Ytime = lbm_attach( p$storage.backend, p$ptr$Ytime )
+        bad = which( !is.finite( Ytime[] ))
+        if (length(bad)> 0 ) Yi[bad] = NA
+        Yi = na.omit(Yi)
+      }
+      bad = NULL
+
+      Yi = as.matrix(Yi)
+        if (p$storage.backend == "bigmemory.ram" ) {
+          tmp_Yi = big.matrix( nrow=nrow(Yi), ncol=ncol(Yi), type="double" )
+          tmp_Yi[] = Yi
+          p$ptr$Yi  = bigmemory::describe( tmp_Yi )
+        }
+        if (p$storage.backend == "bigmemory.filebacked" ) {
+          p$ptr$Yi  = p$cache$Yi
+          bigmemory::as.big.matrix( Yi, type="double", backingfile=basename(p$bm$Yi), descriptorfile=basename(p$cache$Yi), backingpath=p$stloc )
+        }
+        if (p$storage.backend == "ff" ) {
+          p$ptr$Yi = ff( Yi, dim=dim(Yi), file=p$cache$Yi, overwrite=TRUE )
+        }
+      rm(Yi)
+
+      if ( !exists("lbm_distance_scale", p)) {
+        Yloc = lbm_attach( p$storage.backend, p$ptr$Yloc )
+        p$lbm_distance_scale = min( diff(range( Yloc[,1]) ), diff(range( Yloc[,2]) ) ) / 10
+        message( paste( "||| lbm: Crude distance scale:", p$lbm_distance_scale, "" ) )
+      }
+
+      if ( !exists("lbm_distance_min", p)) p$lbm_distance_min = mean( c(p$lbm_distance_prediction, p$lbm_distance_scale /20 ) )
+
+      if ( !exists("lbm_distance_max", p)) p$lbm_distance_max = mean( c(p$lbm_distance_prediction*10, p$lbm_distance_scale * 2 ) )
+
+      if ( !exists("sampling", p))  {
+        # fractions of distance scale  to try in local block search
+        p$sampling = c( 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.5, 1.75, 2 )
+      }
+
+      #browser()
+
+      lbm_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
+      message( "||| lbm: Finished. Moving onto analysis... ")
+      
     }
-    if ( !exists("lbm_distance_min", p)) p$lbm_distance_min = mean( c(p$lbm_distance_prediction, p$lbm_distance_scale /20 ) )
-    if ( !exists("lbm_distance_max", p)) p$lbm_distance_max = mean( c(p$lbm_distance_prediction*10, p$lbm_distance_scale * 2 ) )
 
-    if ( !exists("sampling", p))  {
-      # fractions of distance scale  to try in local block search
-      p$sampling = c( 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.5, 1.75, 2 )
-    }
-
-    #browser()
-
-    lbm_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
-    message( "||| lbm: Finished. Moving onto analysis... ")
     p <<- p  # push to parent in case a manual restart is needed
     gc()
 
