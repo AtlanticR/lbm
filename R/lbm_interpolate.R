@@ -21,12 +21,12 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
   Pn = lbm_attach( p$storage.backend, p$ptr$Pn )
   Psd = lbm_attach( p$storage.backend, p$ptr$Psd )
 
-  nloccov = 0
-  if (exists("local_cov", p$variables)) nloccov = length(p$variables$local_cov)
 
-  if (nloccov > 0) {
+
+  if (p$nloccov > 0) {
     Ycov = lbm_attach( p$storage.backend, p$ptr$Ycov )
   }
+  
   if ( exists("TIME", p$variables) ) {
     Ytime = lbm_attach( p$storage.backend, p$ptr$Ytime )
   }
@@ -53,7 +53,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
   windowsize.half = floor(p$lbm_distance_prediction/p$pres) # convert distance to discretized increments of row/col indices
 
   pa_w = -windowsize.half : windowsize.half
-  pa_w_n = length(pa_w)
   rm(windowsize.half)
 
   localcount = -1 
@@ -152,6 +151,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
 
    if (ndata < p$n.min)  next() # check in case a fault in logic, above
 
+   # crude mean variogram across all time slices
     o = try( lbm_variogram( xy=Yloc[U,], z=Y[U], methods=p$lbm_variogram_method, family=p$lbm_local_family ) )
       if ( !is.null(o)) {
         if (!inherits(o, "try-error")) {
@@ -197,31 +197,8 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     # So, YiU and p$lbm_distance_prediction determine the data entering into local model construction
     # dist_model = lbm_distance_cur
 
-    # determine prediction locations and time slices
-    iwplon = round( (Sloc[Si,1]-p$origin[1])/p$pres + 1 + pa_w )
-    iwplat = round( (Sloc[Si,2]-p$origin[2])/p$pres + 1 + pa_w )
-    
-    pa = NULL
-    pa = data.frame( iplon = rep.int(iwplon, pa_w_n) , 
-                     iplat = rep.int(iwplat, rep.int(pa_w_n, pa_w_n)) )
-    rm(iwplon, iwplat)
-
-    bad = which( (pa$iplon < 1 & pa$iplon > p$nplons) | (pa$iplat < 1 & pa$iplat > p$nplats) )
-    if (length(bad) > 0 ) pa = pa[-bad,]
-    if (nrow(pa)< 5)  {
-      bad = pa = YiU = o = U = NULL
-      next()
-    }
-
-    pa$i = match( array_map( "2->1", pa[, c("iplon", "iplat")], gridparams=p$gridparams ), ploc_ids )
-        
-    bad = which( !is.finite(pa$i))
-    if (length(bad) > 0 ) pa = pa[-bad,]
-    pa_n = nrow(pa)
-    if ( pa_n < 5) {
-      bad = pa = YiU = o = U = NULL
-      next()
-    }
+    pa = lbm_predictionarea( p=p, sloc=Sloc[Si,], pa_w  )
+    if (is.null(pa)) next()
 
       if (debug) {
         # check that position indices are working properly
@@ -240,158 +217,25 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
         points( grids$plat[pa$iplat] ~ grids$plon[ pa$iplon] , col="cyan", pch=20, cex=0.01 ) # check on Proc iplat indexing
         points( Ploc[pa$i,2] ~ Ploc[ pa$i, 1] , col="black", pch=20, cex=0.7 ) # check on pa$i indexing -- prediction locations
       }
-   
-    pa$plon = Ploc[ pa$i, 1]
-    pa$plat = Ploc[ pa$i, 2]
- 
-    # prediction covariates i.e., independent variables/ covariates
-    pvars = c("plon", "plat", "i")
-    if (nloccov > 0) {
-      # .. not necessary except when covars are modelled locally
-      for (ci in 1:nloccov) {
-        vn = p$variables$local_cov[ci]
-        pu = NULL
-        pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-        nts = ncol(pu)
-        if ( nts== 1 ) {
-          pvars = c( pvars, vn )
-          pa[,vn] = pu[pa$i]  # ie. a static variable
-        }
-      }
-    }
-    pa = pa[, pvars]
 
-    if ( exists("TIME", p$variables) ) {
-      pa = cbind( pa[ rep.int(1:pa_n, p$nt), ], 
-                      rep.int(p$prediction.ts, rep(pa_n, p$nt )) )
-      names(pa) = c( pvars, p$variables$TIME )
-      # where time exists and there are seasonal components, 
-      # additional variables are created/needed here: cos.w, sin.w, etc.. 
-      # for harmonic analysis: to add an offset to a trig function (b) must add cos to a sin function
-      # y ~ a + c*sin(x+b)
-      # y ~ a + c*sin(b)*cos(x) + c*cos(b)*sin(x)  
-      #   .. as C*sin(x+b) = C*( cos(b) * sin(x) + sin(b) * cos(x) )
-      # y ~ b0 + b1*x1 + b2*x2
-      # where: 
-      #   a = b0
-      #   c^2 = b1^2 + b2^2 = c^2*(sin^2(b) + cos^2(b))
-      #   c = sqrt(b1^2 + b2^2)
-      #   b1/b2 = tan(b)  
-      #   b = arctan(b1/b2)
-      if ("yr" %in% p$variables$local_all)     pa$yr = trunc( pa[,p$variables$TIME] )
-      if ("dyear" %in% p$variables$local_all)  pa$dyear = pa[, p$variables$TIME] - pa$yr  # fractional year
-      if ("cos.w" %in% p$variables$local_all)  pa$cos.w  = cos( pa[,p$variables$TIME] )
-      if ("sin.w" %in% p$variables$local_all)  pa$sin.w  = sin( pa[,p$variables$TIME] )
-      if ("cos.w2" %in% p$variables$local_all) pa$cos.w2 = cos( 2*pa[,p$variables$TIME] )
-      if ("sin.w2" %in% p$variables$local_all) pa$sin.w2 = sin( 2*pa[,p$variables$TIME] )
-      if ("cos.w3" %in% p$variables$local_all) pa$cos.w3 = cos( 3*pa[,p$variables$TIME] )
-      if ("sin.w3" %in% p$variables$local_all) pa$sin.w3 = sin( 3*pa[,p$variables$TIME] )
-      # more than 3 harmonics would not be advisable .. but you would add them here..
-      
-      if (nloccov > 0) {
-        # add time-varying covars .. not necessary except when covars are modelled locally
-        for (ci in 1:nloccov) {
-          vn = p$variables$local_cov[ci]
-          pu = NULL
-          pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-          nts = ncol(pu)
-          if ( nts == p$ny )  {
-            pa$iy = pa$yr - p$yrs[1] + 1 #yr index
-            pa[,vn] = pu[ cbind(pa$i, pa$iy) ]  
-            message("Need to check that data order is correct")
-          } else if ( nts == p$nt ) {
-            pa$it = p$nw*(pa$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
-            pa[,vn] = pu[ cbind(pa$i, pa$it) ]  
-            message("Need to check that data order is correct")
-          } else if (nts==1) { } #nothing to do .. already processed above }
-        }
-      }
-    }
-    
+
     # prep dependent data 
     # reconstruct data for modelling (dat) and data for prediction purposes (pa)
     dat = data.frame( Y[YiU] ) # these are residuals if there is a global model
     names(dat) = p$variables$Y
     dat$plon = Yloc[YiU,1]
     dat$plat = Yloc[YiU,2]
-    dat$weights = 1 / (( Sloc[Si,2] - dat$plat)**2 + (Sloc[Si,1] - dat$plon)**2 )# weight data in space: inverse distance squared
-    dat$weights[ which( dat$weights < 1e-4 ) ] = 1e-4
-    dat$weights[ which( dat$weights > 1 ) ] = 1
+    dat$weights = 1
+    # dat$weights = 1 / (( Sloc[Si,2] - dat$plat)**2 + (Sloc[Si,1] - dat$plon)**2 )# weight data in space: inverse distance squared
+    # dat$weights[ which( dat$weights < 1e-4 ) ] = 1e-4
+    # dat$weights[ which( dat$weights > 1 ) ] = 1
     
-    if (nloccov > 0) {
-      for (i in 1:nloccov) dat[, p$variables$local_cov[i] ] = Ycov[YiU,i] # no need for other dim checks as this is user provided 
+    if (p$nloccov > 0) {
+      for (i in 1:p$nloccov) dat[, p$variables$local_cov[i] ] = Ycov[YiU,i] # no need for other dim checks as this is user provided 
     }
      
     if (exists("TIME", p$variables)) {
-      dat[, p$variables$TIME ] = Ytime[YiU,] 
-      if ("yr" %in% p$variables$local_all)     dat$yr = trunc( dat[, p$variables$TIME]) 
-      if ("dyear" %in% p$variables$local_all)  dat$dyear = dat[, p$variables$TIME] - dat$yr
-      if ("cos.w" %in% p$variables$local_all)  dat$cos.w  = cos( 2*pi*dat[,p$variables$TIME] )
-      if ("sin.w" %in% p$variables$local_all)  dat$sin.w  = sin( 2*pi*dat[,p$variables$TIME] )
-      if ("cos.w2" %in% p$variables$local_all) dat$cos.w2 = cos( 2*dat[,p$variables$TIME] )
-      if ("sin.w2" %in% p$variables$local_all) dat$sin.w2 = sin( 2*dat[,p$variables$TIME] )
-      if ("cos.w3" %in% p$variables$local_all) dat$cos.w3 = cos( 3*dat[,p$variables$TIME] )
-      if ("sin.w3" %in% p$variables$local_all) dat$sin.w3 = sin( 3*dat[,p$variables$TIME] )
-    }
-
-    if (p$lbm_local_modelengine %in% c( "spate", "twostep", "lbm_local_modelengine_userdefined", "fft" ) ) {
-      # some methods require a uniform (temporal with associated covariates) prediction grid based upon all dat locations 
-
-      px = dat # only the static parts .. time has to be a uniform grid so reconstruct below
-      ids = array_map( "xy->1", px[, c("plon", "plat")], gridparams=p$gridparams ) # 100X faster than paste / merge
-      todrop = which(duplicated( ids) )
-      if (length(todrop>0)) px = px[-todrop,]
-      rm(ids, todrop)
-
-      # static vars .. don't need to look up
-      tokeep = c(p$variables$LOCS )
-      if (exists("weights", dat) ) tokeep = c(tokeep, "weights")
-      if (nloccov > 0) {
-        for (ci in 1:nloccov) {
-          vn = p$variables$local_cov[ci]
-          pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-          nts = ncol(pu)
-          if ( nts==1 ) tokeep = c(tokeep, vn ) 
-        }
-      }
-      px = px[ , tokeep ]
-      px_n = nrow(px)
-      nts = vn = NULL
-
-      # add temporal grid
-      if ( exists("TIME", p$variables) ) {
-        px = cbind( px[ rep.int(1:px_n, p$nt), ], 
-                        rep.int(p$prediction.ts, rep(px_n, p$nt )) )
-        names(px)[ ncol(px) ] = p$variables$TIME 
-        if ("yr" %in% p$variables$local_all)     px$yr = trunc( px[,p$variables$TIME] )
-        if ("dyear" %in% p$variables$local_all)  px$dyear = px[, p$variables$TIME] - px$yr  # fractional year
-        if ("cos.w" %in% p$variables$local_all)  px$cos.w  = cos( px[,p$variables$TIME] )
-        if ("sin.w" %in% p$variables$local_all)  px$sin.w  = sin( px[,p$variables$TIME] )
-        if ("cos.w2" %in% p$variables$local_all) px$cos.w2 = cos( 2*px[,p$variables$TIME] )
-        if ("sin.w2" %in% p$variables$local_all) px$sin.w2 = sin( 2*px[,p$variables$TIME] )
-        if ("cos.w3" %in% p$variables$local_all) px$cos.w3 = cos( 3*px[,p$variables$TIME] )
-        if ("sin.w3" %in% p$variables$local_all) px$sin.w3 = sin( 3*px[,p$variables$TIME] )
-        # more than 3 harmonics would not be advisable .. but you would add them here..
-      }
-
-      if (nloccov > 0) {
-        # add time-varying covars .. not necessary except when covars are modelled locally
-        for (ci in 1:nloccov) {
-          vn = p$variables$local_cov[ci]
-          pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-          nts = ncol(pu)
-          if ( nts== 1) {
-            # static vars are retained in the previous step
-          } else if ( nts == p$ny )  {
-            px$iy = px$yr - p$yrs[1] + 1 #yr index
-            px[,vn] = pu[ cbind(px$i, px$iy) ]  
-           } else if ( nts == p$nt) {
-            px$it = p$nw*(px$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
-            px[,vn] = pu[ cbind(px$i, px$it) ]  
-          }
-        } # end for loop
-        nts = vn = NULL
-      } # end if
+      dat = cbind( dat, lbm_timecovars ( vars=p$variables$local_all, ti=dat[,p$variables$TIME]  ) )
     }
 
     nu = phi = varSpatial = varObs = NULL
@@ -421,11 +265,10 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       krige = lbm__krige( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), 
       LaplacesDemon = lbm__LaplacesDemon( p, dat, pa ),
       splancs = lbm__splancs( p, dat, pa ), # TODO
-      spate = lbm__spate( p, dat, pa, sloc=Sloc[Si,], px=px, pa_w_n=pa_w_n  ), 
+      spate = lbm__spate( p, dat, pa, sloc=Sloc[Si,]), 
       fft = lbm__fft( p, dat, pa, nu=nu, phi=phi ), 
       tps = lbm__tps( p, dat, pa, lambda=varObs/varSpatial ), 
-      twostep = lbm__twostep( p, dat, pa, px=px, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), # slow ...!
-      lbm_local_modelengine_userdefined = p$lbm_local_modelengine_userdefined( p, dat, pa)
+      twostep = lbm__twostep( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial )
     ) )
 
     ### from here on predictions and sd are scaled by family p$lbm_local_family$linkfun ( ) 
@@ -446,16 +289,16 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
 
     rm(dat); gc()
     if ( inherits(res, "try-error") ) {
-      dat = pa = px = NULL
+      dat = pa = NULL
       next()
     }
     
     if ( is.null(res)) {
-      dat = pa = px = NULL
+      dat = pa = NULL
       next()
     }
     if ( all( !is.finite(res$predictions$mean ))) {
-      dat = pa = px = res = NULL
+      dat = pa = res = NULL
       next()
     }
 
@@ -469,7 +312,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     
     ii = which( is.finite(res$predictions$mean ))
     if (length(ii) < 5) {
-      dat = pa = px = res = NULL
+      dat = pa = res = NULL
       next()  # looks to be a faulty solution
     }
 

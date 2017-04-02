@@ -110,8 +110,10 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     message( "||| lbm: Initializing temporary storage of data and outputs files... ")
     message( "||| lbm: These are large files (4 to 6 X 5GB), it will take a minute ... ")
     lbm_db( p=p, DS="cleanup" )
-
-    
+  
+    p$nloccov = 0
+    if (exists("local_cov", p$variables)) p$nloccov = length(p$variables$local_cov)
+      
     if ( "globalmodel" %in% tasks ) {
       if (exists("lbm_global_modelengine", p)) {
         # to add global covariate model ??  .. simplistic this way but faster ~ kriging with external drift
