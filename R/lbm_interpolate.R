@@ -228,6 +228,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     }
      
     if (exists("TIME", p$variables)) {
+      dat[, p$variables$TIME ] = Ytime[YiU,] 
       dat = cbind( dat, lbm_timecovars ( vars=p$variables$local_all, ti=dat[,p$variables$TIME]  ) )
     }
 

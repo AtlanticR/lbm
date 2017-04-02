@@ -1,6 +1,6 @@
 
 
-lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "stage1", "save"), vindex=1 ) {
+lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate"), vindex=1 ) {
 
   #\\ localized modelling of space and time data to predict/interpolate upon a grid OUT
   #\\ overwrite = FALSE restarts from a saved state

@@ -1,5 +1,5 @@
 
-lbm_timecovars = function( vars ) {
+lbm_timecovars = function( vars, ti) {
     # where time exists and there are seasonal components, 
     # additional variables are created/needed here: cos.w, sin.w, etc.. 
     # for harmonic analysis: to add an offset to a trig function (b) must add cos to a sin function
