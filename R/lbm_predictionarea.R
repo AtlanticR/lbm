@@ -1,11 +1,11 @@
 
-lbm_predictionarea = function(p, sloc, pa_w) {
+lbm_predictionarea = function(p, sloc) {
 
-  pa_w_n = length(pa_w)
+  pa_w_n = length(p$pa_w)
 
   # determine prediction locations and time slices
-  iwplon = round( (sloc[1]-p$origin[1])/p$pres + 1 + pa_w )
-  iwplat = round( (sloc[2]-p$origin[2])/p$pres + 1 + pa_w )
+  iwplon = round( (sloc[1]-p$origin[1])/p$pres + 1 + p$pa_w )
+  iwplat = round( (sloc[2]-p$origin[2])/p$pres + 1 + p$pa_w )
 
   pa = NULL
   pa = data.frame( iplon = rep.int(iwplon, pa_w_n) , 

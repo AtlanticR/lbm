@@ -22,7 +22,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
   Psd = lbm_attach( p$storage.backend, p$ptr$Psd )
 
 
-
   if (p$nloccov > 0) {
     Ycov = lbm_attach( p$storage.backend, p$ptr$Ycov )
   }
@@ -49,11 +48,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
 
   ploc_ids = array_map( "xy->1", Ploc[], gridparams=p$gridparams )
 
-  # construct prediction/output grid area ('pa')
-  windowsize.half = floor(p$lbm_distance_prediction/p$pres) # convert distance to discretized increments of row/col indices
-
-  pa_w = -windowsize.half : windowsize.half
-  rm(windowsize.half)
 
   localcount = -1 
 
@@ -103,7 +97,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       points( Yloc[,], pch=20, cex=0.2, col="green")
       points( Yloc[U,], pch=20, cex=1, col="yellow" )
       points( Sloc[Si,2] ~ Sloc[Si,1], pch=20, cex=5, col="blue" )
-       
     }
 
     o = ores = NULL
@@ -197,7 +190,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     # So, YiU and p$lbm_distance_prediction determine the data entering into local model construction
     # dist_model = lbm_distance_cur
 
-    pa = lbm_predictionarea( p=p, sloc=Sloc[Si,], pa_w  )
+    pa = lbm_predictionarea( p=p, sloc=Sloc[Si,] )
     if (is.null(pa)) next()
 
       if (debug) {
