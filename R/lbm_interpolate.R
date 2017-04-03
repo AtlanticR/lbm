@@ -190,7 +190,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     # So, YiU and p$lbm_distance_prediction determine the data entering into local model construction
     # dist_model = lbm_distance_cur
 
-    pa = lbm_predictionarea( p=p, sloc=Sloc[Si,] )
+    pa = lbm_predictionarea( p=p, sloc=Sloc[Si,], ploc_ids=ploc_ids )
     if (is.null(pa)) next()
 
       if (debug) {
