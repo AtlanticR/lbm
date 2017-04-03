@@ -513,11 +513,11 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
 
       lbm_db( p=p, DS="save.parameters" )  # save in case a restart is required .. mostly for the pointers to data objects
       message( "||| lbm: Finished. Moving onto analysis... ")
+      p <<- p  # push to parent in case a manual restart is needed
+      gc()
       
     }
 
-    p <<- p  # push to parent in case a manual restart is needed
-    gc()
 
     # ----------
 
