@@ -1,4 +1,5 @@
 
+
 lbm_predictionarea = function(p, sloc, ploc_ids) {
 
   pa_w_n = length(p$pa_w)
@@ -21,6 +22,8 @@ lbm_predictionarea = function(p, sloc, ploc_ids) {
   if (length(bad) > 0 ) pa = pa[-bad,]
   pa_n = nrow(pa)
   if ( pa_n < 5) return(NULL)
+
+  Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
 
   pa$plon = Ploc[ pa$i, 1]
   pa$plat = Ploc[ pa$i, 2]
