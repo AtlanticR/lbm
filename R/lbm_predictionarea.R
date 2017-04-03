@@ -50,7 +50,7 @@ lbm_predictionarea = function(p, sloc, ploc_ids) {
                     rep.int(p$prediction.ts, rep(pa_n, p$nt )) )
     names(pa) = c( pvars, p$variables$TIME )
 
-    pa = cbind( pa, ulbm_timecovars ( vars=p$variables$local_all, ti=pa[,p$variables$TIME]  ) )
+    pa = cbind( pa, lbm_timecovars ( vars=p$variables$local_all, ti=pa[,p$variables$TIME]  ) )
 
     if (p$nloccov > 0) {
       # add time-varying covars .. not necessary except when covars are modelled locally
