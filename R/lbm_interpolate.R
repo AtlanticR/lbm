@@ -46,7 +46,6 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
   downsampling = sort( p$sampling[ which( p$sampling < 1) ] , decreasing=TRUE )
   downsampling = downsampling[ which(downsampling*p$lbm_distance_scale >= p$lbm_distance_min )]
 
-  ploc_ids = array_map( "xy->1", Ploc[], gridparams=p$gridparams )
 
 
   localcount = -1 
@@ -190,7 +189,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
     # So, YiU and p$lbm_distance_prediction determine the data entering into local model construction
     # dist_model = lbm_distance_cur
 
-    pa = lbm_predictionarea( p=p, sloc=Sloc[Si,], ploc_ids=ploc_ids )
+    pa = lbm_predictionarea( p=p, sloc=Sloc[Si,], windowsize.half=p$windowsize.half )
     if (is.null(pa)) next()
 
       if (debug) {
@@ -259,7 +258,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       krige = lbm__krige( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), 
       LaplacesDemon = lbm__LaplacesDemon( p, dat, pa ),
       splancs = lbm__splancs( p, dat, pa ), # TODO
-      spate = lbm__spate( p, dat, pa, sloc=Sloc[Si,]), 
+      spate = lbm__spate( p, dat, pa, sloc=Sloc[Si,], windowsize.half=lbm_distance_cur), 
       fft = lbm__fft( p, dat, pa, nu=nu, phi=phi ), 
       tps = lbm__tps( p, dat, pa, lambda=varObs/varSpatial ), 
       twostep = lbm__twostep( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial )

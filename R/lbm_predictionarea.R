@@ -1,12 +1,15 @@
 
 
-lbm_predictionarea = function(p, sloc, ploc_ids) {
+lbm_predictionarea = function(p, sloc, windowsize.half, even=FALSE ) {
 
-  pa_w_n = length(p$pa_w)
+  pa_w = -windowsize.half : windowsize.half # default window size 
+  if (even) pa_w = pa_w[-1] # for FFT/spate, even numbers are required
+
+  pa_w_n = length(pa_w)
 
   # determine prediction locations and time slices
-  iwplon = round( (sloc[1]-p$origin[1])/p$pres + 1 + p$pa_w )
-  iwplat = round( (sloc[2]-p$origin[2])/p$pres + 1 + p$pa_w )
+  iwplon = round( (sloc[1]-p$origin[1])/p$pres + 1 + pa_w )
+  iwplat = round( (sloc[2]-p$origin[2])/p$pres + 1 + pa_w )
 
   pa = NULL
   pa = data.frame( iplon = rep.int(iwplon, pa_w_n) , 
@@ -15,15 +18,16 @@ lbm_predictionarea = function(p, sloc, ploc_ids) {
   bad = which( (pa$iplon < 1 & pa$iplon > p$nplons) | (pa$iplat < 1 & pa$iplat > p$nplats) )
   if (length(bad) > 0 ) pa = pa[-bad,]
   if (nrow(pa)< 5) return(NULL)
- 
+
+  Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
+  ploc_ids = array_map( "xy->1", Ploc[], gridparams=p$gridparams )
+
   pa$i = match( array_map( "2->1", pa[, c("iplon", "iplat")], gridparams=p$gridparams ), ploc_ids )
       
   bad = which( !is.finite(pa$i))
   if (length(bad) > 0 ) pa = pa[-bad,]
   pa_n = nrow(pa)
   if ( pa_n < 5) return(NULL)
-
-  Ploc = lbm_attach( p$storage.backend, p$ptr$Ploc )
 
   pa$plon = Ploc[ pa$i, 1]
   pa$plat = Ploc[ pa$i, 2]

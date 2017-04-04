@@ -115,12 +115,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     if (exists("local_cov", p$variables)) p$nloccov = length(p$variables$local_cov)
 
     # construct prediction/output grid area ('pa')
-    windowsize.half = floor(p$lbm_distance_prediction/p$pres) # convert distance to discretized increments of row/col indices
+    p$windowsize.half = floor(p$lbm_distance_prediction/p$pres) # convert distance to discretized increments of row/col indices
 
-    p$pa_w = -windowsize.half : windowsize.half
-    rm(windowsize.half)
-
-      
+          
     if ( "globalmodel" %in% tasks ) {
       if (exists("lbm_global_modelengine", p)) {
         # to add global covariate model ??  .. simplistic this way but faster ~ kriging with external drift

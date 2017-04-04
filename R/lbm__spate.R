@@ -1,36 +1,22 @@
 
-lbm__spate = function( p, dat, pa, sloc, px=NULL, ws=NULL ) {
+lbm__spate = function( p, dat, pa, sloc, windowsize.half=NULL ) {
   #\\ SPDE solution via FFT using the spate library
   # require(spate)
   # based upon two-step process
 
   message( "This is not yet finished/debugged .. ")
- 
 
-  # step 1 -- timeseries modelling
-  # use all available data in 'dat' to get a time trend .. and assume it applies to the prediction area of interest 'pa' 
-  # currently only a GAM is enable for the TS component
-
-  # ws =  p$lbm_distance_prediction
-  #  ws= round( lbm_distance_cur / p$pres )
-  #  sloc=Sloc[Si,]
-
+  pa = lbm_predictionarea( p=p, sloc=Sloc[Si,], windowsize.half=windowsize.half, even=TRUE )
   sdTotal=sd(dat[,p$variable$Y], na.rm=T)
-
-  if (is.null(px)) {
-    px = pa
-    ws = lbm_distance_cur
-  }
-
-
-  nsq = 2*ws + 2 # this needs to be an even matrix for spate
+  ws = windowsize.half 
+  nsq = 2*ws  # this needs to be an even matrix for spate (even=TRUE drops 1 from right edge)
   adims = c(p$nt, nsq, nsq ) 
 
   dat_id = array_map( "3->1", 
     coords = round( cbind( 
+      ( (dat[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 ),
       ( ws + (dat[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
-      ( ws + (dat[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1, 
-      round( ( dat[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 )),
+      ( ws + (dat[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1), 
     dims=adims )
   
   xM = array( NA, dim=adims )
