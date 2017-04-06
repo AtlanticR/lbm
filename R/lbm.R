@@ -618,6 +618,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   message("||| lbm: Monitor the status of modelling by looking at the output of the following file:")
   message("||| lbm: (e.g., in linux: 'watch -n 60 cat {directory}/lbm_current_status' " )
   message ( paste( "||| lbm: ", p$lbm_current_status ) )
+  p <<- p  # push to parent in case a manual restart is possible
 
 
 
@@ -625,8 +626,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     currentstatus = lbm_db( p=p, DS="statistics.status" )
     print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
     p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
-    lbm_interpolate (p=p )
+    p <<- p  # push to parent in case a manual restart is possible
     browser()
+    lbm_interpolate (p=p )
   }
 
   if ( "stage1" %in% tasks) {  
@@ -636,6 +638,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     # currentstatus = lbm_db(p=p, DS="statistics.status.reset" )
     p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
     # lbm_interpolate (p=p )
+    p <<- p  # push to parent in case a manual restart is possible
     suppressMessages( parallel.run( lbm_interpolate, p=p ) )
     p$time_stage1 = round( difftime( Sys.time(), timei1, units="hours" ), 3 )
     message("||| lbm: ")
@@ -646,7 +649,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   }
   
   
-  p <<- p  # push to parent in case a manual restart is possible
 
 
   # to view maps from an external R session:
@@ -695,12 +697,16 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     timei2 =  Sys.time()
     message("||| lbm: ")
     message( "||| lbm: Starting stage 2: more permisssive/relaxed distance settings (spatial extent) " )
+
     for ( mult in p$lbm_multiplier_stage2 ) { 
       currentstatus = lbm_db(p=p, DS="statistics.status.reset" ) 
       if (length(currentstatus$todo) > 0) {
         p$lbm_distance_max = p$lbm_distance_max * mult
         p$lbm_distance_scale = p$lbm_distance_scale*mult # km ... approx guess of 95% AC range 
         p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
+
+        p <<- p  # push to parent in case a manual restart is possible
+
         suppressMessages( parallel.run( lbm_interpolate, p=p ) )
       }
     }
@@ -712,7 +718,6 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     gc()
   }
 
-  p <<- p  # push to parent in case a manual restart is possible
 
 
   if ( "stage3" %in% tasks) {
@@ -726,6 +731,7 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
       p$lbm_local_modelengine = "tps"  
       p = bio.bathymetry::bathymetry.parameters( p=p, DS="lbm" )
       p = make.list( list( locs=sample( toredo )) , Y=p ) # random order helps use all cpus
+      p <<- p  # push to parent in case a manual restart is possible
       parallel.run( lbm_interpolate, p=p )
     }
     p$time_stage3 = round( difftime( Sys.time(), timei3, units="hours" ), 3)

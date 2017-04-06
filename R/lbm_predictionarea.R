@@ -1,10 +1,8 @@
 
 
-lbm_predictionarea = function(p, sloc, windowsize.half, even=FALSE ) {
+lbm_predictionarea = function(p, sloc, windowsize.half ) {
 
   pa_w = -windowsize.half : windowsize.half # default window size 
-  if (even) pa_w = pa_w[-1] # for FFT/spate, even numbers are required
-
   pa_w_n = length(pa_w)
 
   # determine prediction locations and time slices

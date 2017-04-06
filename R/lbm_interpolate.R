@@ -258,7 +258,7 @@ lbm_interpolate = function( ip=NULL, p, debug=FALSE ) {
       krige = lbm__krige( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial ), 
       LaplacesDemon = lbm__LaplacesDemon( p, dat, pa ),
       splancs = lbm__splancs( p, dat, pa ), # TODO
-      spate = lbm__spate( p, dat, pa, sloc=Sloc[Si,], windowsize.half=lbm_distance_cur), 
+      spate = lbm__spate( p, dat, pa, sloc=Sloc[Si,], distance=lbm_distance_cur), 
       fft = lbm__fft( p, dat, pa, nu=nu, phi=phi ), 
       tps = lbm__tps( p, dat, pa, lambda=varObs/varSpatial ), 
       twostep = lbm__twostep( p, dat, pa, nu=nu, phi=phi, varObs=varObs, varSpatial=varSpatial )
