@@ -104,8 +104,8 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     othervars = c( )
     if (p$lbm_local_modelengine == "habitat") othervars = c( )
     if (p$lbm_local_modelengine == "spate") othervars = c( 
-      "rho_0", "sigma^2", "zeta", "rho_1", "gamma", "alpha", "mu_x", "mu_y", "tau^2", 
-      "rho_0.sd", "sigma^2.sd", "zeta.sd", "rho_1.sd", "gamma.sd", "alpha.sd", "mu_x.sd", "mu_y.sd", "tau^2.sd" )
+      "rho_0",  "zeta", "rho_1", "gamma", "alpha", "mu_x", "mu_y", "sigma^2", "tau^2", 
+      "rho_0.sd", "zeta.sd", "rho_1.sd", "gamma.sd", "alpha.sd", "mu_x.sd", "mu_y.sd" )
     if (exists("TIME", p$variables) )  othervars = c( "ar_timerange", "ar_1" )
     p$statsvars = unique( c( "sdTotal", "rsquared", "ndata", "sdSpatial", "sdObs", "range", "phi", "nu", othervars ) )
 

@@ -245,9 +245,10 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   psd = apply(g$Post, 1, sd)
   
   # must be same order as p$statsvars
-  lbm_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(datgridded),
+  pmean_vars = c( "rho_0", "zeta", "rho_1", "gamma", "alpha", "mu_x", "mu_y", "sigma^2", "tau^2" ) #reorder
+  psd_vars   = c( "rho_0.sd", "zeta.sd", "rho_1.sd", "gamma.sd", "alpha.sd", "mu_x.sd", "mu_y.sd" ) # drop sd of variance terms
 
-  ) 
+  lbm_stats = c(list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(datgridded)), pmean[pmean_vars], psd[psd_vars]) 
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
  
