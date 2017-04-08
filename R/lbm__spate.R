@@ -154,14 +154,19 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   nsq = pa_w_n-1
   w = matrix( xM[,1:nsq, 1:nsq ], nrow=p$nt )
 
-  SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0, muY=0, tau2=varObs)
+  # SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0, muY=0, tau2=varObs)
   
-  g = spate.mcmc( y=w, n=nsq, Padding=TRUE ) # , BurnIn=2500, Nmc=7500, SV=SV ) 
+  g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, saveProcess=TRUE, Nsave=500, 
+    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, nu=nu ) # padding causes banding patterns 
+  #, BurnIn=2500, Nmc=7500, SV=SV ) 
  #      DimRed=TRUE, NFour=100,
  #     BurnIn=2000, seed=4, NCovEst=500, BurnInCovEst=500, trace=FALSE, Padding=TRUE)
   # Nmc=10000,
 
-  spp <- spate.predict(y=w, tPred=(1:p$nt), spateMCMC=g, Nsim=1000, BurnIn=10, DataModel="Normal" )
+
+  spp <- spate.predict(y=w, tPred=(1:p$nt), 
+    spateMCMC=g, Nsim=100, BurnIn=10, DataModel="Normal", seed=1, nu=nu, trace=FALSE )
+  #  DimRed=TRUE, NFour=101
 
   # determine prediction locations and time slices
   iwplon = round( (sloc[1]-p$origin[1])/p$pres + 1 + pa_w )
@@ -182,20 +187,33 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   bad = which( (oo$iplon < 1 & oo$iplon > p$nplons) | (oo$iplat < 1 & oo$iplat > p$nplats) )
   if (length(bad) > 0 ) oo = oo[-bad,]
   if (nrow(oo)< 5) return(NULL)
+  
+  pa$id = array_map( "3->1", 
+    coords = round( cbind( 
+      ( (pa[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 ,
+      ( windowsize.half + (pa[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
+      ( windowsize.half + (pa[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1)), 
+    dims=adims )
 
-  pa$mean = NA
-  pa$sd = NA
-
-  ii = match( paste(pa$i, pa$tiyr, sep="."), paste(oo$i, oo$tiyr, sep=".") )
+  # means 
   xM[,1:nsq,1:nsq] = apply(spp, c(1,2), mean)
-  pa$mean = xM[ii]
+  pa$mean = NA
+  pa$mean = xM[pa$id ]
 
+
+  dat$id = array_map( "3->1", 
+    coords = round( cbind( 
+      ( (dat[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 ,
+      ( windowsize.half + (dat[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
+      ( windowsize.half + (dat[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1)), 
+    dims=adims )
   dat$mean = NA
-  dm = match( paste(dat$id, dat$tiyr, sep="."), paste(oo$i, oo$tiyr, sep=".") )
-  dat$mean = xM[dm]
+  dat$mean = xM[dat$id]
+
 
   xM[,1:nsq,1:nsq] = apply(spp, c(1,2), sd)
-  pa$sd = xM[ii]
+  pa$sd = NA
+  pa$sd = xM[pa$id]
 
   if (0) {
     plot(g, postProcess=TRUE)
@@ -203,10 +221,10 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
     Pmean = apply(spp, c(1,2), mean)
     zlim=range(Pmean)
     for( i in 1:p$nt) {  
-    # i = 1
-    pause(0.25)
-    image(1:nsq,1:nsq, matrix(Pmean[i,], nrow=nsq), zlim=zlim,
-            main=paste("Mean predicted field at t=",i,sep=""), xlab="",ylab="",col=cols())
+      # i = 1
+      pause(0.05)
+      image(1:nsq,1:nsq, matrix(Pmean[i,], nrow=nsq), zlim=zlim,
+              main=paste("Mean predicted field at t=",i,sep=""), xlab="",ylab="",col=cols())
     }
 
     Psd = apply(spp, c(1,2), sd)
