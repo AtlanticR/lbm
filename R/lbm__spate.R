@@ -3,16 +3,17 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
 
   # require(spate) #\\ SPDE solution via FFT using the spate library
 
+  sdTotal=sd(dat[,p$variable$Y], na.rm=T)
+  ndat = nrow(dat)
+  
+  datgridded = dat # only the static parts .. time has to be a uniform grid so reconstruct below
+
+  ids = array_map( "xy->1", datgridded[, c("plon", "plat")], gridparams=p$gridparams ) # 100X faster than paste / merge
+  todrop = which(duplicated( ids) )
+  if (length(todrop>0)) datgridded = datgridded[-todrop,]
+  rm(ids, todrop)
+
   if (p$lbm_spate_boost_timeseries ) {
-
-    sdTotal=sd(dat[,p$variable$Y], na.rm=T)
-    datgridded = dat # only the static parts .. time has to be a uniform grid so reconstruct below
-
-    ids = array_map( "xy->1", datgridded[, c("plon", "plat")], gridparams=p$gridparams ) # 100X faster than paste / merge
-    todrop = which(duplicated( ids) )
-    if (length(todrop>0)) datgridded = datgridded[-todrop,]
-    rm(ids, todrop)
-
     # static vars .. don't need to look up
     tokeep = c(p$variables$LOCS )
     if (exists("weights", dat) ) tokeep = c(tokeep, "weights")
@@ -159,10 +160,10 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   nsq = pa_w_n-1
   w = matrix( xM[,1:nsq, 1:nsq ], nrow=p$nt )
 
-  SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0, muY=0, tau2=varObs)
+  # SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0, muY=0, tau2=varObs)
   
   g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=1, # saveProcess=FALSE, Nsave=500, 
-    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, nu=nu, SV=SV ) # padding causes banding patterns 
+    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, nu=nu ) # padding causes banding patterns 
   #, BurnIn=2500, Nmc=7500, SV=SV ) 
  #      DimRed=TRUE, NFour=100,
  #     BurnIn=2000, seed=4, NCovEst=500, BurnInCovEst=500, trace=FALSE, Padding=TRUE)
@@ -241,17 +242,16 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   rsquared = summary(ss)$r.squared
   if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-  pmean = apply(g$Post, 1, mean)
-  psd = apply(g$Post, 1, sd)
-  
-  # must be same order as p$statsvars
+# must be same order as p$statsvars
   pmean_vars = c( "rho_0", "zeta", "rho_1", "gamma", "alpha", "mu_x", "mu_y", "sigma^2", "tau^2" ) #reorder
   psd_vars   = c( "rho_0.sd", "zeta.sd", "rho_1.sd", "gamma.sd", "alpha.sd", "mu_x.sd", "mu_y.sd" ) # drop sd of variance terms
 
-  lbm_stats = c(list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(datgridded)), pmean[pmean_vars], psd[psd_vars]) 
+  pmean = apply(g$Post, 1, mean)[pmean_vars]
+  psd = apply(g$Post, 1, sd)[psd_vars]
+  
+  lbm_stats = c(list( sdTotal=sdTotal, rsquared=rsquared, ndata=ndat, pmean, psd) 
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
- 
 
   return( list( predictions=pa, lbm_stats=lbm_stats ) )  
 }
