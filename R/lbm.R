@@ -103,6 +103,9 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
     # require knowledge of size of stats output before create S, which varies with a given type of analysis
     othervars = c( )
     if (p$lbm_local_modelengine == "habitat") othervars = c( )
+    if (p$lbm_local_modelengine == "spate") othervars = c( 
+      "rho_0", "sigma^2", "zeta", "rho_1", "gamma", "alpha", "mu_x", "mu_y", "tau^2", 
+      "rho_0.sd", "sigma^2.sd", "zeta.sd", "rho_1.sd", "gamma.sd", "alpha.sd", "mu_x.sd", "mu_y.sd", "tau^2.sd" )
     if (exists("TIME", p$variables) )  othervars = c( "ar_timerange", "ar_1" )
     p$statsvars = unique( c( "sdTotal", "rsquared", "ndata", "sdSpatial", "sdObs", "range", "phi", "nu", othervars ) )
 
@@ -618,8 +621,12 @@ lbm = function( p, DATA,  storage.backend="bigmemory.ram", tasks=c("initiate", "
   message("||| lbm: Monitor the status of modelling by looking at the output of the following file:")
   message("||| lbm: (e.g., in linux: 'watch -n 60 cat {directory}/lbm_current_status' " )
   message ( paste( "||| lbm: ", p$lbm_current_status ) )
-  p <<- p  # push to parent in case a manual restart is possible
 
+  # do here to facilitate debugging
+  currentstatus = lbm_db( p=p, DS="statistics.status" )
+  print( c( unlist( currentstatus[ c("n.total", "n.shallow", "n.todo", "n.skipped", "n.outside", "n.complete" ) ] ) ) )
+  p = make.list( list( locs=sample( currentstatus$todo )) , Y=p ) # random order helps use all cpus
+  p <<- p  # push to parent in case a manual restart is possible
 
 
   if ("stage0" %in% tasks) {

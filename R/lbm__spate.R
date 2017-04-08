@@ -1,171 +1,175 @@
 
 lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial ) {
-  
-  require(spate) #\\ SPDE solution via FFT using the spate library
 
-  sdTotal=sd(dat[,p$variable$Y], na.rm=T)
-  datgridded = dat # only the static parts .. time has to be a uniform grid so reconstruct below
+  # require(spate) #\\ SPDE solution via FFT using the spate library
 
-  ids = array_map( "xy->1", datgridded[, c("plon", "plat")], gridparams=p$gridparams ) # 100X faster than paste / merge
-  todrop = which(duplicated( ids) )
-  if (length(todrop>0)) datgridded = datgridded[-todrop,]
-  rm(ids, todrop)
+  if (p$lbm_spate_boost_timeseries ) {
 
-  # static vars .. don't need to look up
-  tokeep = c(p$variables$LOCS )
-  if (exists("weights", dat) ) tokeep = c(tokeep, "weights")
+    sdTotal=sd(dat[,p$variable$Y], na.rm=T)
+    datgridded = dat # only the static parts .. time has to be a uniform grid so reconstruct below
 
-  if (p$nloccov > 0) {
-    for (ci in 1:p$nloccov) {
-      vn = p$variables$local_cov[ci]
-      pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-      nts = ncol(pu)
-      if ( nts==1 ) tokeep = c(tokeep, vn ) 
-    }
-  }
+    ids = array_map( "xy->1", datgridded[, c("plon", "plat")], gridparams=p$gridparams ) # 100X faster than paste / merge
+    todrop = which(duplicated( ids) )
+    if (length(todrop>0)) datgridded = datgridded[-todrop,]
+    rm(ids, todrop)
 
-  datgridded = datgridded[ , tokeep ]
-  datgridded_n = nrow(datgridded)
-  nts = vn = NULL
+    # static vars .. don't need to look up
+    tokeep = c(p$variables$LOCS )
+    if (exists("weights", dat) ) tokeep = c(tokeep, "weights")
 
-  # add temporal grid
-  if ( exists("TIME", p$variables) ) {
-    datgridded = cbind( datgridded[ rep.int(1:datgridded_n, p$nt), ], 
-                    rep.int(p$prediction.ts, rep(datgridded_n, p$nt )) )
-    names(datgridded)[ ncol(datgridded) ] = p$variables$TIME 
-    datgridded = cbind( datgridded, lbm_timecovars ( vars=p$variables$local_all, ti=datgridded[,p$variables$TIME]  ) )
-  }
-
-  if (p$nloccov > 0) {
-    # add time-varying covars .. not necessary except when covars are modelled locally
-    for (ci in 1:p$nloccov) {
-      vn = p$variables$local_cov[ci]
-      pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-      nts = ncol(pu)
-      if ( nts== 1) {
-        # static vars are retained in the previous step
-      } else if ( nts == p$ny )  {
-        datgridded$iy = datgridded$yr - p$yrs[1] + 1 #yr index
-        datgridded[,vn] = pu[ cbind(datgridded$i, datgridded$iy) ]  
-       } else if ( nts == p$nt) {
-        datgridded$it = p$nw*(datgridded$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
-        datgridded[,vn] = pu[ cbind(datgridded$i, datgridded$it) ]  
+    if (p$nloccov > 0) {
+      for (ci in 1:p$nloccov) {
+        vn = p$variables$local_cov[ci]
+        pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+        nts = ncol(pu)
+        if ( nts==1 ) tokeep = c(tokeep, vn ) 
       }
-    } # end for loop
+    }
+
+    datgridded = datgridded[ , tokeep ]
+    datgridded_n = nrow(datgridded)
     nts = vn = NULL
-  } # end if
 
-  ts_gam = lbm__gam( p, dat, datgridded ) # currently only a GAM is enabled for the TS component
+    # add temporal grid
+    if ( exists("TIME", p$variables) ) {
+      datgridded = cbind( datgridded[ rep.int(1:datgridded_n, p$nt), ], 
+                      rep.int(p$prediction.ts, rep(datgridded_n, p$nt )) )
+      names(datgridded)[ ncol(datgridded) ] = p$variables$TIME 
+      datgridded = cbind( datgridded, lbm_timecovars ( vars=p$variables$local_all, ti=datgridded[,p$variables$TIME]  ) )
+    }
 
-  if (is.null( ts_gam)) return(NULL)
-  if (ts_gam$lbm_stats$rsquared < p$lbm_rsquared_threshold ) return(NULL)
+    if (p$nloccov > 0) {
+      # add time-varying covars .. not necessary except when covars are modelled locally
+      for (ci in 1:p$nloccov) {
+        vn = p$variables$local_cov[ci]
+        pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+        nts = ncol(pu)
+        if ( nts== 1) {
+          # static vars are retained in the previous step
+        } else if ( nts == p$ny )  {
+          datgridded$iy = datgridded$yr - p$yrs[1] + 1 #yr index
+          datgridded[,vn] = pu[ cbind(datgridded$i, datgridded$iy) ]  
+         } else if ( nts == p$nt) {
+          datgridded$it = p$nw*(datgridded$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
+          datgridded[,vn] = pu[ cbind(datgridded$i, datgridded$it) ]  
+        }
+      } # end for loop
+      nts = vn = NULL
+    } # end if
 
-  # range checks
-  rY = range( dat[,p$variables$Y], na.rm=TRUE)
-  toosmall = which( ts_gam$predictions$mean < rY[1] )
-  toolarge = which( ts_gam$predictions$mean > rY[2] )
-  if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] =  NA 
-  if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] =  NA
- 
-  pxts = ts_gam$predictions
-  # revert to response scale as the following expects this:
-  pxts$mean = p$lbm_local_family$linkinv( pxts$mean )
-  pxts$sd = p$lbm_local_family$linkinv( pxts$sd )
+    ts_gam = lbm__gam( p, dat, datgridded ) # currently only a GAM is enabled for the TS component
 
-  names(pxts)[which(names(pxts)=="mean")] = p$variables$Y
-  names(pxts)[which(names(pxts)=="sd")] = paste(p$variables$Y, "sd", sep=".")
+    if (is.null( ts_gam)) return(NULL)
+    if (ts_gam$lbm_stats$rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-  ts_gam = NULL
-  datgridded = NULL
-  gc()
+    # range checks
+    rY = range( dat[,p$variables$Y], na.rm=TRUE)
+    toosmall = which( ts_gam$predictions$mean < rY[1] )
+    toolarge = which( ts_gam$predictions$mean > rY[2] )
+    if (length(toosmall) > 0) ts_gam$predictions$mean[toosmall] =  NA 
+    if (length(toolarge) > 0) ts_gam$predictions$mean[toolarge] =  NA
+   
+    # overwrite dat with interpolated predictions
+    datgridded = ts_gam$predictions
+    ts_gam = NULL
+    
+    # revert to response scale as the following expects this:
+    datgridded$mean = p$lbm_local_family$linkinv( datgridded$mean )
+    datgridded$sd = p$lbm_local_family$linkinv( datgridded$sd )
 
+    names(datgridded)[which(names(datgridded)=="mean")] = p$variables$Y
+    names(datgridded)[which(names(datgridded)=="sd")] = paste(p$variables$Y, "sd", sep=".")
+
+    gc()
+  }
 
   windowsize.half = floor(distance/p$pres)
   pa_w = -windowsize.half : windowsize.half # default window size 
   # pa_w = pa_w[ -length(pa_w)] # must be even 
   pa_w_n = length(pa_w)
   adims = c(p$nt, pa_w_n, pa_w_n ) 
-  pxts$id = array_map( "3->1", 
+  datgridded$id = array_map( "3->1", 
     coords = round( cbind( 
-      ( (pxts[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 ,
-      ( windowsize.half + (pxts[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
-      ( windowsize.half + (pxts[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1)), 
+      ( (datgridded[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 ,
+      ( windowsize.half + (datgridded[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
+      ( windowsize.half + (datgridded[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1)), 
     dims=adims )
-  o = which( pxts$id > prod(adims)  | pxts$id <= 0 ) # remove the area outside the aoi
-  if (length(o) > 0 ) pxts = pxts[-o,]
+  o = which( datgridded$id > prod(adims)  | datgridded$id <= 0 ) # remove the area outside the aoi
+  if (length(o) > 0 ) datgridded = datgridded[-o,]
   
-  ddup = which(duplicated(pxts$id))
+  ddup = which(duplicated(datgridded$id))
   
   if ( length( ddup) > 0 ) {
-    dups = unique(pxts$id[ddup])
+    dups = unique(datgridded$id[ddup])
     for ( i in dups ) {
-      j = which( pxts$id== i)
-      meanvalue = mean( pxts[j, p$variable$Y], na.rm=TRUE)  
-      pxts[j, p$variable$Y] = NA
-      pxts[j[1], p$variable$Y] = meanvalue
+      j = which( datgridded$id== i)
+      meanvalue = mean( datgridded[j, p$variable$Y], na.rm=TRUE)  
+      datgridded[j, p$variable$Y] = NA
+      datgridded[j[1], p$variable$Y] = meanvalue
     }
-    pxts = pxts[ which(is.finite(pxts[, p$variable$Y]) ) , ]
+    datgridded = datgridded[ which(is.finite(datgridded[, p$variable$Y]) ) , ]
   } 
 
   xM = array( NA, dim=adims )
-  xM[pxts$id] = pxts[,p$variables$Y]
+  xM[datgridded$id] = datgridded[,p$variables$Y]
 
+
+  if (0) {
+  # ignore this for now ..
   # prediction covariates i.e., independent variables/ covariates
-  # usinglocalcovars = FALSE
-  # if (usinglocalcovars) {
-  #   pvars = c("plon", "plat", "i")
-  #   if (p$nloccov > 0) {
-  #     # .. not necessary except when covars are modelled locally
-  #     for (ci in 1:p$nloccov) {
-  #       vn = p$variables$local_cov[ci]
-  #       pu = NULL
-  #       pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-  #       nts = ncol(pu)
-  #       if ( nts== 1 ) {
-  #         pvars = c( pvars, vn )
-  #         ppp[,vn] = pu[ppp$i]  # ie. a static variable
-  #       }
-  #     }
-  #   }
-  #   ppp = ppp[, pvars]
-  #   ppp = cbind( ppp, lbm_timecovars ( vars=p$variables$local_all, ti=ppp[,p$variables$TIME]  ) )
-  #   no covars for now ..
-  #   if (p$nloccov > 0) {
-  #     # add time-varying covars .. not necessary except when covars are modelled locally
-  #     for (ci in 1:p$nloccov) {
-  #       vn = p$variables$local_cov[ci]
-  #       pu = NULL
-  #       pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
-  #       nts = ncol(pu)
-  #       if ( nts == p$ny )  {
-  #         ppp$iy = ppp$yr - p$yrs[1] + 1 #yr index
-  #         ppp[,vn] = pu[ cbind(ppp$i, ppp$iy) ]  
-  #         message("Need to check that data order is correct")
-  #       } else if ( nts == p$nt ) {
-  #         ppp$it = p$nw*(ppp$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
-  #         ppp[,vn] = pu[ cbind(ppp$i, ppp$it) ]  
-  #         message("Need to check that data order is correct")
-  #       } else if (nts==1) { } #nothing to do .. already processed above }
-  #     }
-  #   }
-  # }
+    pvars = c("plon", "plat", "i")
+    if (p$nloccov > 0) {
+      # .. not necessary except when covars are modelled locally
+      for (ci in 1:p$nloccov) {
+        vn = p$variables$local_cov[ci]
+        pu = NULL
+        pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+        nts = ncol(pu)
+        if ( nts== 1 ) {
+          pvars = c( pvars, vn )
+          datgridded[,vn] = pu[datgridded$i]  # ie. a static variable
+        }
+      }
+    }
+    datgridded = datgridded[, pvars]
+    datgridded = cbind( datgridded, lbm_timecovars ( vars=p$variables$local_all, ti=datgridded[,p$variables$TIME]  ) )
+
+    if (p$nloccov > 0) {
+      # add time-varying covars .. not necessary except when covars are modelled locally
+      for (ci in 1:p$nloccov) {
+        vn = p$variables$local_cov[ci]
+        pu = NULL
+        pu = lbm_attach( p$storage.backend, p$ptr$Pcov[[vn]] )
+        nts = ncol(pu)
+        if ( nts == p$ny )  {
+          datgridded$iy = datgridded$yr - p$yrs[1] + 1 #yr index
+          datgridded[,vn] = pu[ cbind(datgridded$i, datgridded$iy) ]  
+          message("Need to check that datgriddeda order is correct")
+        } else if ( nts == p$nt ) {
+          datgridded$it = p$nw*(datgridded$tiyr - p$yrs[1] - p$tres/2) + 1 #ts index
+          datgridded[,vn] = pu[ cbind(datgridded$i, datgridded$it) ]  
+          message("Need to check that data order is correct")
+        } else if (nts==1) { } #nothing to do .. already processed above }
+      }
+    }
+  }
+
 
   # shorten by 1 row and column to make it even
   nsq = pa_w_n-1
   w = matrix( xM[,1:nsq, 1:nsq ], nrow=p$nt )
 
-  # SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0, muY=0, tau2=varObs)
+  SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0, muY=0, tau2=varObs)
   
-  g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, saveProcess=TRUE, Nsave=500, 
-    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, nu=nu ) # padding causes banding patterns 
+  g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=1, # saveProcess=FALSE, Nsave=500, 
+    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, nu=nu, SV=SV ) # padding causes banding patterns 
   #, BurnIn=2500, Nmc=7500, SV=SV ) 
  #      DimRed=TRUE, NFour=100,
  #     BurnIn=2000, seed=4, NCovEst=500, BurnInCovEst=500, trace=FALSE, Padding=TRUE)
   # Nmc=10000,
 
-
-  spp <- spate.predict(y=w, tPred=(1:p$nt), 
-    spateMCMC=g, Nsim=100, BurnIn=10, DataModel="Normal", seed=1, nu=nu, trace=FALSE )
+  spp <- spate.predict(y=w, tPred=(1:p$nt), seed=1,
+    spateMCMC=g, Nsim=500, BurnIn=10, DataModel="Normal", seed=1, nu=nu, trace=FALSE )
   #  DimRed=TRUE, NFour=101
 
   # determine prediction locations and time slices
@@ -200,17 +204,10 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   pa$mean = NA
   pa$mean = xM[pa$id ]
 
+  datgridded$mean = NA
+  datgridded$mean = xM[datgridded$id]
 
-  dat$id = array_map( "3->1", 
-    coords = round( cbind( 
-      ( (dat[,p$variables$TIME ] - p$prediction.ts[1] ) / p$tres) + 1 ,
-      ( windowsize.half + (dat[,p$variables$LOCS[1]] - sloc[1]) / p$pres) + 1, 
-      ( windowsize.half + (dat[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1)), 
-    dims=adims )
-  dat$mean = NA
-  dat$mean = xM[dat$id]
-
-
+  # sd
   xM[,1:nsq,1:nsq] = apply(spp, c(1,2), sd)
   pa$sd = NA
   pa$sd = xM[pa$id]
@@ -237,14 +234,20 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
     } 
   }
 
-  # plot(mean ~ z , dat)
+  # plot(mean ~ z , datgridded)
 
-  ss = lm( dat$mean ~ dat[,p$variables$Y], na.action=na.omit )
+  ss = lm( datgridded$mean ~ datgridded[,p$variables$Y], na.action=na.omit )
   if ( "try-error" %in% class( ss ) ) return( NULL )
   rsquared = summary(ss)$r.squared
   if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-  lbm_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(dat) ) # must be same order as p$statsvars
+  pmean = apply(g$Post, 1, mean)
+  psd = apply(g$Post, 1, sd)
+  
+  # must be same order as p$statsvars
+  lbm_stats = list( sdTotal=sdTotal, rsquared=rsquared, ndata=nrow(datgridded),
+
+  ) 
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
  
