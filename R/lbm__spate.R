@@ -81,6 +81,7 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
     names(datgridded)[which(names(datgridded)=="mean")] = p$variables$Y
     names(datgridded)[which(names(datgridded)=="sd")] = paste(p$variables$Y, "sd", sep=".")
 
+
     gc()
   }
 
@@ -155,22 +156,21 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
     }
   }
 
-
   # shorten by 1 row and column to make it even
   nsq = pa_w_n-1
   w = matrix( xM[,1:nsq, 1:nsq ], nrow=p$nt )
 
-  # SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0, muY=0, tau2=varObs)
+  SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0, muY=0, tau2=varObs)
   
-  g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=1, # saveProcess=FALSE, Nsave=500, 
-    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, nu=nu ) # padding causes banding patterns 
-  #, BurnIn=2500, Nmc=7500, SV=SV ) 
+  g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=3, # saveProcess=FALSE, Nsave=500, 
+    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE ) # padding causes banding patterns 
+  #, BurnIn=2500, Nmc=7500, SV=SV ) # nu=nu, defulat is to assume nu =1 
  #      DimRed=TRUE, NFour=100,
  #     BurnIn=2000, seed=4, NCovEst=500, BurnInCovEst=500, trace=FALSE, Padding=TRUE)
   # Nmc=10000,
 
-  spp <- spate.predict(y=w, tPred=(1:p$nt), seed=1,
-    spateMCMC=g, Nsim=500, BurnIn=10, DataModel="Normal", seed=1, nu=nu, trace=FALSE )
+  spp <- spate.predict(y=w, tPred=(1:p$nt), 
+    spateMCMC=g, Nsim=510, BurnIn=10, DataModel="Normal", seed=3,  trace=FALSE ) # nu=nu, defulat is to assume nu =1 
   #  DimRed=TRUE, NFour=101
 
   # determine prediction locations and time slices
@@ -218,11 +218,17 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
     
     Pmean = apply(spp, c(1,2), mean)
     zlim=range(Pmean)
+    x11()
     for( i in 1:p$nt) {  
       # i = 1
-      pause(0.05)
-      image(1:nsq,1:nsq, matrix(Pmean[i,], nrow=nsq), zlim=zlim,
-              main=paste("Mean predicted field at t=",i,sep=""), xlab="",ylab="",col=cols())
+      pause(0.2)
+  #    image(1:nsq,1:nsq, matrix(Pmean[i,], nrow=nsq), zlim=zlim,
+  #            main=paste("Mean predicted field at t=",i,sep=""), xlab="",ylab="",col=cols())
+      oo = expand.grid( 1:nsq, 1:nsq)
+      oo = as.data.frame( cbind(oo, Pmean[i,] ) )
+      oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
+      surface(oom, zlim=zlim, type="C") # I = no countour, C=with couontours
+
     }
 
     Psd = apply(spp, c(1,2), sd)
@@ -230,9 +236,59 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
     for( i in 1:p$nt) {  
     # i = 1
       pause(0.25)
-      image(1:nsq,1:nsq,matrix(Psd[i,],nrow=nsq), zlim=zlim,
-            main=paste("Sd of predicted field at t=",i,sep=""), xlab="",ylab="",col=cols())
+      # image(1:nsq,1:nsq,matrix(Psd[i,],nrow=nsq), zlim=zlim,
+      #       main=paste("Sd of predicted field at t=",i,sep=""), xlab="",ylab="",col=cols())
+      oo = expand.grid( 1:nsq, 1:nsq)
+      oo = as.data.frame( cbind(oo, Psd[i,] ) )
+      oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
+      surface(oom, zlim=zlim, contour=FALSE)
     } 
+
+    # just raw data running average
+    x11()
+    zlim=range(dat[, p$variables$Y ])
+    ww = 3
+    for( i in 1:p$nt) {  
+      pause(0.2)
+      print(p$prediction.ts[i] )
+      ii = i+c(-floor(p$nw/3):floor(p$nw/3))
+      ii = ii[ ii >= 1 & ii <= p$nt ]
+      trange = range( p$prediction.ts[ii] )
+      di = which( dat[ , p$variables$TIME ] > trange[1] & dat[ , p$variables$TIME ] < trange[2]  )
+      if( length(di) < 10) next() 
+      dmbas = MBA::mba.surf( dat[di, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
+      surface(dmbas, zlim=zlim)
+    }
+ 
+ plot( plat~plon, dat[ dat$yr==2016 ,], pch=20 )
+ text( plat~plon, labels=dat[dat$yr==2016,"t"] , dat[ dat$yr==2016 ,] )
+
+    if(0){
+        # debugging plots
+        # boosted "data"
+        i = 668
+
+        x11()
+        xi = which( datgridded[ , p$variables$TIME ] == p$prediction.ts[i] )
+        mbas = MBA::mba.surf( datgridded[xi, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
+        surface(mbas)
+
+        #data
+        x11()
+        di = which( floor(dat[ , p$variables$TIME ]) == floor(p$prediction.ts[i]) )
+        dmbas = MBA::mba.surf( dat[di, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
+        surface(dmbas)
+
+        # spate
+        x11()
+        oo = expand.grid( 1:nsq, 1:nsq)
+        oo = as.data.frame( cbind(oo, Pmean[i,] ) )
+        oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
+        surface(oom)
+
+    }
+
+
   }
 
   # plot(mean ~ z , datgridded)

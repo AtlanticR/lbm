@@ -77,6 +77,14 @@ lbm__twostep = function( p, dat, pa, nu=NULL, phi=NULL, varObs=varObs, varSpatia
   names(pxts)[which(names(pxts)=="mean")] = p$variables$Y
   names(pxts)[which(names(pxts)=="sd")] = paste(p$variables$Y, "sd", sep=".")
 
+  if(0){
+      # debugging plots
+      ti = 668
+      xi = which( pxts[ , p$variables$TIME ] == p$prediction.ts[ti] )
+      mbas = MBA::mba.surf( pxts[xi, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
+      image(mbas)
+  }
+
   ts_gam = NULL
   gc()
 

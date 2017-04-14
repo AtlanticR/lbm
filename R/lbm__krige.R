@@ -37,11 +37,17 @@ lbm__krige = function( p, dat, pa, nu, phi, varObs, varSpatial ) {
  
     if ( 0 ){
       # debugging plots
+      ti = 1
+      xi = which( dat[ , p$variables$TIME ] == p$prediction.ts[ti] )
+      mbas = MBA::mba.surf( dat[xi, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
+      image(mbas)
+ 
       surface(fspmodel)
-      fsp.p<- predictSurface(fspmodel, lambda=fspmodel$pars["lambda"], nx=200, ny=200, )
+      fsp.p<- predictSurface(fspmodel, nx=500, ny=500 ) # finer grid
       surface(fsp.p, type="I")
+ 
       fsp.p2<- predictSurfaceSE(fspmodel)
-      surface(fsp.p, type="C")
+      surface(fsp.p2, type="C")
     }
 
   }
