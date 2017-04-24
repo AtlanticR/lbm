@@ -305,7 +305,7 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   pmean = apply(g$Post, 1, mean)[pmean_vars]
   psd = apply(g$Post, 1, sd)[psd_vars]
   
-  lbm_stats = c(list( sdTotal=sdTotal, rsquared=rsquared, ndata=ndat, pmean, psd) 
+  lbm_stats = c(list( sdTotal=sdTotal, rsquared=rsquared, ndata=ndat, pmean, psd) ) 
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 
