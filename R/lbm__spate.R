@@ -160,7 +160,7 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   nsq = pa_w_n-1
   w = matrix( xM[,1:nsq, 1:nsq ], nrow=p$nt )
 
-  SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0, muY=0, tau2=varObs)
+  SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0.1, muY=0.1, tau2=varObs)
   
   g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=3, # saveProcess=FALSE, Nsave=500, 
     adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, SV=SV ) # padding causes banding patterns 
