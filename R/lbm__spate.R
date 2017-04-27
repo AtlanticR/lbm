@@ -160,30 +160,42 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   nsq = pa_w_n-1
   w = matrix( xM[,1:nsq, 1:nsq ], nrow=p$nt )
 
-  # SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0.1, muY=0.1, tau2=varObs)
-  
-  g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=101,
-    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE ) )
+  SV = c(rho0 = 0.25, 
+        sigma2 = max(0.1, varSpatial, na.rm=TRUE), zeta = 0.25, rho1 = 0.25, gamma = 1, alpha = 0.1, 
+        muX = 0, muY = 0, tau2 = max(0.005, varObs, na.rm=TRUE) )
+
+  g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, Nmc=5000, SV=SV,
+    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, plotTrace=FALSE, BurnIn=1500,
+    BurnInCovEst=1000, NCovEst=1000 ), silent=TRUE)
 
   if ("try-error" %in% class(g)) {
-    g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=1001,
-      adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, BurnIn=2000 ) ) # longer burn-in and alternate rnd seed
+    g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, Nmc=5000, 
+      adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, plotTrace=FALSE , BurnIn=2000 ), silent=TRUE) # longer burn-in (1000 is default) and alternate rnd seed
   }
 
-   if ("try-error" %in% class(g)) return(NULL)
- 
-      # padding causes banding patterns ,
-      # saveProcess=FALSE, Nsave=500, 
-      #, BurnIn=1000, Nmc=7500, SV=SV ) # nu=nu, defulat is to assume nu =1 
-      #      DimRed=TRUE, NFour=100,
-      #     BurnIn=2000, seed=4, NCovEst=500, BurnInCovEst=500, trace=FALSE, Padding=TRUE)
-      # Nmc=10000,
+  if ("try-error" %in% class(g)) {
+    g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=1001, Nmc=5000,
+      adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, plotTrace=FALSE , BurnIn=2000 ), silent=TRUE) # longer burn-in (1000 is default) and alternate rnd seed
+  }
 
+  if ("try-error" %in% class(g)) return(NULL)
+ 
   spp <- spate.predict(y=w, tPred=(1:p$nt), 
-    spateMCMC=g, Nsim=1010, BurnIn=10, DataModel="Normal", seed=201,  trace=FALSE ) # nu=nu, defulat is to assume nu =1 
+    spateMCMC=g, Nsim=1010, BurnIn=10, DataModel="Normal", trace=FALSE ) # nu=nu, defulat is to assume nu =1 
   #  DimRed=TRUE, NFour=101
 
-  rm(w); gc()
+# must be same order as p$statsvars
+  pmean_vars = c( "rho_0", "zeta", "rho_1", "gamma", "alpha", "mu_x", "mu_y", "sigma^2", "tau^2" ) #reorder
+  psd_vars   = c( "rho_0.sd", "zeta.sd", "rho_1.sd", "gamma.sd", "alpha.sd", "mu_x.sd", "mu_y.sd" ) # drop sd of variance terms
+
+  pmean =  apply(g$Post, 1, mean)[pmean_vars] 
+  psd =  apply(g$Post, 1, sd)[pmean_vars] 
+
+  names(pmean) = pmean_vars
+  names(psd) = paste( pmean_vars, "sd", sep=".")
+  psd = psd[psd_vars]
+
+  rm(g, w); gc()
 
   # determine prediction locations and time slices
   iwplon = round( (sloc[1]-p$origin[1])/p$pres + 1 + pa_w )
@@ -227,7 +239,6 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
 
 
   if (0) {
-    plot(g, postProcess=TRUE)
     
     Pmean = apply(spp, c(1,2), mean)
     zlim=range(Pmean)
@@ -336,7 +347,7 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
 
   } # end debug
 
-  rm(xM, spp); gc()
+  rm(oo, xM, spp); gc()
 
   # plot(mean ~ z , datgridded)
 
@@ -347,16 +358,8 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   rsquared = summary(ss)$r.squared
   if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
-# must be same order as p$statsvars
-  pmean_vars = c( "rho_0", "zeta", "rho_1", "gamma", "alpha", "mu_x", "mu_y", "sigma^2", "tau^2" ) #reorder
-  psd_vars   = c( "rho_0.sd", "zeta.sd", "rho_1.sd", "gamma.sd", "alpha.sd", "mu_x.sd", "mu_y.sd" ) # drop sd of variance terms
 
-  pmean = apply(g$Post, 1, mean)[pmean_vars]
-  psd = apply(g$Post, 1, sd)[psd_vars]
-  
-  browser()
-
-  lbm_stats = c(list( sdTotal=sdTotal, rsquared=rsquared, ndata=ndata, pmean, psd) ) 
+  lbm_stats = c(list( sdTotal=sdTotal, rsquared=rsquared, ndata=ndata), pmean, psd)  
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 
