@@ -226,10 +226,13 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
       ( windowsize.half + (pa[,p$variables$LOCS[2]] - sloc[2]) / p$pres) + 1)), 
     dims=adims )
 
+  iii = which(pa$id >= 1 & pa$id <= prod(adims) )
+  if (length(iii) < 10) return(NULL) 
+  
   # means 
   xM[,1:nsq,1:nsq] = apply(spp, c(1,2), mean)
   pa$mean = NA
-  pa$mean = xM[pa$id ]
+  pa$mean[iii] = xM[pa$id[iii] ]
 
   datgridded$mean = NA
   datgridded$mean = xM[datgridded$id]
@@ -237,8 +240,7 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   # sd
   xM[,1:nsq,1:nsq] = apply(spp, c(1,2), sd)
   pa$sd = NA
-  pa$sd = xM[pa$id]
-
+  pa$sd[iii] = xM[pa$id[iii]]
 
   if (0) {
     
