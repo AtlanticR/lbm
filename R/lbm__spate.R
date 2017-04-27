@@ -160,17 +160,17 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   nsq = pa_w_n-1
   w = matrix( xM[,1:nsq, 1:nsq ], nrow=p$nt )
 
-  SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0.1, muY=0.1, tau2=varObs)
+  # SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0.1, muY=0.1, tau2=varObs)
   
-  g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=3, # saveProcess=FALSE, Nsave=500, 
-    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, SV=SV ) # padding causes banding patterns 
-  #, BurnIn=2500, Nmc=7500, SV=SV ) # nu=nu, defulat is to assume nu =1 
+  g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=101, # saveProcess=FALSE, Nsave=500, 
+    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE ) # padding causes banding patterns 
+  #, BurnIn=1000, Nmc=7500, SV=SV ) # nu=nu, defulat is to assume nu =1 
  #      DimRed=TRUE, NFour=100,
  #     BurnIn=2000, seed=4, NCovEst=500, BurnInCovEst=500, trace=FALSE, Padding=TRUE)
   # Nmc=10000,
 
   spp <- spate.predict(y=w, tPred=(1:p$nt), 
-    spateMCMC=g, Nsim=510, BurnIn=10, DataModel="Normal", seed=3,  trace=FALSE ) # nu=nu, defulat is to assume nu =1 
+    spateMCMC=g, Nsim=1010, BurnIn=10, DataModel="Normal", seed=201,  trace=FALSE ) # nu=nu, defulat is to assume nu =1 
   #  DimRed=TRUE, NFour=101
 
   # determine prediction locations and time slices
@@ -226,9 +226,8 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   #            main=paste("Mean predicted field at t=",i,sep=""), xlab="",ylab="",col=cols())
       oo = expand.grid( 1:nsq, 1:nsq)
       oo = as.data.frame( cbind(oo, Pmean[i,] ) )
-      oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
-      surface(oom, zlim=zlim, type="C") # I = no countour, C=with couontours
-
+      oom = MBA::mba.surf( oo, nsq, nsq, extend=TRUE)$xyz.est
+      surface(oom, zlim=zlim, type="I") # I = no countour, C=with couontours
     }
 
     Psd = apply(spp, c(1,2), sd)
@@ -266,25 +265,60 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
     if(0){
         # debugging plots
         # boosted "data"
-        i = 668
-
+        i = 658
+  zlim=range(dat[, p$variables$Y ])
+ 
         x11()
+        for (i in 1:p$nt) {
+         pause(0.2)
         xi = which( datgridded[ , p$variables$TIME ] == p$prediction.ts[i] )
         mbas = MBA::mba.surf( datgridded[xi, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
-        surface(mbas)
+        surface(mbas, zlim=zlim)
+        }
 
         #data
-        x11()
+          x11()
+          for (i in 1:p$nt) {
+         pause(0.2)
+
         di = which( floor(dat[ , p$variables$TIME ]) == floor(p$prediction.ts[i]) )
         dmbas = MBA::mba.surf( dat[di, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
-        surface(dmbas)
-
+        surface(dmbas, zlim=zlim)
+}
         # spate
         x11()
+           for (i in 1:p$nt) {
+         pause(0.2)
+       
         oo = expand.grid( 1:nsq, 1:nsq)
         oo = as.data.frame( cbind(oo, Pmean[i,] ) )
         oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
-        surface(oom)
+        surface(oom, zlim=zlim)
+        }
+
+        x11()
+        par( mfrow=c(1,3))
+        for (i in 1:p$nt) {
+         pause(1)
+
+         # data
+        di = which( floor(dat[ , p$variables$TIME ]) == floor(p$prediction.ts[i]) )
+        dmbas = MBA::mba.surf( dat[di, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
+        surface(dmbas, zlim=zlim)
+
+        # grid boosted
+       xi = which( datgridded[ , p$variables$TIME ] == p$prediction.ts[i] )
+        mbas = MBA::mba.surf( datgridded[xi, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
+        surface(mbas, zlim=zlim)
+ 
+       # spate
+        oo = expand.grid( 1:nsq, 1:nsq)
+        oo = as.data.frame( cbind(oo, Pmean[i,] ) )
+        oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
+        surface(oom, zlim=zlim)
+      }    
+}
+
 
     }
 
