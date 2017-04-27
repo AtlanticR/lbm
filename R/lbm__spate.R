@@ -317,8 +317,6 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
         oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
         surface(oom, zlim=zlim)
       }    
-}
-
 
     }
 
