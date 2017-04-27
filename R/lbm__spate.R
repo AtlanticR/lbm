@@ -164,18 +164,20 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
         sigma2 = max(0.1, varSpatial, na.rm=TRUE), zeta = 0.25, rho1 = 0.25, gamma = 1, alpha = 0.1, 
         muX = 0, muY = 0, tau2 = max(0.005, varObs, na.rm=TRUE) )
 
-  g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, Nmc=5000, SV=SV,
-    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, plotTrace=FALSE, BurnIn=1500,
+  g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, Nmc=2000, SV=SV,
+    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, plotTrace=FALSE, BurnIn=1000,
     BurnInCovEst=1000, NCovEst=1000 ), silent=TRUE)
 
   if ("try-error" %in% class(g)) {
-    g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, Nmc=5000, 
-      adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, plotTrace=FALSE , BurnIn=2000 ), silent=TRUE) # longer burn-in (1000 is default) and alternate rnd seed
+    g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, Nmc=2000, 
+      adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, plotTrace=FALSE , BurnIn=1500,
+      BurnInCovEst=1000, NCovEst=1000 ), silent=TRUE) # longer burn-in (1000 is default) and alternate rnd seed
   }
 
   if ("try-error" %in% class(g)) {
-    g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=1001, Nmc=5000,
-      adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, plotTrace=FALSE , BurnIn=2000 ), silent=TRUE) # longer burn-in (1000 is default) and alternate rnd seed
+    g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=1001, Nmc=2000,
+      adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, plotTrace=FALSE , BurnIn=2000,
+      BurnInCovEst=1000, NCovEst=1000 ), silent=TRUE) # longer burn-in (1000 is default) and alternate rnd seed
   }
 
   if ("try-error" %in% class(g)) return(NULL)
