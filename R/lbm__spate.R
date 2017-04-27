@@ -4,7 +4,7 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   # require(spate) #\\ SPDE solution via FFT using the spate library
 
   sdTotal=sd(dat[,p$variable$Y], na.rm=T)
-  ndat = nrow(dat)
+  ndata = nrow(dat)
   
   datgridded = dat # only the static parts .. time has to be a uniform grid so reconstruct below
 
@@ -162,16 +162,28 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
 
   # SV = c(rho0=0.1, sigma2=varSpatial, zeta=0.1, rho1=0.2, gamma=1, alpha=1, muX=0.1, muY=0.1, tau2=varObs)
   
-  g = spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=101, # saveProcess=FALSE, Nsave=500, 
-    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE ) # padding causes banding patterns 
-  #, BurnIn=1000, Nmc=7500, SV=SV ) # nu=nu, defulat is to assume nu =1 
- #      DimRed=TRUE, NFour=100,
- #     BurnIn=2000, seed=4, NCovEst=500, BurnInCovEst=500, trace=FALSE, Padding=TRUE)
-  # Nmc=10000,
+  g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=101,
+    adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE ) )
+
+  if ("try-error" %in% class(g)) {
+    g = try( spate.mcmc( y=w, n=nsq, Padding=FALSE, trace=FALSE, seed=1001,
+      adaptive=TRUE, Separable=FALSE, Drift=TRUE, Diffusion=TRUE, BurnIn=2000 ) ) # longer burn-in and alternate rnd seed
+  }
+
+   if ("try-error" %in% class(g)) return(NULL)
+ 
+      # padding causes banding patterns ,
+      # saveProcess=FALSE, Nsave=500, 
+      #, BurnIn=1000, Nmc=7500, SV=SV ) # nu=nu, defulat is to assume nu =1 
+      #      DimRed=TRUE, NFour=100,
+      #     BurnIn=2000, seed=4, NCovEst=500, BurnInCovEst=500, trace=FALSE, Padding=TRUE)
+      # Nmc=10000,
 
   spp <- spate.predict(y=w, tPred=(1:p$nt), 
     spateMCMC=g, Nsim=1010, BurnIn=10, DataModel="Normal", seed=201,  trace=FALSE ) # nu=nu, defulat is to assume nu =1 
   #  DimRed=TRUE, NFour=101
+
+  rm(w); gc()
 
   # determine prediction locations and time slices
   iwplon = round( (sloc[1]-p$origin[1])/p$pres + 1 + pa_w )
@@ -212,6 +224,7 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   xM[,1:nsq,1:nsq] = apply(spp, c(1,2), sd)
   pa$sd = NA
   pa$sd = xM[pa$id]
+
 
   if (0) {
     plot(g, postProcess=TRUE)
@@ -258,15 +271,14 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
       dmbas = MBA::mba.surf( dat[di, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
       surface(dmbas, zlim=zlim)
     }
- 
- plot( plat~plon, dat[ dat$yr==2016 ,], pch=20 )
- text( plat~plon, labels=dat[dat$yr==2016,"t"] , dat[ dat$yr==2016 ,] )
+   
+     plot( plat~plon, dat[ dat$yr==2016 ,], pch=20 )
+     text( plat~plon, labels=dat[dat$yr==2016,"t"] , dat[ dat$yr==2016 ,] )
 
-    if(0){
         # debugging plots
         # boosted "data"
         i = 658
-  zlim=range(dat[, p$variables$Y ])
+        zlim=range(dat[, p$variables$Y ])
  
         x11()
         for (i in 1:p$nt) {
@@ -277,56 +289,61 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
         }
 
         #data
-          x11()
-          for (i in 1:p$nt) {
-         pause(0.2)
-
-        di = which( floor(dat[ , p$variables$TIME ]) == floor(p$prediction.ts[i]) )
-        dmbas = MBA::mba.surf( dat[di, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
-        surface(dmbas, zlim=zlim)
-}
-        # spate
         x11()
-           for (i in 1:p$nt) {
-         pause(0.2)
-       
-        oo = expand.grid( 1:nsq, 1:nsq)
-        oo = as.data.frame( cbind(oo, Pmean[i,] ) )
-        oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
-        surface(oom, zlim=zlim)
+        for (i in 1:p$nt) {
+          pause(0.2)
+          di = which( floor(dat[ , p$variables$TIME ]) == floor(p$prediction.ts[i]) )
+          dmbas = MBA::mba.surf( dat[di, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
+          surface(dmbas, zlim=zlim)
         }
 
+        # spate
+        x11()
+        for (i in 1:p$nt) {
+          pause(0.2)
+          oo = expand.grid( 1:nsq, 1:nsq)
+          oo = as.data.frame( cbind(oo, Pmean[i,] ) )
+          oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
+          surface(oom, zlim=zlim)
+        }
+
+        zlim=range(dat[, p$variables$Y ])
         x11()
         par( mfrow=c(1,3))
+        dmbas0 = MBA::mba.surf( dat[, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
         for (i in 1:p$nt) {
-         pause(1)
+           pause(1)
+          # data
+          di = which( floor(dat[ , p$variables$TIME ]) == floor(p$prediction.ts[i]) )
+          if (length(di) > 5) {
+            dmbas = MBA::mba.surf( dat[di, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
+           } else { 
+            dmbas = dmbas0 
+          }
+          surface(dmbas, zlim=zlim)
 
-         # data
-        di = which( floor(dat[ , p$variables$TIME ]) == floor(p$prediction.ts[i]) )
-        dmbas = MBA::mba.surf( dat[di, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
-        surface(dmbas, zlim=zlim)
+          # grid boosted
+          xi = which( datgridded[ , p$variables$TIME ] == p$prediction.ts[i] )
+          mbas = MBA::mba.surf( na.omit(datgridded[xi, c( p$variables$LOCS, p$variables$Y) ]), 300, 300, extend=TRUE)$xyz.est
+          surface(mbas, zlim=zlim)
 
-        # grid boosted
-       xi = which( datgridded[ , p$variables$TIME ] == p$prediction.ts[i] )
-        mbas = MBA::mba.surf( datgridded[xi, c( p$variables$LOCS, p$variables$Y) ], 300, 300, extend=TRUE)$xyz.est
-        surface(mbas, zlim=zlim)
- 
-       # spate
-        oo = expand.grid( 1:nsq, 1:nsq)
-        oo = as.data.frame( cbind(oo, Pmean[i,] ) )
-        oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
-        surface(oom, zlim=zlim)
-      }    
+         # spate
+          oo = expand.grid( 1:nsq, 1:nsq)
+          oo = as.data.frame( cbind(oo, Pmean[i,] ) )
+          oom = MBA::mba.surf( oo, 300, 300, extend=TRUE)$xyz.est
+          surface(oom, zlim=zlim)
+      }  # end for  
 
-    }
+  } # end debug
 
-
-  }
+  rm(xM, spp); gc()
 
   # plot(mean ~ z , datgridded)
 
   ss = lm( datgridded$mean ~ datgridded[,p$variables$Y], na.action=na.omit )
   if ( "try-error" %in% class( ss ) ) return( NULL )
+  rm(datgridded); gc()
+
   rsquared = summary(ss)$r.squared
   if (rsquared < p$lbm_rsquared_threshold ) return(NULL)
 
@@ -337,7 +354,7 @@ lbm__spate = function( p, dat, pa, sloc, distance, nu, phi, varObs, varSpatial )
   pmean = apply(g$Post, 1, mean)[pmean_vars]
   psd = apply(g$Post, 1, sd)[psd_vars]
   
-  lbm_stats = c(list( sdTotal=sdTotal, rsquared=rsquared, ndata=ndat, pmean, psd) ) 
+  lbm_stats = c(list( sdTotal=sdTotal, rsquared=rsquared, ndata=ndata, pmean, psd) ) 
   
   # lattice::levelplot( mean ~ plon + plat, data=pa, col.regions=heat.colors(100), scale=list(draw=FALSE) , aspect="iso" )
 
